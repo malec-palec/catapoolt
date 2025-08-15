@@ -4,6 +4,7 @@
   "description": "js13kGames 2025 competition entry",
   "private": true,
   "scripts": {
+    "prepare": "husky",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --open --host",
     "dev": "vite --open --host",
@@ -20,6 +21,7 @@
     "globals": "^16.3.0",
     "husky": "^9.1.7",
     "js13k-vite-plugins": "^0.4.0",
+    "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.2.0",
     "typescript": "^5.9.2",
@@ -27,6 +29,10 @@
     "vite": "^7.1.2",
     "vite-plugin-html": "^3.2.2",
     "vite-plugin-singlefile": "^2.3.0"
+  },
+  "lint-staged": {
+    "*.{js,ts}": "eslint --fix",
+    "*": "prettier --write -u"
   },
   "type": "module"
 }
