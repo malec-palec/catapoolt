@@ -1,0 +1,10 @@
+{
+  "name": "step-over",
+  "version": "1.0.0",
+  "description": "js13kGames 2025 competition entry",
+  "private": true,
+  "scripts": {},
+  "author": "glebv",
+  "license": "MIT",
+  "type": "module"
+}
