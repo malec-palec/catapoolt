@@ -3,8 +3,30 @@
   "version": "1.0.0",
   "description": "js13kGames 2025 competition entry",
   "private": true,
-  "scripts": {},
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --open --host",
+    "dev": "vite --open --host",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
+  },
   "author": "glebv",
   "license": "MIT",
+  "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.2.3",
+    "eslint": "^9.33.0",
+    "globals": "^16.3.0",
+    "husky": "^9.1.7",
+    "js13k-vite-plugins": "^0.4.0",
+    "prettier": "^3.6.2",
+    "prettier-plugin-organize-imports": "^4.2.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.39.1",
+    "vite": "^7.1.2",
+    "vite-plugin-html": "^3.2.2",
+    "vite-plugin-singlefile": "^2.3.0"
+  },
   "type": "module"
 }
