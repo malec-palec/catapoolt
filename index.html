@@ -3,9 +3,58 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Step Over</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-color: #f0f0f0;
+        font-family: Arial, sans-serif;
+      }
+      canvas {
+        border: 1px solid #ccc;
+        background-color: #ffffff;
+      }
+      .controls {
+        margin-bottom: 10px;
+        color: #333;
+      }
+      button {
+        padding: 8px 16px;
+        background-color: #333;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 0 5px;
+      }
+      button:hover {
+        background-color: #555;
+      }
+      button:disabled {
+        background-color: #999;
+        cursor: not-allowed;
+      }
+      button.recording {
+        background-color: #e74c3c;
+      }
+      button.recording:hover {
+        background-color: #c0392b;
+      }
+    </style>
   </head>
 
   <body>
+    <div class="controls">
+      <button id="toggleArcBtn">Toggle Arc Guide</button>
+      <button id="recordBtn">Start Recording</button>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
     <script type="module" src="./src/index.ts"></script>
   </body>
 </html>
