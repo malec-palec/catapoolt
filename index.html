@@ -3,9 +3,29 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Step Over</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f0f0f0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        font-family: Arial, sans-serif;
+      }
+
+      #gameCanvas {
+        background: #d3d3d3;
+        border: 2px solid #666;
+        cursor: crosshair;
+      }
+    </style>
   </head>
 
   <body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
     <script type="module" src="./src/index.ts"></script>
   </body>
 </html>
