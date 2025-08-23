@@ -3,9 +3,28 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rope Simulation - Verlet Integration</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        background: #1a1a1a;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        font-family: Arial, sans-serif;
+      }
+      canvas {
+        border: 2px solid #333;
+        background: #000;
+        cursor: crosshair;
+      }
+    </style>
   </head>
 
   <body>
+    <canvas id="canvas" width="800" height="600"></canvas>
     <script type="module" src="./src/index.ts"></script>
   </body>
 </html>
