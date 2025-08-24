@@ -1,0 +1,27 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+}
+
+#topDown,
+#isometric {
+  display: block;
+  width: 50vw;
+  height: 100vh;
+}
+
+#topDown {
+  border-right: 2px solid #ccc;
+}

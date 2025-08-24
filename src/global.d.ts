@@ -1,1 +1,2 @@
-declare const c: HTMLCanvasElement;
+declare const topDown: HTMLCanvasElement;
+declare const isometric: HTMLCanvasElement;
