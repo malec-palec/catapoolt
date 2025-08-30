@@ -1,7 +1,7 @@
 import { isVerticalLayout } from "..";
+import { createButton, drawButton } from "../core/button";
 import { IGame } from "../game";
 import { BaseScreen, ScreenName } from "../screen";
-import { createButton, drawButton } from "../utils/button";
 
 const LEVEL_COUNT = 10;
 const GRID_COLS = 5;

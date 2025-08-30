@@ -1,9 +1,9 @@
-import { Point2D } from "../utils/geom";
+import { Point2D } from "./geom";
 
 export interface IDisplayObject {
   position: Point2D;
   update(dt: number): void;
-  draw(ctx: CanvasRenderingContext2D): void;
+  draw(context: CanvasRenderingContext2D): void;
 }
 
 export class DisplayObject implements IDisplayObject {

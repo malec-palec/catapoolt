@@ -1,8 +1,8 @@
 import { GAME_HEIGHT, GAME_WIDTH, isVerticalLayout } from ".";
+import { Button } from "./core/button";
+import { isCoordsInRect } from "./core/geom";
+import { easeInOut } from "./core/tween";
 import { IGame } from "./game";
-import { Button } from "./utils/button";
-import { isCoordsInRect } from "./utils/geom";
-import { easeInOut } from "./utils/tween";
 
 export const enum ScreenName {
   Splash,

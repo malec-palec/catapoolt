@@ -1,7 +1,7 @@
 import { isVerticalLayout } from "..";
+import { createButton, drawButton } from "../core/button";
 import { IGame } from "../game";
 import { BaseScreen, ScreenName } from "../screen";
-import { createButton, drawButton } from "../utils/button";
 
 export class MenuScreen extends BaseScreen {
   constructor(game: IGame) {
@@ -54,17 +54,17 @@ export class MenuScreen extends BaseScreen {
     }
   }
 
-  override draw(ctx: CanvasRenderingContext2D): void {
-    super.draw(ctx);
+  override draw(context: CanvasRenderingContext2D): void {
+    super.draw(context);
 
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 72px Arial, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("PAWS", c.width / 2, 200);
+    context.fillStyle = "#ffffff";
+    context.font = "bold 72px Arial, sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText("PAWS", c.width / 2, 200);
 
     for (const button of this.buttons) {
-      drawButton(ctx, button);
+      drawButton(context, button);
     }
   }
 }

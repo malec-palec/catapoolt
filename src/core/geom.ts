@@ -23,6 +23,5 @@ export function screenToWorld(screenX: number, screenY: number): Point2D {
 
 export type Rectangle = { x: number; y: number; width: number; height: number };
 
-export function isCoordsInRect(x: number, y: number, rect: Rectangle): boolean {
-  return x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height;
-}
+export const isCoordsInRect = (x: number, y: number, rect: Rectangle): boolean =>
+  x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height;

@@ -1,7 +1,7 @@
+import { drawButton } from "../core/button";
 import { IDisplayObject } from "../core/display";
 import { IGame } from "../game";
 import { BaseScreen, ScreenName } from "../screen";
-import { drawButton } from "../utils/button";
 import { GameField } from "./game/game-field";
 import { HUD } from "./game/hud";
 

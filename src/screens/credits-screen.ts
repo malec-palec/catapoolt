@@ -1,6 +1,6 @@
+import { drawButton } from "../core/button";
 import { IGame } from "../game";
 import { BaseScreen, ScreenName } from "../screen";
-import { drawButton } from "../utils/button";
 
 export class CreditsScreen extends BaseScreen {
   constructor(game: IGame) {
