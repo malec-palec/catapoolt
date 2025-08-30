@@ -1,6 +1,7 @@
+import { isVerticalLayout } from "..";
 import { IGame } from "../game";
 import { BaseScreen, ScreenName } from "../screen";
-import { drawButton } from "../utils/button";
+import { createButton, drawButton } from "../utils/button";
 
 export class MenuScreen extends BaseScreen {
   constructor(game: IGame) {
@@ -8,29 +9,49 @@ export class MenuScreen extends BaseScreen {
 
     const width = 200;
     const height = 60;
-    const x = c.width / 2 - width / 2;
     this.buttons.push(
-      {
-        x,
-        y: 350,
+      createButton({
         width,
         height,
         text: "Play",
         action: () => {
           this.game.changeScreen(ScreenName.LevelSelect);
         },
-      },
-      {
-        x,
-        y: 430,
+      }),
+      createButton({
         width,
         height,
         text: "Credits",
         action: () => {
           this.game.changeScreen(ScreenName.Credits);
         },
-      },
+      }),
     );
+  }
+
+  override onResize(): void {
+    super.onResize();
+
+    const width = 200;
+    const x = c.width / 2 - width / 2;
+
+    const playButton = this.buttons[0];
+    const creditsButton = this.buttons[1];
+
+    if (isVerticalLayout()) {
+      // Portrait: Stack buttons vertically with more spacing
+      const startY = c.height / 2 - 40; // Center vertically
+      playButton.x = x;
+      playButton.y = startY;
+      creditsButton.x = x;
+      creditsButton.y = startY + 80;
+    } else {
+      // Landscape: Original positioning
+      playButton.x = x;
+      playButton.y = 350;
+      creditsButton.x = x;
+      creditsButton.y = 430;
+    }
   }
 
   override draw(ctx: CanvasRenderingContext2D): void {

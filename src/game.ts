@@ -44,6 +44,9 @@ const touchHandler =
   };
 
 export class Game implements IGame {
+  static readonly GAME_WIDTH = 800;
+  static readonly GAME_HEIGHT = 600;
+
   private context: CanvasRenderingContext2D;
   private screen: IScreen;
 
@@ -51,17 +54,20 @@ export class Game implements IGame {
     this.context = c.getContext("2d", {
       willReadFrequently: true,
     })!;
+
     this.screen = new SplashScreen(this);
 
     c.onclick = mouseHandler((x, y) => this.screen.onClick(x, y));
     c.onmousemove = mouseHandler((x, y) => this.screen.onMouseMove(x, y));
     c.ontouchstart = touchHandler((x, y) => this.screen.onClick(x, y));
     c.ontouchmove = touchHandler((x, y) => this.screen.onMouseMove(x, y));
+    window.onresize = () => this.screen.onResize();
+
+    this.screen.onResize();
   }
 
   changeScreen(name: ScreenName, ...rest: any[]): void {
-    const { screen } = this;
-    screen.destroy();
+    this.screen.destroy();
 
     c.style.cursor = "default";
 
@@ -83,9 +89,8 @@ export class Game implements IGame {
         newScreen = new GameScreen(this, rest[0] as number);
         break;
       }
-      default:
-        throw new Error(`Unknown screen: ${name}`);
     }
+    newScreen.onResize();
     this.screen = newScreen;
   }
 

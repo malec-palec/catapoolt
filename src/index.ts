@@ -1,5 +1,10 @@
 import { Game } from "./game";
 
+export const isVerticalLayout = (): boolean => window.innerHeight > window.innerWidth;
+
+export const GAME_WIDTH = 800;
+export const GAME_HEIGHT = 600;
+
 const game = new Game();
 
 let then = performance.now();

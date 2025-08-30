@@ -5,6 +5,12 @@ export type Button = Rectangle & {
   action: () => void;
 };
 
+export const createButton = (obj: Omit<Button, "x" | "y"> & Partial<{ x: number; y: number }>): Button => ({
+  x: 0,
+  y: 0,
+  ...obj,
+});
+
 export function drawButton(ctx: CanvasRenderingContext2D, button: Button): void {
   ctx.fillStyle = "#333333";
   ctx.fillRect(button.x, button.y, button.width, button.height);
