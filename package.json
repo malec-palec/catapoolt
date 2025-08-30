@@ -1,5 +1,5 @@
 {
-  "name": "step-over",
+  "name": "paws",
   "version": "1.0.0",
   "description": "js13kGames 2025 competition entry",
   "private": true,
@@ -15,12 +15,15 @@
   },
   "author": "glebv",
   "license": "MIT",
+  "dependencies": {
+    "dat.gui": "^0.7.9"
+  },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^5.2.3",
+    "@types/dat.gui": "^0.7.13",
     "eslint": "^9.33.0",
     "globals": "^16.3.0",
     "husky": "^9.1.7",
-    "js13k-vite-plugins": "^0.4.0",
     "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
     "prettier-plugin-organize-imports": "^4.2.0",

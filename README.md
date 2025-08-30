@@ -1,6 +1,6 @@
-# Step Over
+# PAWS (working title)
 
-A game about a black cat who dispels people’s superstitions for its own comfort.
+A game about a black cat who believes in superstitions himself.
 
 ## Setup
 
