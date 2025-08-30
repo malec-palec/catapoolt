@@ -49,6 +49,8 @@ export class Game implements IGame {
 
   private context: CanvasRenderingContext2D;
   private screen: IScreen;
+  private currentScreenName: ScreenName;
+  private isNavigatingBack = false;
 
   constructor() {
     this.context = c.getContext("2d", {
@@ -56,11 +58,21 @@ export class Game implements IGame {
     })!;
 
     this.screen = new SplashScreen(this);
+    this.currentScreenName = ScreenName.Splash;
+
+    history.replaceState({ screen: this.currentScreenName }, "", "");
 
     c.onclick = mouseHandler((x, y) => this.screen.onClick(x, y));
     c.onmousemove = mouseHandler((x, y) => this.screen.onMouseMove(x, y));
     c.ontouchstart = touchHandler((x, y) => this.screen.onClick(x, y));
     c.ontouchmove = touchHandler((x, y) => this.screen.onMouseMove(x, y));
+    window.onpopstate = (event) => {
+      if (event.state && event.state.screen) {
+        this.isNavigatingBack = true;
+        this.changeScreen(event.state.screen, ...(event.state.args || []));
+        this.isNavigatingBack = false;
+      }
+    };
     window.onresize = () => this.screen.onResize();
 
     this.screen.onResize();
@@ -70,6 +82,11 @@ export class Game implements IGame {
     this.screen.destroy();
 
     c.style.cursor = "default";
+
+    if (!this.isNavigatingBack && name !== this.currentScreenName) {
+      history.pushState({ screen: name, args: rest }, "", "");
+    }
+    this.currentScreenName = name;
 
     let newScreen: IScreen;
     switch (name) {
