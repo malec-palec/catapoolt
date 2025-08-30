@@ -1,0 +1,66 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background-color: #000000;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#c {
+  background-color: #000000;
+  border: 2px solid #333;
+  max-width: 100vw;
+  max-height: 100vh;
+  width: auto;
+  height: auto;
+  cursor: default;
+  transition: cursor 0.1s ease;
+  touch-action: none; /* Prevent default touch behaviors */
+  user-select: none; /* Prevent text selection */
+  -webkit-user-select: none;
+  -webkit-touch-callout: none; /* Prevent iOS callout menu */
+}
+
+/* Responsive design - maintain aspect ratio */
+@media (max-width: 850px) {
+  #c {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+}
+
+@media (max-height: 650px) {
+  #c {
+    max-width: 95vw;
+    max-height: 90vh;
+  }
+}
+
+/* For very small screens */
+@media (max-width: 600px) {
+  #c {
+    max-width: 100vw;
+    max-height: 100vh;
+    border: none;
+  }
+
+  body {
+    padding: 0;
+  }
+}

@@ -1,4 +1,5 @@
 import { Game } from "./game";
+import "./styles.css";
 
 export const isVerticalLayout = (): boolean => window.innerHeight > window.innerWidth;
 
@@ -17,3 +18,5 @@ const loop = (now: DOMHighResTimeStamp) => {
   requestAnimationFrame(loop);
 };
 requestAnimationFrame(loop);
+
+if (import.meta.hot) import.meta.hot.accept();
