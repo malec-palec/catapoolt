@@ -14,11 +14,11 @@ export class GameScreen extends BaseScreen {
     this.bgColor = "#d3d3d3";
 
     this.buttons.push({
-      x: 25,
-      y: 0,
-      width: 150,
-      height: 50,
-      text: "Back",
+      x: 10,
+      y: 10,
+      width: 40,
+      height: 40,
+      text: "⟵",
       action: () => {
         this.game.changeScreen(ScreenName.LevelSelect);
       },
@@ -27,8 +27,6 @@ export class GameScreen extends BaseScreen {
 
   override onResize(): void {
     super.onResize();
-
-    this.buttons[0].y = isVerticalLayout() ? GAME_FIELD_SIZE + 20 : 50;
   }
 
   override draw(context: CanvasRenderingContext2D): void {

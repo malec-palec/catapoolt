@@ -1,30 +1,21 @@
-import { isVerticalLayout } from "..";
 import { IGame } from "../game";
 import { BaseScreen, ScreenName } from "../screen";
-import { createButton, drawButton } from "../utils/button";
+import { drawButton } from "../utils/button";
 
 export class CreditsScreen extends BaseScreen {
   constructor(game: IGame) {
     super(game);
 
-    this.buttons.push(
-      createButton({
-        width: 150,
-        height: 50,
-        text: "Back",
-        action: () => {
-          this.game.changeScreen(ScreenName.Menu);
-        },
-      }),
-    );
-  }
-
-  override onResize(): void {
-    super.onResize();
-
-    const backButton = this.buttons[0];
-    backButton.x = isVerticalLayout() ? c.width / 2 - 75 : 50;
-    backButton.y = c.height - 100;
+    this.buttons.push({
+      x: 10,
+      y: 10,
+      width: 40,
+      height: 40,
+      text: "⟵",
+      action: () => {
+        this.game.changeScreen(ScreenName.Menu);
+      },
+    });
   }
 
   override draw(context: CanvasRenderingContext2D): void {

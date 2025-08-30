@@ -28,16 +28,16 @@ export class LevelSelectScreen extends BaseScreen {
       );
     }
 
-    this.buttons.push(
-      createButton({
-        width: 150,
-        height: 50,
-        text: "Back",
-        action: () => {
-          this.game.changeScreen(ScreenName.Menu);
-        },
-      }),
-    );
+    this.buttons.push({
+      x: 10,
+      y: 10,
+      width: 40,
+      height: 40,
+      text: "⟵",
+      action: () => {
+        this.game.changeScreen(ScreenName.Menu);
+      },
+    });
   }
 
   override onResize(): void {
@@ -57,12 +57,6 @@ export class LevelSelectScreen extends BaseScreen {
       this.buttons[i].x = x;
       this.buttons[i].y = y;
     }
-
-    const backButtonIndex = this.buttons.length - 1;
-    this.buttons[backButtonIndex].x = isVerticalLayout()
-      ? c.width / 2 - 75 // Center button (150px width / 2) in portrait
-      : 50; // Original left positioning in landscape
-    this.buttons[backButtonIndex].y = c.height - 100;
   }
 
   override draw(context: CanvasRenderingContext2D): void {
