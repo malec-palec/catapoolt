@@ -57,8 +57,8 @@ export class Game implements IGame {
       willReadFrequently: true,
     })!;
 
-    this.screen = new SplashScreen(this);
-    this.currentScreenName = ScreenName.Splash;
+    this.screen = new GameScreen(this);
+    this.currentScreenName = ScreenName.Game;
 
     history.replaceState({ screen: this.currentScreenName }, "", "");
 

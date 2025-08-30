@@ -1,17 +1,26 @@
-import { isVerticalLayout } from "..";
+import { IDisplayObject } from "../core/display";
 import { IGame } from "../game";
 import { BaseScreen, ScreenName } from "../screen";
 import { drawButton } from "../utils/button";
+import { GameField } from "./game/game-field";
+import { HUD } from "./game/hud";
 
-const GAME_FIELD_SIZE = 600;
-const HUD_SIZE = 200;
+export const GAME_FIELD_SIZE = 600;
+export const HUD_SIZE = 200;
 export class GameScreen extends BaseScreen {
-  constructor(
-    game: IGame,
-    private levelIndex: number = 0,
-  ) {
+  private children: IDisplayObject[] = [];
+
+  private gameField: GameField;
+  private hud: HUD;
+
+  constructor(game: IGame, levelIndex: number = 0) {
     super(game);
     this.bgColor = "#d3d3d3";
+
+    this.gameField = new GameField(levelIndex);
+    this.hud = new HUD(HUD_SIZE, GAME_FIELD_SIZE);
+
+    this.children.push(this.gameField, this.hud);
 
     this.buttons.push({
       x: 10,
@@ -25,51 +34,23 @@ export class GameScreen extends BaseScreen {
     });
   }
 
-  override onResize(): void {
-    super.onResize();
+  override update(dt: number): void {
+    super.update(dt);
+
+    for (const child of this.children) {
+      child.update(dt);
+    }
   }
 
   override draw(context: CanvasRenderingContext2D): void {
     super.draw(context);
 
-    const isVertical = isVerticalLayout();
-    let hudWidth: number, hudHeight: number, hudY: number, gameFieldX: number;
-    if (isVertical) {
-      gameFieldX = 0;
-      hudWidth = GAME_FIELD_SIZE;
-      hudHeight = HUD_SIZE;
-      hudY = GAME_FIELD_SIZE;
-    } else {
-      gameFieldX = HUD_SIZE;
-      hudWidth = HUD_SIZE;
-      hudHeight = GAME_FIELD_SIZE;
-      hudY = 0;
+    for (const child of this.children) {
+      context.save();
+      context.translate(child.position.x, child.position.y);
+      child.draw(context);
+      context.restore();
     }
-
-    // Draw HUD border
-    context.strokeStyle = "#000000";
-    context.lineWidth = 2;
-    context.strokeRect(0, hudY, hudWidth, hudHeight);
-
-    // Draw Game Field border
-    context.strokeRect(gameFieldX, 0, GAME_FIELD_SIZE, GAME_FIELD_SIZE);
-
-    // Draw HUD title
-    context.fillStyle = "#000000";
-    context.font = "14px Arial, sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    context.fillText("HUD", hudWidth / 2, hudY + 10);
-
-    // Draw Game Field title
-    context.fillText("Game Field", gameFieldX + GAME_FIELD_SIZE / 2, 10);
-
-    // Game title with level (positioned in Game Field area)
-    context.fillStyle = "#000000";
-    context.font = "bold 48px Arial, sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(`Level ${this.levelIndex}`, gameFieldX + GAME_FIELD_SIZE / 2, GAME_FIELD_SIZE / 2 - 50);
 
     drawButton(context, this.buttons[0]);
   }
