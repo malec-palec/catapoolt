@@ -1,8 +1,47 @@
 import { IScreen, IScreenManager, ScreenName } from "./screen";
+import { CreditsScreen } from "./screens/credits-screen";
 import { GameScreen } from "./screens/game-screen";
+import { LevelSelectScreen } from "./screens/level-select-screen";
+import { MenuScreen } from "./screens/menu-screen";
+import { SplashScreen } from "./screens/splash-screen";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface IGame extends IScreenManager {}
+
+const getCanvasCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
+  const rect = c.getBoundingClientRect();
+  // Calculate relative position within the displayed canvas
+  const relativeX = clientX - rect.left;
+  const relativeY = clientY - rect.top;
+  // Calculate scale factors based on actual displayed size vs internal canvas size
+  const scaleX = c.width / rect.width;
+  const scaleY = c.height / rect.height;
+  // Apply scaling to get internal canvas coordinates
+  let x = relativeX * scaleX;
+  let y = relativeY * scaleY;
+  // Clamp coordinates to internal canvas bounds
+  x = Math.max(0, Math.min(c.width, x));
+  y = Math.max(0, Math.min(c.height, y));
+  return { x, y };
+};
+
+const mouseHandler =
+  (callback: (x: number, y: number) => void) =>
+  (event: MouseEvent): void => {
+    const { x, y } = getCanvasCoordinates(event.clientX, event.clientY);
+    callback(x, y);
+  };
+
+const touchHandler =
+  (callback: (x: number, y: number) => void) =>
+  (event: TouchEvent): void => {
+    event.preventDefault();
+    const touch = event.touches[0] || event.changedTouches[0];
+    if (touch) {
+      const { x, y } = getCanvasCoordinates(touch.clientX, touch.clientY);
+      callback(x, y);
+    }
+  };
 
 export class Game implements IGame {
   private context: CanvasRenderingContext2D;
@@ -12,22 +51,41 @@ export class Game implements IGame {
     this.context = c.getContext("2d", {
       willReadFrequently: true,
     })!;
+    this.screen = new SplashScreen(this);
 
-    this.screen = new GameScreen(this);
-    this.screen.init();
+    c.onclick = mouseHandler((x, y) => this.screen.onClick(x, y));
+    c.onmousemove = mouseHandler((x, y) => this.screen.onMouseMove(x, y));
+    c.ontouchstart = touchHandler((x, y) => this.screen.onClick(x, y));
+    c.ontouchmove = touchHandler((x, y) => this.screen.onMouseMove(x, y));
   }
 
   changeScreen(name: ScreenName, ...rest: any[]): void {
     const { screen } = this;
     screen.destroy();
 
+    c.style.cursor = "default";
+
     let newScreen: IScreen;
     switch (name) {
-      case ScreenName.Game:
-        newScreen = new GameScreen(this);
+      case ScreenName.Splash:
+        newScreen = new SplashScreen(this);
         break;
+      case ScreenName.Menu:
+        newScreen = new MenuScreen(this);
+        break;
+      case ScreenName.Credits:
+        newScreen = new CreditsScreen(this);
+        break;
+      case ScreenName.LevelSelect:
+        newScreen = new LevelSelectScreen(this);
+        break;
+      case ScreenName.Game: {
+        newScreen = new GameScreen(this, rest[0] as number);
+        break;
+      }
+      default:
+        throw new Error(`Unknown screen: ${name}`);
     }
-    newScreen.init();
     this.screen = newScreen;
   }
 
@@ -35,7 +93,6 @@ export class Game implements IGame {
     const { screen, context } = this;
     screen.update(dt);
 
-    // context.clearRect(0, 0, c.width, c.height);
     screen.draw(context);
   }
 }

@@ -2,20 +2,18 @@ import { IGame } from "../game";
 import { BaseScreen, ScreenName } from "../screen";
 import { drawButton } from "../utils/button";
 
-export class GameScreen extends BaseScreen {
-  constructor(
-    game: IGame,
-    private levelIndex: number = 0,
-  ) {
+export class CreditsScreen extends BaseScreen {
+  constructor(game: IGame) {
     super(game);
+
     this.buttons.push({
       x: 50,
-      y: 50,
+      y: c.height - 100,
       width: 150,
       height: 50,
       text: "Back",
       action: () => {
-        this.game.changeScreen(ScreenName.LevelSelect);
+        this.game.changeScreen(ScreenName.Menu);
       },
     });
   }
@@ -23,12 +21,24 @@ export class GameScreen extends BaseScreen {
   override draw(context: CanvasRenderingContext2D): void {
     super.draw(context);
 
-    // Game title with level
+    // Credits title
     context.fillStyle = "#ffffff";
     context.font = "bold 48px Arial, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText(`Level ${this.levelIndex}`, c.width / 2, c.height / 2 - 50);
+
+    const centerX = context.canvas.width / 2;
+    context.fillText("Credits", centerX, 150);
+
+    // Credits content
+    context.font = "24px Arial, sans-serif";
+    const creditsLines = ["First line", "Second line", "Third line"];
+
+    let yPos = 250;
+    for (const line of creditsLines) {
+      context.fillText(line, centerX, yPos);
+      yPos += 40;
+    }
 
     drawButton(context, this.buttons[0]);
   }

@@ -20,3 +20,9 @@ export function screenToWorld(screenX: number, screenY: number): Point2D {
   const worldY = (screenY / Math.sin(Math.PI / 6) - screenX / Math.cos(Math.PI / 6)) / 2;
   return { x: worldX, y: worldY };
 }
+
+export type Rectangle = { x: number; y: number; width: number; height: number };
+
+export function isCoordsInRect(x: number, y: number, rect: Rectangle): boolean {
+  return x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height;
+}
