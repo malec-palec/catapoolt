@@ -1,10 +1,14 @@
 import { isVerticalLayout } from "../..";
 import { DisplayObject } from "../../core/display";
 import { GAME_FIELD_SIZE, HUD_SIZE } from "../game-screen";
+import { getLevelData } from "./level-utils";
 
 export class GameField extends DisplayObject {
   constructor(private levelIndex: number) {
     super(GAME_FIELD_SIZE, GAME_FIELD_SIZE);
+
+    const levelData = getLevelData(levelIndex);
+    const mapSize = Math.sqrt(levelData.length);
   }
 
   override update(dt: number): void {

@@ -1,10 +1,12 @@
 import { defineConfig } from "vite";
 import { createHtmlPlugin } from "vite-plugin-html";
 import { viteSingleFile } from "vite-plugin-singlefile";
+import { levelsPlugin } from "./scripts/vite-plugin-levels.js";
 
 export default defineConfig({
   base: "./",
   plugins: [
+    levelsPlugin(),
     viteSingleFile({ useRecommendedBuildConfig: false, removeViteModuleLoader: true }),
     createHtmlPlugin({ minify: true }),
     {
