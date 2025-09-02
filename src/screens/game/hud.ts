@@ -17,6 +17,10 @@ export class HUD extends DisplayObject {
   }
 
   override draw(context: CanvasRenderingContext2D): void {
+    // Draw HUD solid background
+    context.fillStyle = "#e0e0e0";
+    context.fillRect(0, 0, this.width, this.height);
+
     // Draw HUD border
     context.strokeStyle = "#000000";
     context.lineWidth = 2;

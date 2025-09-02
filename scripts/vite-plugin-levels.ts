@@ -22,7 +22,7 @@ export function levelsPlugin(): Plugin {
         server.watcher.add(rawLevelsDir);
 
         server.watcher.on("change", (file) => {
-          if (file.includes("raw-levels") && file.endsWith(".json")) {
+          if (file.includes("raw-levels") && file.endsWith(".tmj")) {
             console.log(`📦 Level file changed: ${path.basename(file)}`);
             updateLevelsFile();
             // Trigger HMR
@@ -34,7 +34,7 @@ export function levelsPlugin(): Plugin {
         });
 
         server.watcher.on("add", (file) => {
-          if (file.includes("raw-levels") && file.endsWith(".json")) {
+          if (file.includes("raw-levels") && file.endsWith(".tmj")) {
             console.log(`📦 New level file added: ${path.basename(file)}`);
             updateLevelsFile();
             const module = server.moduleGraph.getModuleById(LEVELS_TARGET);
@@ -45,7 +45,7 @@ export function levelsPlugin(): Plugin {
         });
 
         server.watcher.on("unlink", (file) => {
-          if (file.includes("raw-levels") && file.endsWith(".json")) {
+          if (file.includes("raw-levels") && file.endsWith(".tmj")) {
             console.log(`📦 Level file removed: ${path.basename(file)}`);
             updateLevelsFile();
             const module = server.moduleGraph.getModuleById(LEVELS_TARGET);

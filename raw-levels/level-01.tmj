@@ -1,0 +1,72 @@
+{ "compressionlevel":-1,
+ "height":6,
+ "infinite":false,
+ "layers":[
+        {
+         "data":[1, 0, 0, 0, 0, 0,
+            1, 0, 1, 1, 1, 0,
+            1, 0, 1, 0, 1, 0,
+            1, 1, 1, 1, 1, 0,
+            0, 0, 1, 0, 0, 0,
+            0, 0, 1, 0, 0, 0],
+         "height":6,
+         "id":1,
+         "name":"map",
+         "opacity":1,
+         "type":"tilelayer",
+         "visible":true,
+         "width":6,
+         "x":0,
+         "y":0
+        }, 
+        {
+         "draworder":"topdown",
+         "id":2,
+         "name":"objs",
+         "objects":[
+                {
+                 "height":0,
+                 "id":7,
+                 "name":"Finish",
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":8,
+                 "y":8
+                }, 
+                {
+                 "height":0,
+                 "id":8,
+                 "name":"Start",
+                 "point":true,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":40,
+                 "y":88
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
+        }],
+ "nextlayerid":3,
+ "nextobjectid":9,
+ "orientation":"orthogonal",
+ "renderorder":"right-down",
+ "tiledversion":"1.11.2",
+ "tileheight":16,
+ "tilesets":[
+        {
+         "firstgid":1,
+         "source":"..\/cat-tree.tsx"
+        }],
+ "tilewidth":16,
+ "type":"map",
+ "version":"1.10",
+ "width":6
+}

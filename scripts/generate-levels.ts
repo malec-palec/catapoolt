@@ -24,7 +24,7 @@ export function generateLevelsCode(): string {
   const rawLevelsDir = path.resolve("raw-levels");
   const levelFiles = fs
     .readdirSync(rawLevelsDir)
-    .filter((file) => file.endsWith(".json"))
+    .filter((file) => file.endsWith(".tmj"))
     .sort();
 
   const compressedLevels: string[] = [];
