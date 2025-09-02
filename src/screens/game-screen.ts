@@ -18,7 +18,7 @@ export class GameScreen extends BaseScreen {
     this.bgColor = "#d3d3d3";
 
     this.gameField = new GameField(levelIndex);
-    this.hud = new HUD(HUD_SIZE, GAME_FIELD_SIZE);
+    this.hud = new HUD(HUD_SIZE, GAME_FIELD_SIZE, levelIndex);
 
     this.children.push(this.gameField, this.hud);
 

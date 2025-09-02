@@ -3,6 +3,14 @@ import { DisplayObject } from "../../core/display";
 import { GAME_FIELD_SIZE, HUD_SIZE } from "../game-screen";
 
 export class HUD extends DisplayObject {
+  constructor(
+    width: number,
+    height: number,
+    private levelIndex: number,
+  ) {
+    super(width, height);
+  }
+
   override update(dt: number): void {
     const isVertical = isVerticalLayout();
     if (isVertical) {
@@ -26,11 +34,15 @@ export class HUD extends DisplayObject {
     context.lineWidth = 2;
     context.strokeRect(0, 0, this.width, this.height);
 
-    // Draw HUD title
+    // Draw Level title
     context.fillStyle = "#000000";
-    context.font = "14px Arial, sans-serif";
+    context.font = "bold 24px Arial, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "top";
-    context.fillText("HUD", this.width / 2, 10);
+    context.fillText(`Level ${this.levelIndex + 1}`, this.width / 2, 20);
+
+    // Draw HUD label
+    context.font = "14px Arial, sans-serif";
+    context.fillText("HUD", this.width / 2, 60);
   }
 }

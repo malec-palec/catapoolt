@@ -7,5 +7,9 @@ const decompress = (d: string): number[] =>
   });
 
 export function getLevelData(index: number): number[] {
-  return decompress(levels[index]);
+  const level = levels[index];
+  if (!level) {
+    throw new Error(`Level ${index} not found`);
+  }
+  return decompress(level);
 }
