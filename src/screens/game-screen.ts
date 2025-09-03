@@ -1,9 +1,11 @@
-import { drawButton } from "../core/button";
+import { createButton } from "../core/button";
 import { IDisplayObject } from "../core/display";
+import { drawButton } from "../core/neobrutalism";
 import { IGame } from "../game";
-import { BaseScreen, ScreenName } from "../screen";
+import { BaseScreen } from "../screen";
 import { GameField } from "./game/game-field";
 import { HUD } from "./game/hud";
+import { LevelSelectScreen } from "./level-select-screen";
 
 export const GAME_FIELD_SIZE = 600;
 export const HUD_SIZE = 200;
@@ -15,23 +17,24 @@ export class GameScreen extends BaseScreen {
 
   constructor(game: IGame, levelIndex: number = 0) {
     super(game);
-    this.bgColor = "#d3d3d3";
 
     this.gameField = new GameField(levelIndex);
     this.hud = new HUD(HUD_SIZE, GAME_FIELD_SIZE, levelIndex);
 
     this.children.push(this.gameField, this.hud);
 
-    this.buttons.push({
-      x: 10,
-      y: 10,
-      width: 40,
-      height: 40,
-      text: "⟵",
-      action: () => {
-        this.game.changeScreen(ScreenName.LevelSelect);
-      },
-    });
+    this.buttons.push(
+      createButton({
+        x: 10,
+        y: 10,
+        width: 48,
+        height: 48,
+        text: "⟵",
+        clickHandler: () => {
+          this.game.changeScreen(LevelSelectScreen);
+        },
+      }),
+    );
   }
 
   override update(dt: number): void {
@@ -52,6 +55,6 @@ export class GameScreen extends BaseScreen {
       context.restore();
     }
 
-    drawButton(context, this.buttons[0]);
+    drawButton(context, this.buttons[0], "secondary");
   }
 }

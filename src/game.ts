@@ -1,4 +1,4 @@
-import { IScreen, IScreenManager, ScreenName } from "./screen";
+import { IScreen, IScreenManager, ScreenConstructor } from "./screen";
 import { CreditsScreen } from "./screens/credits-screen";
 import { GameScreen } from "./screens/game-screen";
 import { LevelSelectScreen } from "./screens/level-select-screen";
@@ -7,6 +7,15 @@ import { SplashScreen } from "./screens/splash-screen";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface IGame extends IScreenManager {}
+
+// Registry to map screen constructor names to actual constructors
+const SCREEN_REGISTRY: Record<string, ScreenConstructor> = {
+  GameScreen,
+  MenuScreen,
+  SplashScreen,
+  CreditsScreen,
+  LevelSelectScreen,
+};
 
 const getCanvasCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
   const rect = c.getBoundingClientRect();
@@ -49,28 +58,41 @@ export class Game implements IGame {
 
   private context: CanvasRenderingContext2D;
   private screen: IScreen;
-  private currentScreenName: ScreenName;
+  private currentScreenConstructor: ScreenConstructor;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private currentScreenArgs: any[];
   private isNavigatingBack = false;
 
-  constructor() {
+  constructor(startScreenCtor: ScreenConstructor = SplashScreen) {
     this.context = c.getContext("2d", {
       willReadFrequently: true,
     })!;
 
-    this.screen = new GameScreen(this);
-    this.currentScreenName = ScreenName.Game;
+    this.screen = new startScreenCtor(this);
+    this.currentScreenConstructor = this.screen.constructor as ScreenConstructor;
+    this.currentScreenArgs = [];
 
-    history.replaceState({ screen: this.currentScreenName }, "", "");
+    history.replaceState(
+      {
+        screenName: this.currentScreenConstructor.name,
+        args: this.currentScreenArgs,
+      },
+      "",
+      "",
+    );
 
     c.onclick = mouseHandler((x, y) => this.screen.onClick(x, y));
     c.onmousemove = mouseHandler((x, y) => this.screen.onMouseMove(x, y));
     c.ontouchstart = touchHandler((x, y) => this.screen.onClick(x, y));
     c.ontouchmove = touchHandler((x, y) => this.screen.onMouseMove(x, y));
     window.onpopstate = (event) => {
-      if (event.state && event.state.screen) {
-        this.isNavigatingBack = true;
-        this.changeScreen(event.state.screen, ...(event.state.args || []));
-        this.isNavigatingBack = false;
+      if (event.state && event.state.screenName) {
+        const screenConstructor = SCREEN_REGISTRY[event.state.screenName];
+        if (screenConstructor) {
+          this.isNavigatingBack = true;
+          this.changeScreen(screenConstructor, ...(event.state.args || []));
+          this.isNavigatingBack = false;
+        }
       }
     };
     window.onresize = () => this.screen.onResize();
@@ -78,36 +100,27 @@ export class Game implements IGame {
     this.screen.onResize();
   }
 
-  changeScreen(name: ScreenName, ...rest: any[]): void {
+  changeScreen(screenCtor: ScreenConstructor, ...rest: any[]): void {
     this.screen.destroy();
 
     c.style.cursor = "default";
 
-    if (!this.isNavigatingBack && name !== this.currentScreenName) {
-      history.pushState({ screen: name, args: rest }, "", "");
+    if (!this.isNavigatingBack && screenCtor !== this.currentScreenConstructor) {
+      history.pushState(
+        {
+          screenName: screenCtor.name,
+          args: rest,
+        },
+        "",
+        "",
+      );
     }
-    this.currentScreenName = name;
+    this.currentScreenConstructor = screenCtor;
+    this.currentScreenArgs = rest;
 
-    let newScreen: IScreen;
-    switch (name) {
-      case ScreenName.Splash:
-        newScreen = new SplashScreen(this);
-        break;
-      case ScreenName.Menu:
-        newScreen = new MenuScreen(this);
-        break;
-      case ScreenName.Credits:
-        newScreen = new CreditsScreen(this);
-        break;
-      case ScreenName.LevelSelect:
-        newScreen = new LevelSelectScreen(this);
-        break;
-      case ScreenName.Game: {
-        newScreen = new GameScreen(this, rest[0] as number);
-        break;
-      }
-    }
+    const newScreen: IScreen = new screenCtor(this, ...rest);
     newScreen.onResize();
+
     this.screen = newScreen;
   }
 

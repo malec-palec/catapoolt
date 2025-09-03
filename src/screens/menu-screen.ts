@@ -1,29 +1,32 @@
 import { isVerticalLayout } from "..";
-import { createButton, drawButton } from "../core/button";
+import { createButton } from "../core/button";
+import { ButtonVariant, drawButton, drawHeading } from "../core/neobrutalism";
 import { IGame } from "../game";
-import { BaseScreen, ScreenName } from "../screen";
+import { BaseScreen } from "../screen";
+import { CreditsScreen } from "./credits-screen";
+import { LevelSelectScreen } from "./level-select-screen";
 
 export class MenuScreen extends BaseScreen {
   constructor(game: IGame) {
     super(game);
 
     const width = 200;
-    const height = 60;
+    const height = 48;
     this.buttons.push(
       createButton({
         width,
         height,
         text: "Play",
-        action: () => {
-          this.game.changeScreen(ScreenName.LevelSelect);
+        clickHandler: () => {
+          this.game.changeScreen(LevelSelectScreen);
         },
       }),
       createButton({
         width,
         height,
         text: "Credits",
-        action: () => {
-          this.game.changeScreen(ScreenName.Credits);
+        clickHandler: () => {
+          this.game.changeScreen(CreditsScreen);
         },
       }),
     );
@@ -39,32 +42,27 @@ export class MenuScreen extends BaseScreen {
     const creditsButton = this.buttons[1];
 
     if (isVerticalLayout()) {
-      // Portrait: Stack buttons vertically with more spacing
-      const startY = c.height / 2 - 40; // Center vertically
+      const startY = c.height / 2 - 30;
       playButton.x = x;
       playButton.y = startY;
       creditsButton.x = x;
       creditsButton.y = startY + 80;
     } else {
-      // Landscape: Original positioning
       playButton.x = x;
-      playButton.y = 350;
+      playButton.y = 380;
       creditsButton.x = x;
-      creditsButton.y = 430;
+      creditsButton.y = 450;
     }
   }
 
   override draw(context: CanvasRenderingContext2D): void {
     super.draw(context);
 
-    context.fillStyle = "#ffffff";
-    context.font = "bold 72px Arial, sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText("PAWS", c.width / 2, 200);
+    drawHeading(context, "PAWS", c.width / 2, 200, "lg");
 
-    for (const button of this.buttons) {
-      drawButton(context, button);
-    }
+    this.buttons.forEach((button, index) => {
+      const variant: ButtonVariant = index === 0 ? "default" : "neutral";
+      drawButton(context, button, variant);
+    });
   }
 }

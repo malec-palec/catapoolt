@@ -1,45 +1,40 @@
-import { drawButton } from "../core/button";
+import { createButton } from "../core/button";
+import { NB_SPACING_XL, drawButton, drawHeading, drawText } from "../core/neobrutalism";
 import { IGame } from "../game";
-import { BaseScreen, ScreenName } from "../screen";
+import { BaseScreen } from "../screen";
+import { MenuScreen } from "./menu-screen";
 
 export class CreditsScreen extends BaseScreen {
   constructor(game: IGame) {
     super(game);
 
-    this.buttons.push({
-      x: 10,
-      y: 10,
-      width: 40,
-      height: 40,
-      text: "⟵",
-      action: () => {
-        this.game.changeScreen(ScreenName.Menu);
-      },
-    });
+    this.buttons.push(
+      createButton({
+        x: 10,
+        y: 10,
+        width: 48,
+        height: 48,
+        text: "⟵",
+        clickHandler: () => {
+          this.game.changeScreen(MenuScreen);
+        },
+      }),
+    );
   }
 
   override draw(context: CanvasRenderingContext2D): void {
     super.draw(context);
 
-    // Credits title
-    context.fillStyle = "#ffffff";
-    context.font = "bold 48px Arial, sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
+    const centerX = c.width / 2;
+    drawHeading(context, "Credits", centerX, 150, "md");
 
-    const centerX = context.canvas.width / 2;
-    context.fillText("Credits", centerX, 150);
-
-    // Credits content
-    context.font = "24px Arial, sans-serif";
-    const creditsLines = ["First line", "Second line", "Third line"];
-
-    let yPos = 250;
+    const creditsLines = ["A game by Gleb V.", "Cover art by Alisa A."];
+    let yPos = 280;
     for (const line of creditsLines) {
-      context.fillText(line, centerX, yPos);
-      yPos += 40;
+      drawText(context, line, centerX, yPos, "md");
+      yPos += NB_SPACING_XL;
     }
 
-    drawButton(context, this.buttons[0]);
+    drawButton(context, this.buttons[0], "secondary");
   }
 }

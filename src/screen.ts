@@ -1,15 +1,12 @@
 import { GAME_HEIGHT, GAME_WIDTH, isVerticalLayout } from ".";
 import { Button } from "./core/button";
 import { isCoordsInRect } from "./core/geom";
+import { NB_COLORS_BACKGROUND } from "./core/neobrutalism";
 import { easeInOut } from "./core/tween";
 import { IGame } from "./game";
 
-export const enum ScreenName {
-  Splash,
-  Menu,
-  Credits,
-  LevelSelect,
-  Game,
+export interface ScreenConstructor {
+  new (game: IGame, ...rest: any[]): BaseScreen;
 }
 
 export interface IScreen {
@@ -23,7 +20,7 @@ export interface IScreen {
 }
 
 export interface IScreenManager {
-  changeScreen(screenName: ScreenName, ...rest: unknown[]): void;
+  changeScreen(screenCtor: ScreenConstructor, ...rest: any[]): void;
 }
 
 export class BaseScreen implements IScreen {
@@ -33,27 +30,24 @@ export class BaseScreen implements IScreen {
   private currentTime = 0;
 
   protected buttons: Button[] = [];
-  protected bgColor = "#000000";
+  protected bgColor = NB_COLORS_BACKGROUND;
 
   constructor(protected game: IGame) {}
 
   onClick(x: number, y: number): void {
     for (const button of this.buttons) {
       if (isCoordsInRect(x, y, button)) {
-        button.action();
+        if (!button.isDisabled) button.clickHandler();
         break;
       }
     }
   }
 
   onMouseMove(x: number, y: number): void {
-    c.style.cursor = "default";
     for (const button of this.buttons) {
-      if (isCoordsInRect(x, y, button)) {
-        c.style.cursor = "pointer";
-        break;
-      }
+      button.isHovered = isCoordsInRect(x, y, button);
     }
+    c.style.cursor = this.buttons.some((button) => button.isHovered) ? "pointer" : "default";
   }
 
   onResize(): void {

@@ -1,5 +1,14 @@
 import { isVerticalLayout } from "../..";
 import { DisplayObject } from "../../core/display";
+import {
+  NB_BORDER_RADIUS,
+  NB_BORDER_WIDTH,
+  NB_COLORS_BORDER,
+  NB_COLORS_SHADOW,
+  NB_COLORS_VARIANTS_NEUTRAL_BACKGROUND,
+  NB_SHADOW_OFFSET,
+  drawText,
+} from "../../core/neobrutalism";
 import { GAME_FIELD_SIZE, HUD_SIZE } from "../game-screen";
 
 export class HUD extends DisplayObject {
@@ -24,25 +33,44 @@ export class HUD extends DisplayObject {
     }
   }
 
+  private drawPanel(context: CanvasRenderingContext2D): void {
+    const margin = 10;
+    const panelX = margin;
+    const panelY = margin;
+    const panelWidth = this.width - margin * 2;
+    const panelHeight = this.height - margin * 2;
+
+    context.fillStyle = NB_COLORS_SHADOW;
+    context.beginPath();
+    context.roundRect(panelX + NB_SHADOW_OFFSET, panelY + NB_SHADOW_OFFSET, panelWidth, panelHeight, NB_BORDER_RADIUS);
+    context.fill();
+
+    context.fillStyle = NB_COLORS_VARIANTS_NEUTRAL_BACKGROUND;
+    context.beginPath();
+    context.roundRect(panelX, panelY, panelWidth, panelHeight, NB_BORDER_RADIUS);
+    context.fill();
+
+    context.strokeStyle = NB_COLORS_BORDER;
+    context.lineWidth = NB_BORDER_WIDTH;
+    context.beginPath();
+    context.roundRect(panelX, panelY, panelWidth, panelHeight, NB_BORDER_RADIUS);
+    context.stroke();
+  }
+
   override draw(context: CanvasRenderingContext2D): void {
-    // Draw HUD solid background
-    context.fillStyle = "#e0e0e0";
+    context.fillStyle = "#ADD8E6";
     context.fillRect(0, 0, this.width, this.height);
 
-    // Draw HUD border
-    context.strokeStyle = "#000000";
-    context.lineWidth = 2;
-    context.strokeRect(0, 0, this.width, this.height);
+    this.drawPanel(context);
 
-    // Draw Level title
-    context.fillStyle = "#000000";
-    context.font = "bold 24px Arial, sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    context.fillText(`Level ${this.levelIndex + 1}`, this.width / 2, 20);
+    const isVertical = isVerticalLayout();
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
 
-    // Draw HUD label
-    context.font = "14px Arial, sans-serif";
-    context.fillText("HUD", this.width / 2, 60);
+    if (isVertical) {
+      drawText(context, `Level ${this.levelIndex + 1}`, centerX - 60, centerY, "lg");
+    } else {
+      drawText(context, `Level ${this.levelIndex + 1}`, centerX, 40, "lg");
+    }
   }
 }
