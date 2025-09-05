@@ -8,8 +8,7 @@ import { SplashScreen } from "./screens/splash-screen";
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface IGame extends IScreenManager {}
 
-// Registry to map screen constructor names to actual constructors
-const SCREEN_REGISTRY: Record<string, ScreenConstructor> = {
+const SCREENS: Record<string, ScreenConstructor> = {
   GameScreen,
   MenuScreen,
   SplashScreen,
@@ -51,11 +50,7 @@ const touchHandler =
       callback(x, y);
     }
   };
-
 export class Game implements IGame {
-  static readonly GAME_WIDTH = 800;
-  static readonly GAME_HEIGHT = 600;
-
   private context: CanvasRenderingContext2D;
   private screen: IScreen;
   private currentScreenConstructor: ScreenConstructor;
@@ -63,7 +58,10 @@ export class Game implements IGame {
   private currentScreenArgs: any[];
   private isNavigatingBack = false;
 
-  constructor(startScreenCtor: ScreenConstructor = SplashScreen) {
+  constructor() {
+    const screenName = import.meta.env.VITE_START_SCREEN || "SplashScreen";
+    const startScreenCtor = SCREENS[screenName];
+
     this.context = c.getContext("2d", {
       willReadFrequently: true,
     })!;
@@ -87,7 +85,7 @@ export class Game implements IGame {
     c.ontouchmove = touchHandler((x, y) => this.screen.onMouseMove(x, y));
     window.onpopstate = (event) => {
       if (event.state && event.state.screenName) {
-        const screenConstructor = SCREEN_REGISTRY[event.state.screenName];
+        const screenConstructor = SCREENS[event.state.screenName];
         if (screenConstructor) {
           this.isNavigatingBack = true;
           this.changeScreen(screenConstructor, ...(event.state.args || []));

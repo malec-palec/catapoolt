@@ -1,5 +1,5 @@
 import { createButton } from "../core/button";
-import { NB_SPACING_XL, drawButton, drawHeading, drawText } from "../core/neobrutalism";
+import { BodySize, ButtonVariant, drawButton, drawHeading, drawText, HeadingSize, Spacing } from "../core/neobrutalism";
 import { IGame } from "../game";
 import { BaseScreen } from "../screen";
 import { MenuScreen } from "./menu-screen";
@@ -22,19 +22,17 @@ export class CreditsScreen extends BaseScreen {
     );
   }
 
-  override draw(context: CanvasRenderingContext2D): void {
-    super.draw(context);
-
+  protected override doDraw(context: CanvasRenderingContext2D): void {
     const centerX = c.width / 2;
-    drawHeading(context, "Credits", centerX, 150, "md");
+    drawHeading(context, "Credits", centerX, 150, HeadingSize.MD);
 
     const creditsLines = ["A game by Gleb V.", "Cover art by Alisa A."];
     let yPos = 280;
     for (const line of creditsLines) {
-      drawText(context, line, centerX, yPos, "md");
-      yPos += NB_SPACING_XL;
+      drawText(context, line, centerX, yPos, BodySize.MD);
+      yPos += Spacing.XL;
     }
 
-    drawButton(context, this.buttons[0], "secondary");
+    drawButton(context, this.buttons[0], ButtonVariant.SECONDARY);
   }
 }

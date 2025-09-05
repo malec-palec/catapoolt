@@ -1,6 +1,6 @@
 import { isVerticalLayout } from "..";
 import { createButton } from "../core/button";
-import { drawButton, drawHeading } from "../core/neobrutalism";
+import { ButtonVariant, HeadingSize, drawButton, drawHeading } from "../core/neobrutalism";
 import { IGame } from "../game";
 import { BaseScreen } from "../screen";
 import { GameScreen } from "./game-screen";
@@ -50,27 +50,19 @@ export class LevelSelectScreen extends BaseScreen {
   override onResize(): void {
     super.onResize();
 
-    const startX = (c.width - TOTAL_GRID_WIDTH) / 2;
-    const startY = (c.height - TOTAL_GRID_HEIGHT) / 2 + (isVerticalLayout() ? 60 : 20);
-
+    const sx = (c.width - TOTAL_GRID_WIDTH) / 2;
+    const sy = (c.height - TOTAL_GRID_HEIGHT) / 2 + (isVerticalLayout() ? 60 : 20);
     for (let i = 0; i < LEVEL_COUNT; i++) {
-      const row = Math.floor(i / GRID_COLS);
-      const col = i % GRID_COLS;
-
-      this.buttons[i].x = startX + col * (TILE_SIZE + TILE_SPACING);
-      this.buttons[i].y = startY + row * (TILE_SIZE + TILE_SPACING);
+      this.buttons[i].x = sx + (i % GRID_COLS) * (TILE_SIZE + TILE_SPACING);
+      this.buttons[i].y = sy + Math.floor(i / GRID_COLS) * (TILE_SIZE + TILE_SPACING);
     }
   }
 
-  override draw(context: CanvasRenderingContext2D): void {
-    super.draw(context);
-
-    drawHeading(context, "Select Level", c.width / 2, 100, "md", true);
-
+  protected override doDraw(context: CanvasRenderingContext2D): void {
+    drawHeading(context, "Select Level", c.width / 2, 100, HeadingSize.MD);
     for (let i = 0; i < LEVEL_COUNT; i++) {
-      drawButton(context, this.buttons[i], this.buttons[i].isDisabled ? "disabled" : "default");
+      drawButton(context, this.buttons[i]);
     }
-
-    drawButton(context, this.buttons[LEVEL_COUNT], "secondary");
+    drawButton(context, this.buttons[LEVEL_COUNT], ButtonVariant.SECONDARY);
   }
 }

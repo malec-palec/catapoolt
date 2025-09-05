@@ -11,5 +11,5 @@ export function getLevelData(index: number): number[] {
   if (!level) {
     throw new Error(`Level ${index} not found`);
   }
-  return decompress(level);
+  return decompress(level.map);
 }

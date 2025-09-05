@@ -1,3 +1,4 @@
+import * as dat from "dat.gui";
 import { isVerticalLayout } from "../..";
 import { DisplayObject } from "../../core/display";
 import { GAME_FIELD_SIZE, HUD_SIZE } from "../game-screen";
@@ -13,7 +14,9 @@ export class GameField extends DisplayObject {
 
   private sideGap = 0;
 
-  private showDebugGrid = false;
+  private debugControls = {
+    showGrid: false,
+  };
 
   constructor(levelIndex: number) {
     super(GAME_FIELD_SIZE, GAME_FIELD_SIZE);
@@ -22,9 +25,15 @@ export class GameField extends DisplayObject {
     this.mapSize = Math.sqrt(this.levelData.length);
   }
 
+  initDebugControls(gui: dat.GUI): void {
+    if (import.meta.env.DEV) {
+      gui.add(this.debugControls, "showGrid").name("Show Debug Grid");
+      gui.open();
+    }
+  }
+
   override update(dt: number): void {
-    const isVertical = isVerticalLayout();
-    this.position.x = isVertical ? 0 : HUD_SIZE;
+    this.position.x = isVerticalLayout() ? 0 : HUD_SIZE;
   }
 
   override draw(context: CanvasRenderingContext2D): void {
@@ -42,8 +51,10 @@ export class GameField extends DisplayObject {
 
     this.drawTiles(context, startX, startY, scaledTileWidth, scaledTileHeight);
 
-    if (this.showDebugGrid) {
-      this.drawIsoGrid(context, startX, startY, scaledTileWidth, scaledTileHeight);
+    if (import.meta.env.DEV) {
+      if (this.debugControls.showGrid) {
+        this.drawIsoGrid(context, startX, startY, scaledTileWidth, scaledTileHeight);
+      }
     }
   }
 
@@ -54,6 +65,7 @@ export class GameField extends DisplayObject {
     tileWidth: number,
     tileHeight: number,
   ): void {
+    if (import.meta.env.PROD) return;
     context.strokeStyle = "#888888";
     context.lineWidth = 1;
     context.setLineDash([2, 2]);

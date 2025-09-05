@@ -1,6 +1,6 @@
 import { isVerticalLayout } from "..";
 import { createButton } from "../core/button";
-import { ButtonVariant, drawButton, drawHeading } from "../core/neobrutalism";
+import { ButtonVariant, HeadingSize, drawButton, drawHeading } from "../core/neobrutalism";
 import { IGame } from "../game";
 import { BaseScreen } from "../screen";
 import { CreditsScreen } from "./credits-screen";
@@ -55,14 +55,11 @@ export class MenuScreen extends BaseScreen {
     }
   }
 
-  override draw(context: CanvasRenderingContext2D): void {
-    super.draw(context);
-
-    drawHeading(context, "PAWS", c.width / 2, 200, "lg");
+  protected override doDraw(context: CanvasRenderingContext2D): void {
+    drawHeading(context, "PAWS", c.width / 2, 200, HeadingSize.LG);
 
     this.buttons.forEach((button, index) => {
-      const variant: ButtonVariant = index === 0 ? "default" : "neutral";
-      drawButton(context, button, variant);
+      drawButton(context, button, index === 0 ? ButtonVariant.DEFAULT : ButtonVariant.NEUTRAL);
     });
   }
 }

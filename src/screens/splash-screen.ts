@@ -1,4 +1,4 @@
-import { drawText } from "../core/neobrutalism";
+import { BodySize, drawText } from "../core/neobrutalism";
 import { BaseScreen } from "../screen";
 import { MenuScreen } from "./menu-screen";
 
@@ -14,9 +14,7 @@ export class SplashScreen extends BaseScreen {
     }
   }
 
-  override draw(context: CanvasRenderingContext2D): void {
-    super.draw(context);
-
-    drawText(context, "logo goes here", c.width / 2, c.height / 2, "lg");
+  protected override doDraw(context: CanvasRenderingContext2D): void {
+    drawText(context, "logo goes here", c.width / 2, c.height / 2, BodySize.LG);
   }
 }

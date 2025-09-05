@@ -15,7 +15,6 @@ export interface IScreen {
   onResize(): void;
   update(dt: number): void;
   draw(context: CanvasRenderingContext2D): void;
-  isTransitionComplete(): boolean;
   destroy(): void;
 }
 
@@ -45,7 +44,7 @@ export class BaseScreen implements IScreen {
 
   onMouseMove(x: number, y: number): void {
     for (const button of this.buttons) {
-      button.isHovered = isCoordsInRect(x, y, button);
+      button.isHovered = isCoordsInRect(x, y, button) && !button.isDisabled;
     }
     c.style.cursor = this.buttons.some((button) => button.isHovered) ? "pointer" : "default";
   }
@@ -66,13 +65,24 @@ export class BaseScreen implements IScreen {
   }
 
   draw(context: CanvasRenderingContext2D): void {
-    context.fillStyle = this.bgColor;
+    const { alpha, bgColor } = this;
+
+    context.fillStyle = bgColor;
     context.fillRect(0, 0, c.width, c.height);
 
-    context.globalAlpha = this.alpha;
+    this.doDraw(context);
+
+    if (alpha <= 1) {
+      context.globalAlpha = 1 - alpha;
+      context.fillStyle = bgColor;
+      context.fillRect(0, 0, c.width, c.height);
+      context.globalAlpha = 1;
+    }
   }
 
-  isTransitionComplete(): boolean {
+  protected doDraw(context: CanvasRenderingContext2D): void {}
+
+  protected isTransitionComplete(): boolean {
     return this.alpha >= 1;
   }
 

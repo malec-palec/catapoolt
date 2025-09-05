@@ -1,4 +1,4 @@
-# PAWS (working title)
+# Clawing Up
 
 A game about a black cat who believes in superstitions himself.
 
