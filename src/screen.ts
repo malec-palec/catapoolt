@@ -11,6 +11,8 @@ export interface ScreenConstructor {
 
 export interface IScreen {
   onClick(x: number, y: number): void;
+  onMouseDown?(x: number, y: number): void;
+  onMouseUp?(x: number, y: number): void;
   onMouseMove(x: number, y: number): void;
   onResize(): void;
   update(dt: number): void;
@@ -40,6 +42,14 @@ export class BaseScreen implements IScreen {
         break;
       }
     }
+  }
+
+  onMouseDown?(x: number, y: number): void {
+    // Default implementation - can be overridden
+  }
+
+  onMouseUp?(x: number, y: number): void {
+    // Default implementation - can be overridden
   }
 
   onMouseMove(x: number, y: number): void {

@@ -78,8 +78,11 @@ export class Game implements IGame {
     );
 
     c.onclick = mouseHandler((x, y) => this.screen.onClick(x, y));
+    c.onmousedown = mouseHandler((x, y) => this.screen.onMouseDown?.(x, y));
+    c.onmouseup = mouseHandler((x, y) => this.screen.onMouseUp?.(x, y));
     c.onmousemove = mouseHandler((x, y) => this.screen.onMouseMove(x, y));
-    c.ontouchstart = touchHandler((x, y) => this.screen.onClick(x, y));
+    c.ontouchstart = touchHandler((x, y) => this.screen.onMouseDown?.(x, y));
+    c.ontouchend = touchHandler((x, y) => this.screen.onMouseUp?.(x, y));
     c.ontouchmove = touchHandler((x, y) => this.screen.onMouseMove(x, y));
     window.onpopstate = (event) => {
       if (event.state && event.state.screenName) {
