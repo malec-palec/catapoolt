@@ -1,4 +1,5 @@
 import { IScreen, IScreenManager, ScreenConstructor } from "./screen";
+import { CatTestScreen } from "./screens/cat-test-screen";
 import { CreditsScreen } from "./screens/credits-screen";
 import { GameScreen } from "./screens/game-screen";
 import { LevelSelectScreen } from "./screens/level-select-screen";
@@ -14,6 +15,7 @@ const SCREENS: Record<string, ScreenConstructor> = {
   SplashScreen,
   CreditsScreen,
   LevelSelectScreen,
+  CatTestScreen,
 };
 
 const getCanvasCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
