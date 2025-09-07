@@ -1,21 +1,17 @@
 import { IScreen, IScreenManager, ScreenConstructor } from "./screen";
-import { CatTestScreen } from "./screens/cat-test-screen";
 import { CreditsScreen } from "./screens/credits-screen";
-import { GameScreen } from "./screens/game-screen";
-import { LevelSelectScreen } from "./screens/level-select-screen";
 import { MenuScreen } from "./screens/menu-screen";
+import { SlingGameScreen } from "./screens/sling-game-screen";
 import { SplashScreen } from "./screens/splash-screen";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface IGame extends IScreenManager {}
 
 const SCREENS: Record<string, ScreenConstructor> = {
-  GameScreen,
   MenuScreen,
   SplashScreen,
   CreditsScreen,
-  LevelSelectScreen,
-  CatTestScreen,
+  SlingGameScreen,
 };
 
 const getCanvasCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
