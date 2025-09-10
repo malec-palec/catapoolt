@@ -3,13 +3,14 @@ import { Button } from "../core/button";
 import { Text } from "../core/text";
 import { IGame } from "../game";
 import { StartScreen } from "./start-screen";
-export class CreditsScreen extends BaseScreen {
+
+export class HighScoresScreen extends BaseScreen {
   private title: Text;
 
   constructor(game: IGame) {
     super(game);
 
-    this.title = new Text("Credits", 64, "Arial", "bold");
+    this.title = new Text("High Scores", 64, "Arial", "bold");
     const backButton = new Button({
       width: 60,
       x: 20,

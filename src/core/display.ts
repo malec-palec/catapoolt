@@ -1,6 +1,7 @@
+import { Event, IEventDispatcher } from "../core/event";
 import { Point2D } from "./geom";
 
-export interface IDisplayObject {
+export interface IDisplayObject extends IEventDispatcher {
   position: Point2D;
   update(dt: number): void;
   draw(context: CanvasRenderingContext2D): void;
@@ -18,4 +19,15 @@ export class DisplayObject implements IDisplayObject {
   }
   update(dt: number): void {}
   draw(context: CanvasRenderingContext2D): void {}
+  dispatchEvent(event: Event): void {
+    if (!event.isAccepted) {
+      this.handleEvent(event);
+    }
+  }
+  protected handleEvent(event: Event): void {}
+
+  setPosition(x: number, y: number): void {
+    this.position.x = x;
+    this.position.y = y;
+  }
 }

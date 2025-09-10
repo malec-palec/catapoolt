@@ -1,7 +1,7 @@
 import * as dat from "dat.gui";
-import { NB_COLOR_WHITE } from "../core/neobrutalism";
+import { BaseScreen } from "../base-screen";
 import { IGame } from "../game";
-import { BaseScreen } from "../screen";
+import { COLOR_WHITE } from "../registry";
 import { CatFace, MovementDirection } from "./game/cat/cat-face";
 import { SoftBlob, Vector2D } from "./game/cat/soft-blob";
 import { Tail } from "./game/cat/tail";
@@ -24,7 +24,7 @@ export class CatTestScreen extends BaseScreen {
 
   constructor(game: IGame) {
     super(game);
-    this.bgColor = NB_COLOR_WHITE;
+    this.bgColor = COLOR_WHITE;
 
     const sx = c.width / 2;
     const sy = c.height / 2;

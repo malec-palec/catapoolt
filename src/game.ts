@@ -1,17 +1,19 @@
-import { IScreen, IScreenManager, ScreenConstructor } from "./screen";
+import { IScreen, IScreenManager, ScreenConstructor } from "./base-screen";
 import { CreditsScreen } from "./screens/credits-screen";
-import { MenuScreen } from "./screens/menu-screen";
-import { SlingGameScreen } from "./screens/sling-game-screen";
+import { HighScoresScreen } from "./screens/high-scores-screen";
+// import { GameScreen } from "./screens/game-screen";
 import { SplashScreen } from "./screens/splash-screen";
+import { StartScreen } from "./screens/start-screen";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface IGame extends IScreenManager {}
 
 const SCREENS: Record<string, ScreenConstructor> = {
-  MenuScreen,
   SplashScreen,
+  StartScreen,
+  HighScoresScreen,
   CreditsScreen,
-  SlingGameScreen,
+  // GameScreen,
 };
 
 const getCanvasCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -51,51 +53,25 @@ const touchHandler =
 export class Game implements IGame {
   private context: CanvasRenderingContext2D;
   private screen: IScreen;
-  private currentScreenConstructor: ScreenConstructor;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private currentScreenArgs: any[];
-  private isNavigatingBack = false;
 
   constructor() {
-    const screenName = import.meta.env.VITE_START_SCREEN || "SplashScreen";
-    const startScreenCtor = SCREENS[screenName];
-
     this.context = c.getContext("2d", {
       willReadFrequently: true,
     })!;
 
-    this.screen = new startScreenCtor(this);
-    this.currentScreenConstructor = this.screen.constructor as ScreenConstructor;
-    this.currentScreenArgs = [];
-
-    history.replaceState(
-      {
-        screenName: this.currentScreenConstructor.name,
-        args: this.currentScreenArgs,
-      },
-      "",
-      "",
-    );
+    const screenName = import.meta.env.VITE_HOME_SCREEN || "SplashScreen";
+    const homeScreenCtor = SCREENS[screenName];
+    this.screen = new homeScreenCtor(this);
 
     c.onclick = mouseHandler((x, y) => this.screen.onClick(x, y));
-    c.onmousedown = mouseHandler((x, y) => this.screen.onMouseDown?.(x, y));
-    c.onmouseup = mouseHandler((x, y) => this.screen.onMouseUp?.(x, y));
+    c.onmousedown = mouseHandler((x, y) => this.screen.onMouseDown(x, y));
+    c.onmouseup = mouseHandler((x, y) => this.screen.onMouseUp(x, y));
     c.onmousemove = mouseHandler((x, y) => this.screen.onMouseMove(x, y));
-    c.ontouchstart = touchHandler((x, y) => this.screen.onMouseDown?.(x, y));
-    c.ontouchend = touchHandler((x, y) => this.screen.onMouseUp?.(x, y));
+    c.ontouchstart = touchHandler((x, y) => this.screen.onMouseDown(x, y));
+    c.ontouchend = touchHandler((x, y) => this.screen.onMouseUp(x, y));
     c.ontouchmove = touchHandler((x, y) => this.screen.onMouseMove(x, y));
-    window.onpopstate = (event) => {
-      if (event.state && event.state.screenName) {
-        const screenConstructor = SCREENS[event.state.screenName];
-        if (screenConstructor) {
-          this.isNavigatingBack = true;
-          this.changeScreen(screenConstructor, ...(event.state.args || []));
-          this.isNavigatingBack = false;
-        }
-      }
-    };
-    window.onresize = () => this.screen.onResize();
 
+    window.onresize = () => this.screen.onResize();
     this.screen.onResize();
   }
 
@@ -103,19 +79,6 @@ export class Game implements IGame {
     this.screen.destroy();
 
     c.style.cursor = "default";
-
-    if (!this.isNavigatingBack && screenCtor !== this.currentScreenConstructor) {
-      history.pushState(
-        {
-          screenName: screenCtor.name,
-          args: rest,
-        },
-        "",
-        "",
-      );
-    }
-    this.currentScreenConstructor = screenCtor;
-    this.currentScreenArgs = rest;
 
     const newScreen: IScreen = new screenCtor(this, ...rest);
     newScreen.onResize();

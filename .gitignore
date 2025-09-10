@@ -4,6 +4,3 @@ dist/
 node_modules/
 .env
 external/
-
-# Generated files
-src/screens/game/levels.ts

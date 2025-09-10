@@ -1,10 +1,10 @@
 {
-  "name": "clawing-up",
+  "name": "catapoolt",
   "version": "1.0.0",
   "description": "js13kGames 2025 competition entry",
   "private": true,
   "scripts": {
-    "prepare": "husky && node scripts/ensure-levels.js",
+    "prepare": "husky",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --open --host",
     "dev": "vite --open --host",

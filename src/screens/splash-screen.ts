@@ -1,20 +1,25 @@
-import { BodySize, drawText } from "../core/neobrutalism";
-import { BaseScreen } from "../screen";
-import { MenuScreen } from "./menu-screen";
+import { BaseScreen } from "../base-screen";
+import { Text } from "../core/text";
+import { IGame } from "../game";
+import { StartScreen } from "./start-screen";
 
 export class SplashScreen extends BaseScreen {
-  private timer = 0;
+  private title: Text;
 
-  override update(dt: number): void {
-    super.update(dt);
+  constructor(game: IGame) {
+    super(game);
 
-    this.timer += dt;
-    if (this.timer >= 1000 && this.isTransitionComplete()) {
-      this.game.changeScreen(MenuScreen);
-    }
+    this.title = new Text("Splash Screen", 64, "Arial", "bold");
+    this.add(this.title);
   }
 
-  protected override doDraw(context: CanvasRenderingContext2D): void {
-    drawText(context, "logo goes here", c.width / 2, c.height / 2, BodySize.LG);
+  override doResize(): void {
+    this.title.setPosition(c.width / 2, c.height / 2);
+  }
+
+  override doUpdate(dt: number): void {
+    if (this.currentTime >= 1000 && this.isTransitionComplete()) {
+      this.game.changeScreen(StartScreen);
+    }
   }
 }
