@@ -102,7 +102,10 @@ export class Button extends DisplayObject {
   }
 
   protected handleEvent(event: Event): void {
-    if (!this.isEnabled) return;
+    if (!this.isEnabled) {
+      c.style.cursor = "default";
+      return;
+    }
 
     if (event instanceof MouseEvent) {
       const isOver = this.isMouseOver(event.mouseX, event.mouseY);
@@ -112,10 +115,12 @@ export class Button extends DisplayObject {
           if (isOver) {
             if (this.currentState === ButtonState.Normal) {
               this.currentState = ButtonState.Hover;
+              c.style.cursor = "pointer";
             }
           } else {
             if (this.currentState === ButtonState.Hover || this.currentState === ButtonState.Pressed) {
               this.currentState = ButtonState.Normal;
+              c.style.cursor = "default";
             }
           }
           break;

@@ -1,7 +1,7 @@
 import { IScreen, IScreenManager, ScreenConstructor } from "./base-screen";
 import { CreditsScreen } from "./screens/credits-screen";
+import { GameScreen } from "./screens/game-screen";
 import { HighScoresScreen } from "./screens/high-scores-screen";
-// import { GameScreen } from "./screens/game-screen";
 import { SplashScreen } from "./screens/splash-screen";
 import { StartScreen } from "./screens/start-screen";
 
@@ -11,9 +11,9 @@ export interface IGame extends IScreenManager {}
 const SCREENS: Record<string, ScreenConstructor> = {
   SplashScreen,
   StartScreen,
+  GameScreen,
   HighScoresScreen,
   CreditsScreen,
-  // GameScreen,
 };
 
 const getCanvasCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -43,7 +43,6 @@ const mouseHandler =
 const touchHandler =
   (callback: (x: number, y: number) => void) =>
   (event: TouchEvent): void => {
-    event.preventDefault();
     const touch = event.touches[0] || event.changedTouches[0];
     if (touch) {
       const { x, y } = getCanvasCoordinates(touch.clientX, touch.clientY);

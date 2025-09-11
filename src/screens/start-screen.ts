@@ -3,8 +3,8 @@ import { Button } from "../core/button";
 import { Text } from "../core/text";
 import { IGame } from "../game";
 import { CreditsScreen } from "./credits-screen";
+import { GameScreen } from "./game-screen";
 import { HighScoresScreen } from "./high-scores-screen";
-// import { GameScreen } from "./game-screen";
 
 export class StartScreen extends BaseScreen {
   private title: Text;
@@ -21,7 +21,7 @@ export class StartScreen extends BaseScreen {
         ...buttonSize,
         text: "Play",
         clickHandler: () => {
-          console.log("this.game.changeScreen(GameScreen)");
+          this.game.changeScreen(GameScreen);
         },
       }),
       new Button({
