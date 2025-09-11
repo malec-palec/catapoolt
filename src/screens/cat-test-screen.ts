@@ -2,9 +2,9 @@ import * as dat from "dat.gui";
 import { BaseScreen } from "../base-screen";
 import { IGame } from "../game";
 import { COLOR_WHITE } from "../registry";
-import { CatFace, MovementDirection } from "./game/cat/cat-face";
-import { SoftBlob, Vector2D } from "./game/cat/soft-blob";
-import { Tail } from "./game/cat/tail";
+import { CatFace, MovementDirection } from "./game/cat-face";
+import { SoftBlob, Vector2D } from "./game/soft-blob";
+import { Tail } from "./game/tail";
 
 const guiInstances = new Set<dat.GUI>();
 

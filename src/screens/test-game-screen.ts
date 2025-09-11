@@ -4,9 +4,9 @@ import { Vector2D } from "../core/vector2d";
 import { Vehicle, VehicleOptions } from "../core/vehicle";
 import { IGame } from "../game";
 import { COLOR_BLACK, COLOR_WHITE } from "../registry";
-import { SoftBlob } from "./game/cat/soft-blob";
-import { Tail } from "./game/cat/tail";
-import { Cat } from "./sling/cat";
+import { Cat } from "./game/cat";
+import { SoftBlob } from "./game/soft-blob";
+import { Tail } from "./game/tail";
 
 interface VehicleControls {
   vehicleCount: number;

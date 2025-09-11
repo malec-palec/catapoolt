@@ -1,5 +1,5 @@
 import { Vector2D } from "../../core/vector2d";
-import { ICircleCollider } from "../../screens/game/cat/soft-blob";
+import { ICircleCollider } from "./soft-blob";
 
 // Interface for objects that can provide shadow width
 interface IShadowProvider {
