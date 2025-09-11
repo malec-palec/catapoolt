@@ -4,7 +4,8 @@
   "description": "js13kGames 2025 competition entry",
   "private": true,
   "scripts": {
-    "prepare": "husky",
+    "prepare": "node scripts/generate-tunes.js && husky",
+    "generate-tunes": "node scripts/generate-tunes.js",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --open --host",
     "dev": "vite --open --host",

@@ -2,6 +2,7 @@ import { BaseScreen } from "../base-screen";
 import { Button } from "../core/button";
 import { Text } from "../core/text";
 import { IGame } from "../game";
+import { stopMusic } from "../music";
 import { CreditsScreen } from "./credits-screen";
 import { GameScreen } from "./game-screen";
 import { HighScoresScreen } from "./high-scores-screen";
@@ -40,6 +41,8 @@ export class StartScreen extends BaseScreen {
       }),
     ];
     this.add(this.title, ...this.buttons);
+
+    stopMusic();
   }
 
   override doResize(): void {

@@ -12,7 +12,7 @@ export default [
   ...tslintConfig,
   stylistic.configs["disable-legacy"],
   {
-    ignores: [],
+    ignores: ["src/core/audio/player.min.js"],
   },
   {
     languageOptions: {

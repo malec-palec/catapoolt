@@ -1,10 +1,12 @@
 import { defineConfig } from "vite";
 import { createHtmlPlugin } from "vite-plugin-html";
 import { viteSingleFile } from "vite-plugin-singlefile";
+import { pico8Plugin } from "./vite-plugin-pico8";
 
 export default defineConfig({
   base: "./",
   plugins: [
+    pico8Plugin(),
     viteSingleFile({ useRecommendedBuildConfig: false, removeViteModuleLoader: true }),
     createHtmlPlugin({ minify: true }),
     {
