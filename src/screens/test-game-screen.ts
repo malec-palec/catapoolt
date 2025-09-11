@@ -1,12 +1,12 @@
 import * as dat from "dat.gui";
 import { BaseScreen } from "../base-screen";
-import { Cat } from "../core/cat";
-import { NB_COLOR_BLACK, NB_COLOR_WHITE } from "../core/neobrutalism";
 import { Vector2D } from "../core/vector2d";
 import { Vehicle, VehicleOptions } from "../core/vehicle";
 import { IGame } from "../game";
+import { COLOR_BLACK, COLOR_WHITE } from "../registry";
 import { SoftBlob } from "./game/cat/soft-blob";
 import { Tail } from "./game/cat/tail";
+import { Cat } from "./sling/cat";
 
 interface VehicleControls {
   vehicleCount: number;
@@ -44,7 +44,7 @@ export class TestGameScreen extends BaseScreen {
   constructor(game: IGame) {
     super(game);
 
-    this.bgColor = NB_COLOR_WHITE;
+    this.bgColor = COLOR_WHITE;
 
     // Initialize controls
     this.controls = {
@@ -167,7 +167,7 @@ export class TestGameScreen extends BaseScreen {
         separationWeight: this.controls.separationWeight,
         fleeRadius: this.controls.fleeRadius,
         fleeWeight: this.controls.fleeWeight,
-        strokeColor: NB_COLOR_BLACK,
+        strokeColor: COLOR_BLACK,
         strokeWidth: 3,
       };
 
@@ -381,7 +381,7 @@ export class TestGameScreen extends BaseScreen {
     }
   }
 
-  protected override doDraw(context: CanvasRenderingContext2D): void {
+  protected doDraw(context: CanvasRenderingContext2D): void {
     // Apply camera transform
     context.save();
     context.translate(-this.camera.x, -this.camera.y);

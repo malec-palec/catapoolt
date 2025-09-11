@@ -143,7 +143,7 @@ export class CatTestScreen extends BaseScreen {
     this.catTail.update();
   }
 
-  override doDraw(context: CanvasRenderingContext2D): void {
+  doDraw(context: CanvasRenderingContext2D): void {
     this.catBody.draw(context);
     this.catTail.draw(context);
     this.catFace.draw(context);
