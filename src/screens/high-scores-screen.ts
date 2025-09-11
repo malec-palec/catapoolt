@@ -2,7 +2,6 @@ import { BaseScreen } from "../base-screen";
 import { Button } from "../core/button";
 import { Text } from "../core/text";
 import { IGame } from "../game";
-import { playMusic } from "../music";
 import { StartScreen } from "./start-screen";
 
 export class HighScoresScreen extends BaseScreen {
@@ -21,8 +20,6 @@ export class HighScoresScreen extends BaseScreen {
     });
 
     this.add(this.title, backButton);
-
-    playMusic();
   }
 
   override doResize(): void {

@@ -1,4 +1,5 @@
 import { IScreen, IScreenManager, ScreenConstructor } from "./base-screen";
+import { device, getOptimalCanvasSettings } from "./device-detection";
 import { CreditsScreen } from "./screens/credits-screen";
 import { GameScreen } from "./screens/game-screen";
 import { HighScoresScreen } from "./screens/high-scores-screen";
@@ -43,6 +44,7 @@ const mouseHandler =
 const touchHandler =
   (callback: (x: number, y: number) => void) =>
   (event: TouchEvent): void => {
+    event.preventDefault();
     const touch = event.touches[0] || event.changedTouches[0];
     if (touch) {
       const { x, y } = getCanvasCoordinates(touch.clientX, touch.clientY);
@@ -52,23 +54,76 @@ const touchHandler =
 export class Game implements IGame {
   private context: CanvasRenderingContext2D;
   private screen: IScreen;
+  private touchStartPosition: { x: number; y: number } | null = null;
 
   constructor() {
-    this.context = c.getContext("2d", {
-      willReadFrequently: true,
-    })!;
+    // Use device-specific canvas settings to prevent flickering
+    const canvasSettings = getOptimalCanvasSettings();
+    console.log(
+      `🎨 Using canvas settings for ${device.isIOS ? "iOS" : device.isAndroid ? "Android" : "Desktop"}:`,
+      canvasSettings,
+    );
+
+    this.context = c.getContext("2d", canvasSettings)!;
 
     const screenName = import.meta.env.VITE_HOME_SCREEN || "SplashScreen";
     const homeScreenCtor = SCREENS[screenName];
     this.screen = new homeScreenCtor(this);
 
+    // Mouse events
     c.onclick = mouseHandler((x, y) => this.screen.onClick(x, y));
     c.onmousedown = mouseHandler((x, y) => this.screen.onMouseDown(x, y));
     c.onmouseup = mouseHandler((x, y) => this.screen.onMouseUp(x, y));
     c.onmousemove = mouseHandler((x, y) => this.screen.onMouseMove(x, y));
-    c.ontouchstart = touchHandler((x, y) => this.screen.onMouseDown(x, y));
-    c.ontouchend = touchHandler((x, y) => this.screen.onMouseUp(x, y));
-    c.ontouchmove = touchHandler((x, y) => this.screen.onMouseMove(x, y));
+
+    // Touch events with proper event options for iOS and Android
+    c.addEventListener(
+      "touchstart",
+      touchHandler((x, y) => {
+        this.touchStartPosition = { x, y };
+        this.screen.onMouseDown(x, y);
+      }),
+      { passive: false },
+    );
+
+    c.addEventListener(
+      "touchend",
+      touchHandler((x, y) => {
+        this.screen.onMouseUp(x, y);
+        // Simulate click if touch end is close to touch start
+        if (this.touchStartPosition) {
+          const distance = Math.sqrt(
+            Math.pow(x - this.touchStartPosition.x, 2) + Math.pow(y - this.touchStartPosition.y, 2),
+          );
+          // If touch moved less than 10 pixels, treat it as a click
+          if (distance < 10) {
+            this.screen.onClick(x, y);
+          }
+          this.touchStartPosition = null;
+        }
+      }),
+      { passive: false },
+    );
+
+    c.addEventListener(
+      "touchmove",
+      touchHandler((x, y) => this.screen.onMouseMove(x, y)),
+      { passive: false },
+    );
+
+    // Handle touch cancel (important for Android)
+    c.addEventListener(
+      "touchcancel",
+      (event) => {
+        event.preventDefault();
+        // Simulate mouse up at last known position if we had a touch start
+        if (this.touchStartPosition) {
+          this.screen.onMouseUp(this.touchStartPosition.x, this.touchStartPosition.y);
+          this.touchStartPosition = null;
+        }
+      },
+      { passive: false },
+    );
 
     window.onresize = () => this.screen.onResize();
     this.screen.onResize();
@@ -88,6 +143,15 @@ export class Game implements IGame {
   update(dt: number): void {
     const { screen, context } = this;
     screen.update(dt);
+
+    // if (device.isAndroid) {
+    //   context.save();
+    //   context.setTransform(1, 0, 0, 1, 0, 0);
+    //   context.clearRect(0, 0, c.width, c.height);
+    //   context.restore();
+    // } else {
+    //   context.clearRect(0, 0, c.width, c.height);
+    // }
 
     screen.draw(context);
   }

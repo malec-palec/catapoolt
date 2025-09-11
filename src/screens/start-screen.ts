@@ -10,37 +10,44 @@ import { HighScoresScreen } from "./high-scores-screen";
 export class StartScreen extends BaseScreen {
   private title: Text;
   private buttons: Button[];
+  private versionText: Text;
 
   constructor(game: IGame) {
     super(game);
 
     this.title = new Text("🅒🅐🅣🅐🅟🅞🅞🅛🅣", 72, "Arial", "bold");
 
+    const version = import.meta.env.PACKAGE_VERSION || "1.0.0";
+    this.versionText = new Text(`v${version}`, 16);
+
     const buttonSize = { width: 200, height: 60 };
     this.buttons = [
       new Button({
         ...buttonSize,
         text: "Play",
-        clickHandler: () => {
-          this.game.changeScreen(GameScreen);
+        clickHandler() {
+          this.text = "Loading...";
+          setTimeout(() => {
+            game.changeScreen(GameScreen);
+          }, 0);
         },
       }),
       new Button({
         ...buttonSize,
         text: "High Scores",
-        clickHandler: () => {
-          this.game.changeScreen(HighScoresScreen);
+        clickHandler() {
+          game.changeScreen(HighScoresScreen);
         },
       }),
       new Button({
         ...buttonSize,
         text: "Credits",
-        clickHandler: () => {
-          this.game.changeScreen(CreditsScreen);
+        clickHandler() {
+          game.changeScreen(CreditsScreen);
         },
       }),
     ];
-    this.add(this.title, ...this.buttons);
+    this.add(this.title, ...this.buttons, this.versionText);
 
     stopMusic();
   }
@@ -54,5 +61,7 @@ export class StartScreen extends BaseScreen {
       button.position.x = c.width / 2 - button.width / 2;
       button.position.y = startY + buttonSpacing * index;
     });
+
+    this.versionText.setPosition(c.width - 40, c.height - 20);
   }
 }

@@ -1,7 +1,8 @@
+.env
+.firebase/
 .playwright-mcp/
 .vscode/
 dist/
-node_modules/
-.env
 external/
+node_modules/
 src/tunes.ts

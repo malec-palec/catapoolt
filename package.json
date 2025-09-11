@@ -1,18 +1,21 @@
 {
   "name": "catapoolt",
-  "version": "1.0.0",
+  "version": "0.1.2",
   "description": "js13kGames 2025 competition entry",
   "private": true,
   "scripts": {
     "prepare": "node scripts/generate-tunes.js && husky",
     "generate-tunes": "node scripts/generate-tunes.js",
+    "increment-version": "node scripts/increment-version.js",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --open --host",
     "dev": "vite --open --host",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "predeploy": "npm run increment-version",
+    "deploy": "npm run build && firebase deploy"
   },
   "author": "glebv",
   "license": "MIT",
