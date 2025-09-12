@@ -162,12 +162,10 @@ export class GameField extends DisplayObject {
     this.camera.y = Math.max(minCameraY, Math.min(maxCameraY, this.camera.y));
   }
 
-  // Convert screen coordinates to world coordinates
-  private screenToWorld(x: number, y: number): { x: number; y: number } {
-    return {
-      x: x + this.camera.x,
-      y: y + this.camera.y,
-    };
+  private worldPos: Vector2D = new Vector2D(0, 0);
+
+  private screenToWorld(x: number, y: number) {
+    return this.worldPos.set(x + this.camera.x, y + this.camera.y);
   }
 
   // Check if a world position is visible in the current camera viewport
@@ -355,20 +353,6 @@ export class GameField extends DisplayObject {
     context.fillStyle = "#f0f0f0";
     context.fillRect(0, 0, this.gameFieldSize.width, this.gameFieldSize.height);
 
-    // Draw buffer zone border (outer boundary)
-    if (bufferSize > 0) {
-      context.strokeStyle = "#999999";
-      context.lineWidth = 2;
-      context.setLineDash([10, 5]);
-      context.strokeRect(
-        -bufferSize,
-        -bufferSize,
-        this.gameFieldSize.width + bufferSize * 2,
-        this.gameFieldSize.height + bufferSize * 2,
-      );
-      context.setLineDash([]);
-    }
-
     // Draw game field borders (main play area)
     context.strokeStyle = "#333333";
     context.lineWidth = 4;
@@ -385,7 +369,6 @@ export class GameField extends DisplayObject {
       }
     });
 
-    // Draw cat shadow first (behind everything)
     this.cat.drawShadow(context, this.catBody);
 
     this.catBody.render(context);
@@ -596,9 +579,9 @@ export class GameField extends DisplayObject {
 
   private onMouseDown(x: number, y: number): void {
     const worldPos = this.screenToWorld(x, y);
-    // Start drag if clicking on cat
-    if (this.cat.containsPoint(worldPos.x, worldPos.y)) {
+    if (this.cat.isPressed(worldPos)) {
       this.isMouseDown = true;
+      // TODO: pass worldPos
       this.cat.startDrag(worldPos.x, worldPos.y);
     }
   }

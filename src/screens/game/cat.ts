@@ -290,10 +290,8 @@ export class Cat {
     this.screenHeight = height;
   }
 
-  // Check if point is inside cat (for click detection)
-  containsPoint(x: number, y: number): boolean {
-    const distance = Vector2D.dist(this.position, new Vector2D(x, y));
-    return distance <= this.radius;
+  isPressed(v: Vector2D): boolean {
+    return Vector2D.dist(this.position, v) <= this.radius * 2;
   }
 
   drawShadow(context: CanvasRenderingContext2D, shadowProvider?: IShadowProvider): void {
