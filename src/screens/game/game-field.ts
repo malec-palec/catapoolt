@@ -421,6 +421,9 @@ export class GameField extends DisplayObject {
       10,
       145,
     );
+
+    context.fillText(`Screen size: ${c.width} x ${c.height}`, 10, 165);
+    context.fillText(`Window size: ${window.innerWidth} x ${window.innerHeight}`, 10, 185);
   }
 
   private isAnyVehicleVisible(): boolean {

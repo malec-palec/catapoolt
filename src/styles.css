@@ -25,42 +25,20 @@ body {
 #c {
   background-color: #000000;
   border: 2px solid #333;
+  cursor: default;
+  transition: cursor 0.1s ease;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   max-width: 100vw;
   max-height: 100vh;
   width: auto;
   height: auto;
-  cursor: default;
-  transition: cursor 0.1s ease;
-  touch-action: none; /* Prevent default touch behaviors */
-  user-select: none; /* Prevent text selection */
-  -webkit-user-select: none;
-  -webkit-touch-callout: none; /* Prevent iOS callout menu */
 }
 
-/* Responsive design - maintain aspect ratio */
-@media (max-width: 850px) {
+@media (max-width: 600px), (max-height: 600px) {
   #c {
-    max-width: 95vw;
-    max-height: 95vh;
-  }
-}
-
-@media (max-height: 650px) {
-  #c {
-    max-width: 95vw;
-    max-height: 90vh;
-  }
-}
-
-/* For very small screens */
-@media (max-width: 600px) {
-  #c {
-    max-width: 100vw;
-    max-height: 100vh;
     border: none;
-  }
-
-  body {
-    padding: 0;
   }
 }

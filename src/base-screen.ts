@@ -2,7 +2,7 @@ import { IDisplayObject } from "./core/display";
 import { Event, MouseEvent, MouseEventType } from "./core/event";
 import { easeInOut } from "./core/tween";
 import { IGame } from "./game";
-import { COLOR_WHITE, GAME_HEIGHT, GAME_WIDTH, isVerticalLayout } from "./registry";
+import { COLOR_WHITE, GAME_HEIGHT, GAME_WIDTH } from "./registry";
 
 export interface ScreenConstructor {
   new (game: IGame, ...rest: any[]): BaseScreen;
@@ -76,9 +76,37 @@ export class BaseScreen implements IScreen {
   }
 
   onResize(): void {
-    const vertical = isVerticalLayout();
-    c.width = vertical ? GAME_HEIGHT : GAME_WIDTH;
-    c.height = vertical ? GAME_WIDTH : GAME_HEIGHT;
+    const isPortrait = window.innerWidth < window.innerHeight;
+    const aspectRatio = isPortrait ? GAME_HEIGHT / GAME_WIDTH : GAME_WIDTH / GAME_HEIGHT;
+
+    const { innerWidth: winW, innerHeight: winH } = window;
+    const widthBased = winW / aspectRatio <= winH;
+
+    const optimalW = widthBased ? winW : winH * aspectRatio;
+    const optimalH = widthBased ? winW / aspectRatio : winH;
+
+    const minW = isPortrait ? GAME_HEIGHT : GAME_WIDTH;
+    const minH = isPortrait ? GAME_WIDTH : GAME_HEIGHT;
+    const maxW = minW * 1.5;
+    const maxH = minH * 1.5;
+
+    let w = Math.floor(optimalW);
+    let h = Math.floor(optimalH);
+
+    if (w < minW || h < minH) {
+      const scale = Math.max(minW / w, minH / h);
+      w = Math.floor(w * scale);
+      h = Math.floor(h * scale);
+    }
+
+    if (w > maxW || h > maxH) {
+      const scale = Math.min(maxW / w, maxH / h);
+      w = Math.floor(w * scale);
+      h = Math.floor(h * scale);
+    }
+
+    c.width = w;
+    c.height = h;
     this.doResize();
   }
   protected doResize(): void {}
