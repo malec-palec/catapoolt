@@ -73,6 +73,7 @@ export class Game implements IGame {
     c.onmousedown = mouseHandler((x, y) => this.screen.onMouseDown(x, y));
     c.onmouseup = mouseHandler((x, y) => this.screen.onMouseUp(x, y));
     c.onmousemove = mouseHandler((x, y) => this.screen.onMouseMove(x, y));
+    c.onmouseleave = mouseHandler((x, y) => this.screen.onMouseLeave(x, y));
 
     // Touch events with proper event options for iOS and Android
     c.addEventListener(

@@ -14,6 +14,7 @@ export interface IScreen {
   onMouseDown(x: number, y: number): void;
   onMouseUp(x: number, y: number): void;
   onMouseMove(x: number, y: number): void;
+  onMouseLeave(x: number, y: number): void;
 
   onResize(): void;
   tick(dt: number): void;
@@ -122,6 +123,9 @@ export class BaseScreen implements IScreen {
   }
   onMouseMove(mouseX: number, mouseY: number): void {
     this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_MOVE));
+  }
+  onMouseLeave(mouseX: number, mouseY: number): void {
+    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_LEAVE));
   }
 
   emitEvent(event: Event): void {

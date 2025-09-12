@@ -147,6 +147,36 @@ export class GameField extends DisplayObject {
     this.cat.setScreenBounds(this.controls.gameFieldWidth, this.controls.gameFieldHeight);
   }
 
+  private constrainCatHeadToSoftBody(): void {
+    // Only apply constraint when cat is moving above a certain speed threshold
+    const currentSpeed = this.cat.velocity.mag();
+    const speedThreshold = 2.0; // Adjust this value to control when constraint kicks in
+
+    if (currentSpeed < speedThreshold) {
+      return;
+    }
+
+    const catX = this.cat.position.x;
+    const catY = this.cat.position.y;
+
+    // Check if current position is outside the soft body
+    if (!this.catBody.isPointInside(catX, catY)) {
+      // Cat has moved outside - ease between previous and current position
+      const prevX = catX - this.cat.velocity.x;
+      const prevY = catY - this.cat.velocity.y;
+
+      const easing = 0.8; // 0.0 = stay at previous position, 1.0 = allow full movement
+      const easedX = prevX + (catX - prevX) * easing;
+      const easedY = prevY + (catY - prevY) * easing;
+
+      this.cat.position.x = easedX;
+      this.cat.position.y = easedY;
+
+      // Reduce velocity to prevent constant bouncing against the boundary
+      // this.cat.velocity.mult(0.5); // Less aggressive velocity reduction with easing
+    }
+  }
+
   private updateCamera(): void {
     this.camera.x = this.cat.position.x - c.width / 2;
     this.camera.y = this.cat.position.y - c.height / 2;
@@ -306,6 +336,9 @@ export class GameField extends DisplayObject {
 
     const groundLevel = Math.min(this.cat.position.y + this.cat.catHeight, this.gameFieldSize.height);
     this.catBody.tick(this.cat.getCollider(), this.gameFieldSize.width, groundLevel);
+
+    // Constrain cat head to stay inside soft body
+    // this.constrainCatHeadToSoftBody();
 
     this.catTail.stickTo(this.catBody);
     this.catTail.tick();
@@ -559,6 +592,7 @@ export class GameField extends DisplayObject {
           break;
 
         case MouseEventType.MOUSE_UP:
+        case MouseEventType.MOUSE_LEAVE:
           this.onMouseUp(event.mouseX, event.mouseY);
           break;
       }
@@ -596,9 +630,9 @@ export class GameField extends DisplayObject {
       this.cat.updateDrag(worldPos.x, worldPos.y);
     }
 
-    const safeZone = 5;
-    if (x < safeZone || x > c.width - safeZone || y < safeZone || y > c.height - safeZone) {
-      this.onMouseUp(x, y);
-    }
+    // const safeZone = 10;
+    // if (x < safeZone || x > c.width - safeZone || y < safeZone || y > c.height - safeZone) {
+    //   this.onMouseUp(x, y);
+    // }
   }
 }
