@@ -290,7 +290,6 @@ export class GameField extends DisplayObject {
     catFolder.add(this.controls, "catRadius", 10, 100, 1).onChange(() => this.updateCatProperties());
     catFolder.add(this.cat, "catHeight", 10, 200, 1);
     catFolder.add(this.cat, "debugDraw");
-    catFolder.add(this.cat, "shadowScale", 0.1, 3.0, 0.1);
 
     const physicsFolder = catFolder.addFolder("Physics");
     physicsFolder.add(this.cat, "mass", 0.1, 5.0, 0.1);
@@ -355,19 +354,16 @@ export class GameField extends DisplayObject {
       vehicle.borders(this.gameFieldSize.width, this.gameFieldSize.height);
     });
 
-    // Check for collisions between cat and vehicles - only when cat is on ground (z <= 5)
+    // Check for collisions between cat and mice - only when cat is on ground
     if (this.cat.z <= 5) {
-      const initialVehicleCount = this.vehicles.length;
-      this.vehicles = this.vehicles.filter((vehicle) => {
-        const distance = Vector2D.dist(vehicle.position, this.cat.position);
-        const collisionDistance = vehicle.size + this.cat.radius;
-        return distance > collisionDistance; // Keep vehicles that are NOT colliding
-      });
-
-      // Play eating sound if any mice were caught
-      const miceCaught = initialVehicleCount - this.vehicles.length;
-      if (miceCaught > 0) {
-        playSound(Sounds.Smacking);
+      // Iterate backwards through mice array
+      for (let i = this.vehicles.length - 1; i >= 0; i--) {
+        const mouse = this.vehicles[i];
+        if (this.cat.checkCollisionWithPoint(mouse.position.x, mouse.position.y, mouse.size)) {
+          // Mouse is eaten - remove from array
+          playSound(Sounds.Smacking);
+          this.vehicles.splice(i, 1);
+        }
       }
     }
   }
@@ -415,6 +411,9 @@ export class GameField extends DisplayObject {
     // Draw the cat
     this.cat.render(context);
 
+    // Draw cat collision debug
+    this.cat.renderCollisionDebug(context);
+
     // Draw trajectory before cat for better visibility
     this.cat.renderTrajectory(context);
 
@@ -422,7 +421,6 @@ export class GameField extends DisplayObject {
     if (this.cat.isDragging) {
       // Draw predictive trajectory first (behind slingshot line)
       this.cat.drawPredictiveTrajectory(context, this.curMousePos.x, this.curMousePos.y);
-
       this.drawSlingshotPreview(context);
     }
 

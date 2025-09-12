@@ -35,7 +35,6 @@ export class Cat {
   // Shadow properties
   public catHeight = 50; // Height of cat above ground for shadow calculation
   public z = 0; // Height above ground (3D position)
-  public shadowScale = 1.0; // Scale factor for shadow
 
   // Physics properties
   public velocity: Vector2D;
@@ -309,6 +308,43 @@ export class Cat {
     this.screenHeight = height;
   }
 
+  // Calculate collision detection parameters
+  public getCollisionData(): { centerX: number; centerY: number; radius: number } {
+    const headTopY = this.position.y - this.radius;
+    const shadowCenterY = (this.position.y + this.catHeight + this.z) * 1.02;
+
+    return {
+      centerX: this.position.x,
+      centerY: (headTopY + shadowCenterY) / 2,
+      radius: Math.abs(shadowCenterY - headTopY) / 2,
+    };
+  }
+
+  // Check collision with a point (like mouse position)
+  public checkCollisionWithPoint(x: number, y: number, objectRadius: number = 0): boolean {
+    if (this.z > 5) return false; // Only check collisions when on ground
+
+    const collisionData = this.getCollisionData();
+    const distance = Math.sqrt(Math.pow(x - collisionData.centerX, 2) + Math.pow(y - collisionData.centerY, 2));
+
+    return distance <= collisionData.radius + objectRadius;
+  }
+
+  // Render collision debug visualization
+  public renderCollisionDebug(context: CanvasRenderingContext2D): void {
+    if (!this.debugDraw || this.z > 5) return;
+
+    const collisionData = this.getCollisionData();
+
+    context.strokeStyle = "#ff0000";
+    context.lineWidth = 2;
+    context.setLineDash([4, 4]);
+    context.beginPath();
+    context.arc(collisionData.centerX, collisionData.centerY, collisionData.radius, 0, Math.PI * 2);
+    context.stroke();
+    context.setLineDash([]);
+  }
+
   private applySmoothBoundaryDamping(): void {
     const dampingZone = 100;
     const dampingStrength = 0.95;
@@ -431,7 +467,6 @@ export class Cat {
     let simVelZ = effectiveMagnitude * effectivePower * this.jumpHeightMultiplier;
 
     const points: Array<{ x: number; y: number; z: number; type: "normal" | "bounce" | "ground" }> = [];
-    let bounceCount = 0;
     const dampingZone = 100;
     const dampingStrength = 0.95;
     const dampingRange = 1 - dampingStrength;
@@ -472,29 +507,17 @@ export class Cat {
       [simX, simVelX] = applyEdgeDamping(simX, simVelX, this.radius, this.screenWidth - this.radius);
       [simY, simVelY] = applyEdgeDamping(simY, simVelY, this.radius + simZ, this.screenHeight - this.radius);
 
-      // Ground collision simulation
+      // Ground collision simulation - stop at first ground contact
       if (simZ <= 0) {
         simZ = 0;
-        if (bounceCount < this.maxBounces && Math.abs(simVelZ) > 0.5) {
-          simVelZ = -simVelZ * this.bounceDamping;
-          simVelX *= this.bounceDamping;
-          simVelY *= this.bounceDamping;
-          bounceCount++;
-          points.push({ x: simX, y: simY - simZ + this.catHeight, z: simZ, type: "bounce" });
-        } else {
-          points.push({ x: simX, y: simY - simZ + this.catHeight, z: simZ, type: "ground" });
-          break; // End simulation when cat stops
-        }
+        // Mark first ground contact and stop simulation
+        points.push({ x: simX, y: simY - simZ + this.catHeight, z: simZ, type: "ground" });
+        break; // End simulation at first ground contact
       } else {
         // Only add every few points to avoid clutter
         if (step % 3 === 0) {
           points.push({ x: simX, y: simY - simZ + this.catHeight, z: simZ, type: "normal" });
         }
-      }
-
-      // Stop if velocity is very low and on ground
-      if (simZ <= 0 && Math.abs(simVelX) + Math.abs(simVelY) + Math.abs(simVelZ) < 0.1) {
-        break;
       }
     }
 
@@ -526,57 +549,34 @@ export class Cat {
     context.stroke();
     context.setLineDash([]);
 
-    // Draw predicted bounce and landing markers
     for (const point of predictedPoints) {
-      if (point.type === "bounce") {
-        context.fillStyle = "rgba(255, 200, 0, 0.8)";
-        context.strokeStyle = "rgba(255, 255, 0, 1.0)";
-        context.lineWidth = 2;
+      if (point.type === "ground") {
+        context.fillStyle = "rgba(0, 150, 255, 0.6)";
+        context.save();
+        context.translate(point.x, point.y);
+        context.scale(1, 0.5); // Flatten vertically by 2
         context.beginPath();
-        context.arc(point.x, point.y, 8, 0, Math.PI * 2);
+        context.arc(0, 0, 6, 0, Math.PI * 2);
         context.fill();
-        context.stroke();
-      } else if (point.type === "ground") {
-        context.fillStyle = "rgba(0, 255, 100, 0.8)";
-        context.strokeStyle = "rgba(0, 255, 0, 1.0)";
-        context.lineWidth = 3;
-        context.beginPath();
-        context.arc(point.x, point.y, 12, 0, Math.PI * 2);
-        context.fill();
-        context.stroke();
-
-        // Add landing cross marker
-        context.strokeStyle = "rgba(255, 255, 255, 0.9)";
-        context.lineWidth = 2;
-        context.beginPath();
-        context.moveTo(point.x - 8, point.y);
-        context.lineTo(point.x + 8, point.y);
-        context.moveTo(point.x, point.y - 8);
-        context.lineTo(point.x, point.y + 8);
-        context.stroke();
+        context.restore();
+        break;
       }
     }
   }
 
-  drawShadow(context: CanvasRenderingContext2D, shadowProvider?: IShadowProvider): void {
-    let shadowRadius: number;
+  drawShadow(context: CanvasRenderingContext2D, shadowProvider: IShadowProvider): void {
     let shadowX = this.position.x;
 
-    if (shadowProvider) {
-      // Get the leftmost and rightmost points of the shadow provider (e.g., soft body)
-      const leftPoint = shadowProvider.getLeftmostPoint();
-      const rightPoint = shadowProvider.getRightmostPoint();
+    // Get the leftmost and rightmost points of the shadow provider (e.g., soft body)
+    const leftPoint = shadowProvider.getLeftmostPoint();
+    const rightPoint = shadowProvider.getRightmostPoint();
 
-      // Calculate shadow diameter (distance between edge points)
-      const shadowDiameter = Math.abs(rightPoint.point.pos.x - leftPoint.point.pos.x);
-      shadowRadius = (shadowDiameter / 2) * this.shadowScale;
+    // Calculate shadow diameter (distance between edge points)
+    const shadowDiameter = Math.abs(rightPoint.point.pos.x - leftPoint.point.pos.x);
+    const shadowRadius = shadowDiameter / 2;
 
-      // Position shadow between the edge points
-      shadowX = (leftPoint.point.pos.x + rightPoint.point.pos.x) / 2;
-    } else {
-      // Use cat radius as fallback
-      shadowRadius = this.radius * this.shadowScale;
-    }
+    // Position shadow between the edge points
+    shadowX = (leftPoint.point.pos.x + rightPoint.point.pos.x) / 2;
 
     // Calculate shadow position (catHeight + z distance below cat)
     const shadowY = this.position.y + this.catHeight + this.z;

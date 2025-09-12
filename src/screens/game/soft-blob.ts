@@ -102,7 +102,7 @@ export class SoftBlob {
     originX: number,
     originY: number,
     numPoints: number,
-    private radius: number,
+    radius: number,
     puffiness: number,
     public outlineSize: number,
   ) {
