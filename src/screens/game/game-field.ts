@@ -180,6 +180,17 @@ export class GameField extends DisplayObject {
     );
   }
 
+  // Check if a circular object is visible in the current camera viewport with margin
+  private isCircleVisible(worldPos: Point2D, radius: number, margin: number = 50): boolean {
+    const { x, y } = this.camera;
+    return (
+      worldPos.x + radius >= x - margin &&
+      worldPos.x - radius <= x + c.width + margin &&
+      worldPos.y + radius >= y - margin &&
+      worldPos.y - radius <= y + c.height + margin
+    );
+  }
+
   // Calculate screen edge position for off-screen indicator
   private getScreenEdgePosition(worldX: number, worldY: number): { x: number; y: number } {
     const screenCenterX = c.width / 2;
@@ -363,12 +374,14 @@ export class GameField extends DisplayObject {
     context.lineWidth = 4;
     context.strokeRect(0, 0, this.gameFieldSize.width, this.gameFieldSize.height);
 
-    // Draw all vehicles
+    // Draw all vehicles (only render visible ones)
     this.vehicles.forEach((vehicle) => {
-      vehicle.render(context);
-      if (this.controls.showDebug) {
-        vehicle.drawWanderDebug(context);
-        vehicle.drawFleeDebug(context, this.cat.position);
+      if (this.isCircleVisible(vehicle.position, vehicle.size * 2)) {
+        vehicle.render(context);
+        if (this.controls.showDebug) {
+          vehicle.drawWanderDebug(context);
+          vehicle.drawFleeDebug(context, this.cat.position);
+        }
       }
     });
 
@@ -393,15 +406,16 @@ export class GameField extends DisplayObject {
 
     if (import.meta.env.PROD) return;
 
-    // Count visible and off-screen vehicles
-    const visibleCount = this.vehicles.filter((vehicle) => this.isPositionVisible(vehicle.position)).length;
-    const offScreenCount = this.vehicles.length - visibleCount;
+    // Count visible and off-screen vehicles (using same visibility check as rendering)
+    const visibleVehicles = this.vehicles.filter((vehicle) => this.isCircleVisible(vehicle.position, vehicle.size * 2));
+    const culledVehicles = this.vehicles.length - visibleVehicles.length;
+    const onScreenVehicles = this.vehicles.filter((vehicle) => this.isPositionVisible(vehicle.position)).length;
 
     // Draw UI elements (not affected by camera)
     context.fillStyle = "#666666";
     context.font = "14px Arial";
     context.fillText(
-      `Vehicles: ${this.vehicles.length} (${visibleCount} visible, ${offScreenCount} off-screen)`,
+      `Vehicles: ${this.vehicles.length} (${visibleVehicles.length} rendered, ${culledVehicles} culled, ${onScreenVehicles} on-screen)`,
       10,
       25,
     );
