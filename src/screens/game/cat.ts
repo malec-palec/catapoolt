@@ -54,6 +54,7 @@ export class Cat {
   public dragStartPos: Vector2D;
   public launchPower = 0.05; // Launch power multiplier (reduced from 0.1)
   public maxLaunchPower = 0.15; // Maximum allowed launch power
+  public maxDragDistance = 200; // Maximum drag distance in pixels
 
   constructor(x: number, y: number, radius: number = 30) {
     this.position = new Vector2D(x, y);
@@ -205,14 +206,17 @@ export class Cat {
       this.isDragging = false;
 
       // Calculate launch vector (opposite direction of drag)
-      const dragVector = Vector2D.sub(this.dragStartPos, new Vector2D(x, y));
+      const rawDragVector = Vector2D.sub(this.dragStartPos, new Vector2D(x, y));
+      const dragMagnitude = rawDragVector.mag();
 
-      // Limit the launch power to maximum allowed
+      // Apply magnitude limit and power constraints in one step
+      const effectiveMagnitude = Math.min(dragMagnitude, this.maxDragDistance);
       const effectivePower = Math.min(this.launchPower, this.maxLaunchPower);
+      const powerScale = (effectivePower / this.mass) * (effectiveMagnitude / Math.max(dragMagnitude, 1));
 
-      // Apply launch power and mass
-      this.velocity = Vector2D.mult(dragVector, effectivePower / this.mass);
-      this.velocityZ = Math.abs(dragVector.mag()) * effectivePower * 0.5; // Initial upward velocity
+      // Set velocity directly without creating intermediate vectors
+      this.velocity = Vector2D.mult(rawDragVector, powerScale);
+      this.velocityZ = effectiveMagnitude * effectivePower * 0.5;
 
       this.isFlying = true;
       this.bounceCount = 0;
@@ -228,42 +232,8 @@ export class Cat {
       // Apply gravity to Z velocity
       this.velocityZ -= this.gravity;
 
-      // Check screen edge collisions (only when cat is at ground level or close to it)
-      if (this.z <= this.radius) {
-        let bounced = false;
-
-        // Left edge
-        if (this.position.x - this.radius <= 0) {
-          this.position.x = this.radius;
-          this.velocity.x = -this.velocity.x * this.bounceDamping;
-          bounced = true;
-        }
-
-        // Right edge
-        if (this.position.x + this.radius >= this.screenWidth) {
-          this.position.x = this.screenWidth - this.radius;
-          this.velocity.x = -this.velocity.x * this.bounceDamping;
-          bounced = true;
-        }
-
-        // Top edge (only if cat is high enough)
-        if (this.position.y - this.radius - this.z <= 0) {
-          this.position.y = this.radius + this.z;
-          this.velocity.y = -this.velocity.y * this.bounceDamping;
-          bounced = true;
-        }
-
-        // Bottom edge
-        if (this.position.y + this.radius >= this.screenHeight) {
-          this.position.y = this.screenHeight - this.radius;
-          this.velocity.y = -this.velocity.y * this.bounceDamping;
-          bounced = true;
-        }
-
-        if (bounced && this.bounceCount < this.maxBounces) {
-          this.bounceCount++;
-        }
-      }
+      // Apply smooth boundary damping instead of hard bounces
+      this.applySmoothBoundaryDamping();
 
       // Check ground collision
       if (this.z <= 0) {
@@ -288,6 +258,54 @@ export class Cat {
   setScreenBounds(width: number, height: number): void {
     this.screenWidth = width;
     this.screenHeight = height;
+  }
+
+  private applySmoothBoundaryDamping(): void {
+    const dampingZone = 100;
+    const dampingStrength = 0.95;
+    const dampingRange = 1 - dampingStrength;
+
+    // Helper function to apply edge damping
+    const applyEdgeDamping = (
+      position: number,
+      velocity: number,
+      minBound: number,
+      maxBound: number,
+    ): [number, number] => {
+      const distance = position - minBound;
+      if (distance <= 0) {
+        return [minBound, Math.max(0, velocity)];
+      }
+      if (distance <= dampingZone && velocity < 0) {
+        return [position, velocity * (dampingStrength + dampingRange * (distance / dampingZone))];
+      }
+
+      const distanceFromMax = maxBound - position;
+      if (distanceFromMax <= 0) {
+        return [maxBound, Math.min(0, velocity)];
+      }
+      if (distanceFromMax <= dampingZone && velocity > 0) {
+        return [position, velocity * (dampingStrength + dampingRange * (distanceFromMax / dampingZone))];
+      }
+
+      return [position, velocity];
+    };
+
+    // Apply horizontal damping
+    [this.position.x, this.velocity.x] = applyEdgeDamping(
+      this.position.x,
+      this.velocity.x,
+      this.radius,
+      this.screenWidth - this.radius,
+    );
+
+    // Apply vertical damping
+    [this.position.y, this.velocity.y] = applyEdgeDamping(
+      this.position.y,
+      this.velocity.y,
+      this.radius + this.z,
+      this.screenHeight - this.radius,
+    );
   }
 
   isPressed(v: Vector2D): boolean {

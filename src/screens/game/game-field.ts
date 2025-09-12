@@ -148,32 +148,24 @@ export class GameField extends DisplayObject {
   }
 
   private constrainCatHeadToSoftBody(): void {
-    // Only apply constraint when cat is moving above a certain speed threshold
-    const currentSpeed = this.cat.velocity.mag();
-    const speedThreshold = 2.0; // Adjust this value to control when constraint kicks in
+    // Quick distance check using squared distance to avoid sqrt
+    const bodyCenter = this.catBody.getCenterOfMass();
+    const deltaX = this.cat.position.x - bodyCenter.x;
+    const deltaY = this.cat.position.y - bodyCenter.y;
+    const maxDistance = this.cat.radius * 2;
 
-    if (currentSpeed < speedThreshold) {
-      return;
-    }
+    // Use squared distance comparison to avoid expensive sqrt
+    if (deltaX * deltaX + deltaY * deltaY > maxDistance * maxDistance) {
+      const catMovementX = this.cat.velocity.x;
+      const catMovementY = this.cat.velocity.y;
 
-    const catX = this.cat.position.x;
-    const catY = this.cat.position.y;
-
-    // Check if current position is outside the soft body
-    if (!this.catBody.isPointInside(catX, catY)) {
-      // Cat has moved outside - ease between previous and current position
-      const prevX = catX - this.cat.velocity.x;
-      const prevY = catY - this.cat.velocity.y;
-
-      const easing = 0.8; // 0.0 = stay at previous position, 1.0 = allow full movement
-      const easedX = prevX + (catX - prevX) * easing;
-      const easedY = prevY + (catY - prevY) * easing;
-
-      this.cat.position.x = easedX;
-      this.cat.position.y = easedY;
-
-      // Reduce velocity to prevent constant bouncing against the boundary
-      // this.cat.velocity.mult(0.5); // Less aggressive velocity reduction with easing
+      // Move all soft body points by cat movement in single loop
+      for (const point of this.catBody.points) {
+        point.pos.x += catMovementX;
+        point.pos.y += catMovementY;
+        point.prevPos.x += catMovementX;
+        point.prevPos.y += catMovementY;
+      }
     }
   }
 
@@ -304,6 +296,7 @@ export class GameField extends DisplayObject {
     physicsFolder.add(this.cat, "gravity", 0.1, 2.0, 0.1);
     physicsFolder.add(this.cat, "launchPower", 0.01, 0.2, 0.005);
     physicsFolder.add(this.cat, "maxLaunchPower", 0.05, 0.5, 0.005);
+    physicsFolder.add(this.cat, "maxDragDistance", 50, 400, 10);
     physicsFolder.add(this.cat, "bounceDamping", 0.1, 1.0, 0.1);
     physicsFolder.add(this.cat, "maxBounces", 0, 10, 1);
 
@@ -338,7 +331,7 @@ export class GameField extends DisplayObject {
     this.catBody.tick(this.cat.getCollider(), this.gameFieldSize.width, groundLevel);
 
     // Constrain cat head to stay inside soft body
-    // this.constrainCatHeadToSoftBody();
+    this.constrainCatHeadToSoftBody();
 
     this.catTail.stickTo(this.catBody);
     this.catTail.tick();
@@ -514,23 +507,53 @@ export class GameField extends DisplayObject {
     const dragX = this.curMousePos.x;
     const dragY = this.curMousePos.y;
 
-    // Draw main slingshot line (thicker and more visible)
-    context.strokeStyle = "#ff0000";
+    // Calculate drag vector and distance once
+    const dragVectorX = dragX - catX;
+    const dragVectorY = dragY - catY;
+    const dragDistance = Math.sqrt(dragVectorX * dragVectorX + dragVectorY * dragVectorY);
+    const maxDragDistance = this.cat.maxDragDistance;
+
+    // Calculate visual drag position (limited to max distance)
+    let visualDragX = dragX;
+    let visualDragY = dragY;
+
+    if (dragDistance > maxDragDistance) {
+      const scale = maxDragDistance / dragDistance;
+      visualDragX = catX + dragVectorX * scale;
+      visualDragY = catY + dragVectorY * scale;
+    }
+
+    // Calculate power ratio and line color once
+    const powerRatio = Math.min(dragDistance / maxDragDistance, 1.0);
+    const red = Math.floor(255 * powerRatio);
+    const green = Math.floor(255 * (1 - powerRatio));
+    const lineColor = `rgb(${red}, ${green}, 0)`;
+
+    // Draw main slingshot line
+    context.strokeStyle = lineColor;
     context.lineWidth = 4;
     context.lineCap = "round";
     context.setLineDash([]);
     context.beginPath();
     context.moveTo(catX, catY);
-    context.lineTo(dragX, dragY);
+    context.lineTo(visualDragX, visualDragY);
     context.stroke();
 
-    // Draw trajectory preview (opposite direction)
-    const dragVector = { x: catX - dragX, y: catY - dragY };
-    const trajectoryLength = Math.min(Math.sqrt(dragVector.x * dragVector.x + dragVector.y * dragVector.y) * 2, 200);
+    // Draw drag point indicator with same color
+    context.fillStyle = lineColor;
+    context.beginPath();
+    context.arc(visualDragX, visualDragY, 8, 0, Math.PI * 2);
+    context.fill();
+
+    // Draw trajectory preview using visual drag position
+    const trajectoryVectorX = catX - visualDragX;
+    const trajectoryVectorY = catY - visualDragY;
+    const trajectoryDistance = Math.sqrt(trajectoryVectorX * trajectoryVectorX + trajectoryVectorY * trajectoryVectorY);
+    const trajectoryLength = Math.min(trajectoryDistance * 2, 200);
 
     if (trajectoryLength > 0) {
-      const normalizedX = dragVector.x / Math.sqrt(dragVector.x * dragVector.x + dragVector.y * dragVector.y);
-      const normalizedY = dragVector.y / Math.sqrt(dragVector.x * dragVector.x + dragVector.y * dragVector.y);
+      const normalizedX = trajectoryVectorX / trajectoryDistance;
+      const normalizedY = trajectoryVectorY / trajectoryDistance;
 
       const trajectoryEndX = catX + normalizedX * trajectoryLength;
       const trajectoryEndY = catY + normalizedY * trajectoryLength;
@@ -564,14 +587,8 @@ export class GameField extends DisplayObject {
       context.fill();
     }
 
-    // Draw drag point indicator
-    context.fillStyle = "#ff0000";
-    context.beginPath();
-    context.arc(dragX, dragY, 6, 0, Math.PI * 2);
-    context.fill();
-
     // Draw power indicator circle around cat
-    const power = Math.min(Math.sqrt(dragVector.x * dragVector.x + dragVector.y * dragVector.y) / 100, 1);
+    const power = Math.min(dragDistance / 100, 1);
     context.strokeStyle = `rgba(255, 0, 0, ${0.3 + power * 0.5})`;
     context.lineWidth = 3;
     context.setLineDash([]);
