@@ -1,4 +1,4 @@
-import { getGlobalVolume, toggleMute } from "../music";
+import { getGlobalVolume, toggleMute } from "./audio/sound";
 import { Button } from "./button";
 
 export class MuteButton extends Button {

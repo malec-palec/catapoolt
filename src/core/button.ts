@@ -1,4 +1,5 @@
 import { Event, MouseEvent, MouseEventType } from "../core/event";
+import { playSound, Sounds } from "./audio/sound";
 import { DisplayObject } from "./display";
 
 export const enum ButtonState {
@@ -126,6 +127,7 @@ export class Button extends DisplayObject {
 
         case MouseEventType.CLICK:
           if (isOver) {
+            playSound(Sounds.Beep);
             this.clickHandler();
             event.acknowledge();
           }

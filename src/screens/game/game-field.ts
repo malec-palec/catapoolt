@@ -1,4 +1,5 @@
 import * as dat from "dat.gui";
+import { playSound, Sounds } from "../../core/audio/sound";
 import { DisplayObject } from "../../core/display";
 import { Event, MouseEvent, MouseEventType } from "../../core/event";
 import { Point2D } from "../../core/geom";
@@ -309,7 +310,6 @@ export class GameField extends DisplayObject {
     const debugFolder = folder.addFolder("Debug");
     debugFolder.add(this.controls, "showDebug");
     debugFolder.add(this.cat, "debugTrajectory").name("Show Cat Trajectory");
-    debugFolder.add(this.cat, "showPredictiveTrajectory").name("Show Predictive Trajectory");
     debugFolder.add(this.cat, "predictiveSteps", 50, 300, 10).name("Prediction Steps");
     debugFolder.add(this.cat, "predictiveStepSize", 0.1, 2.0, 0.1).name("Prediction Accuracy");
     debugFolder.add(this.controls, "resetVehicles");
@@ -357,11 +357,18 @@ export class GameField extends DisplayObject {
 
     // Check for collisions between cat and vehicles - only when cat is on ground (z <= 5)
     if (this.cat.z <= 5) {
+      const initialVehicleCount = this.vehicles.length;
       this.vehicles = this.vehicles.filter((vehicle) => {
         const distance = Vector2D.dist(vehicle.position, this.cat.position);
         const collisionDistance = vehicle.size + this.cat.radius;
         return distance > collisionDistance; // Keep vehicles that are NOT colliding
       });
+
+      // Play eating sound if any mice were caught
+      const miceCaught = initialVehicleCount - this.vehicles.length;
+      if (miceCaught > 0) {
+        playSound(Sounds.Smacking);
+      }
     }
   }
 
@@ -414,7 +421,7 @@ export class GameField extends DisplayObject {
     // Draw slingshot trajectory preview if dragging
     if (this.cat.isDragging) {
       // Draw predictive trajectory first (behind slingshot line)
-      this.cat.renderPredictiveTrajectory(context, this.curMousePos.x, this.curMousePos.y);
+      this.cat.drawPredictiveTrajectory(context, this.curMousePos.x, this.curMousePos.y);
 
       this.drawSlingshotPreview(context);
     }
@@ -621,6 +628,7 @@ export class GameField extends DisplayObject {
     if (this.isMouseDown) {
       this.isMouseDown = false;
       if (this.cat.isDragging) {
+        playSound(Sounds.Release);
         const worldPos = this.screenToWorld(x, y);
         this.cat.launch(worldPos.x, worldPos.y);
       }

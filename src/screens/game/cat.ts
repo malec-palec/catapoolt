@@ -1,3 +1,4 @@
+import { playSound, Sounds } from "../../core/audio/sound";
 import { Vector2D } from "../../core/vector2d";
 import { ICircleCollider } from "./soft-blob";
 
@@ -55,9 +56,13 @@ export class Cat {
   public maxTrajectoryPoints = 100;
 
   // Predictive trajectory
-  public showPredictiveTrajectory = true;
   public predictiveSteps = 150; // Number of simulation steps
   public predictiveStepSize = 0.5; // Time step for simulation
+
+  // Wobble sound timing
+  private wobbleTimer = 0;
+  private wobblePlayed = false;
+  private wobbleDelay = 0.4; // seconds
 
   // Slingshot properties
   public isDragging = false;
@@ -200,6 +205,7 @@ export class Cat {
 
   startDrag(x: number, y: number): void {
     if (!this.isFlying) {
+      playSound(Sounds.Stretching);
       this.isDragging = true;
       this.dragStartPos.set(x, y);
     }
@@ -232,6 +238,10 @@ export class Cat {
       this.isFlying = true;
       this.bounceCount = 0;
 
+      // Reset wobble sound timing
+      this.wobbleTimer = 0;
+      this.wobblePlayed = false;
+
       // Clear previous trajectory when launching
       if (this.debugTrajectory) {
         this.trajectoryPoints = [];
@@ -241,6 +251,13 @@ export class Cat {
 
   tick(): void {
     if (this.isFlying) {
+      // Update wobble sound timer
+      this.wobbleTimer += 1 / 60; // Assuming 60 FPS (16.67ms per frame)
+      if (!this.wobblePlayed && this.wobbleTimer >= this.wobbleDelay) {
+        playSound(Sounds.Wobble);
+        this.wobblePlayed = true;
+      }
+
       // Apply physics
       this.position.add(this.velocity);
       this.z += this.velocityZ;
@@ -261,6 +278,7 @@ export class Cat {
         this.z = 0;
 
         if (this.bounceCount < this.maxBounces && Math.abs(this.velocityZ) > 0.5) {
+          playSound(Sounds.Poop);
           // Bounce
           this.velocityZ = -this.velocityZ * this.bounceDamping;
           this.velocity.mult(this.bounceDamping); // Reduce horizontal velocity on bounce
@@ -483,8 +501,8 @@ export class Cat {
     return points;
   }
 
-  renderPredictiveTrajectory(context: CanvasRenderingContext2D, launchX: number, launchY: number): void {
-    if (!this.showPredictiveTrajectory || !this.isDragging) return;
+  drawPredictiveTrajectory(context: CanvasRenderingContext2D, launchX: number, launchY: number): void {
+    if (!this.isDragging) return;
 
     const predictedPoints = this.calculatePredictiveTrajectory(launchX, launchY);
     if (predictedPoints.length < 2) return;

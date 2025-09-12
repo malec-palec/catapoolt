@@ -1,11 +1,11 @@
 import { BaseScreen } from "../base-screen";
+import { playMusic } from "../core/audio/sound";
 import { Button } from "../core/button";
 import { Event } from "../core/event";
 import { MuteButton } from "../core/mute-button";
 import { Popup } from "../core/popup";
 import { Text } from "../core/text";
 import { IGame } from "../game";
-import { playMusic } from "../music";
 import { GameField } from "./game/game-field";
 import { StartScreen } from "./start-screen";
 export class GameScreen extends BaseScreen {
@@ -72,13 +72,14 @@ export class GameScreen extends BaseScreen {
     this.add(this.title, this.gameField, muteButton, this.menuButton, this.pausePopup);
 
     if (import.meta.env.PROD) playMusic();
+    // playMusic();
 
     if (import.meta.env.DEV) {
       import("dat.gui").then((dat) => {
         const gui = new dat.GUI();
         const fieldFolder = gui.addFolder("GameField");
         this.gameField.setupGUI(fieldFolder);
-        fieldFolder.open();
+        // fieldFolder.open();
       });
     }
   }

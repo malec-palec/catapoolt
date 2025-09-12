@@ -1,9 +1,9 @@
 import { BaseScreen } from "../base-screen";
 import { AnimatedText } from "../core/animated-text";
+import { stopMusic } from "../core/audio/sound";
 import { Button } from "../core/button";
 import { Text } from "../core/text";
 import { IGame } from "../game";
-import { stopMusic } from "../music";
 import { getAdaptiveFontSize } from "../registry";
 import { CreditsScreen } from "./credits-screen";
 import { GameScreen } from "./game-screen";
