@@ -4,11 +4,10 @@ import "./player.min.js";
 export const enum Sounds {
   Beep = 19,
   Stretching = 20,
-  Release = 21,
-  Landing = 22,
+  ReleaseWobble = 21,
+  Poop = 22,
   Smacking = 23,
-  Wobble = 24,
-  Poop = 25,
+  Landing = 25,
 }
 
 const pico8 = new Pico8(sfx, music);

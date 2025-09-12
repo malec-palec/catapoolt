@@ -58,11 +58,6 @@ export class Cat {
   public predictiveSteps = 150; // Number of simulation steps
   public predictiveStepSize = 0.5; // Time step for simulation
 
-  // Wobble sound timing
-  private wobbleTimer = 0;
-  private wobblePlayed = false;
-  private wobbleDelay = 0.4; // seconds
-
   // Slingshot properties
   public isDragging = false;
   public dragStartPos: Vector2D;
@@ -237,10 +232,6 @@ export class Cat {
       this.isFlying = true;
       this.bounceCount = 0;
 
-      // Reset wobble sound timing
-      this.wobbleTimer = 0;
-      this.wobblePlayed = false;
-
       // Clear previous trajectory when launching
       if (this.debugTrajectory) {
         this.trajectoryPoints = [];
@@ -250,13 +241,6 @@ export class Cat {
 
   tick(): void {
     if (this.isFlying) {
-      // Update wobble sound timer
-      this.wobbleTimer += 1 / 60; // Assuming 60 FPS (16.67ms per frame)
-      if (!this.wobblePlayed && this.wobbleTimer >= this.wobbleDelay) {
-        playSound(Sounds.Wobble);
-        this.wobblePlayed = true;
-      }
-
       // Apply physics
       this.position.add(this.velocity);
       this.z += this.velocityZ;
@@ -277,7 +261,7 @@ export class Cat {
         this.z = 0;
 
         if (this.bounceCount < this.maxBounces && Math.abs(this.velocityZ) > 0.5) {
-          playSound(Sounds.Poop);
+          playSound(Sounds.Landing);
           // Bounce
           this.velocityZ = -this.velocityZ * this.bounceDamping;
           this.velocity.mult(this.bounceDamping); // Reduce horizontal velocity on bounce

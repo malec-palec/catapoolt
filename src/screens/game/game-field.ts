@@ -634,7 +634,7 @@ export class GameField extends DisplayObject {
     if (this.isMouseDown) {
       this.isMouseDown = false;
       if (this.cat.isDragging) {
-        playSound(Sounds.Release);
+        playSound(Sounds.ReleaseWobble);
         const worldPos = this.screenToWorld(x, y);
         this.cat.launch(worldPos.x, worldPos.y);
       }
