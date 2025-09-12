@@ -432,6 +432,14 @@ export class GameField extends DisplayObject {
     // Draw off-screen vehicle indicators
     this.drawOffScreenIndicators(context);
 
+    // Draw mice counter (always visible)
+    context.fillStyle = "#333333";
+    context.font = "bold 24px Arial";
+    context.textAlign = "center";
+    const miceText = `Mice: ${this.vehicles.length}`;
+    context.fillText(miceText, c.width / 2, 35);
+    context.textAlign = "left"; // Reset text alignment
+
     if (import.meta.env.PROD) return;
 
     // Draw UI elements (not affected by camera)

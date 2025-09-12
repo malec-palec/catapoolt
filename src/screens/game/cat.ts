@@ -51,7 +51,7 @@ export class Cat {
   public screenHeight = 600; // Screen height for edge bouncing
 
   // Debug trajectory visualization
-  public debugTrajectory = import.meta.env.DEV;
+  public debugTrajectory = false; // import.meta.env.DEV;
   public trajectoryPoints: Array<{ x: number; y: number; z: number; type: "normal" | "bounce" | "ground" }> = [];
   public maxTrajectoryPoints = 100;
 
