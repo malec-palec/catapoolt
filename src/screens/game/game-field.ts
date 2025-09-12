@@ -561,19 +561,7 @@ export class GameField extends DisplayObject {
         case MouseEventType.MOUSE_UP:
           this.onMouseUp(event.mouseX, event.mouseY);
           break;
-
-        case MouseEventType.CLICK:
-          this.onClick(event.mouseX, event.mouseY);
-          break;
       }
-    }
-  }
-
-  private onClick(x: number, y: number): void {
-    const worldPos = this.screenToWorld(x, y);
-    // Handle slingshot launch on mouse up
-    if (this.cat.isDragging) {
-      this.cat.launch(worldPos.x, worldPos.y);
     }
   }
 
@@ -606,6 +594,11 @@ export class GameField extends DisplayObject {
     // Update drag if dragging
     if (this.isMouseDown && this.cat.isDragging) {
       this.cat.updateDrag(worldPos.x, worldPos.y);
+    }
+
+    const safeZone = 5;
+    if (x < safeZone || x > c.width - safeZone || y < safeZone || y > c.height - safeZone) {
+      this.onMouseUp(x, y);
     }
   }
 }
