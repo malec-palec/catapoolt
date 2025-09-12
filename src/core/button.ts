@@ -8,8 +8,10 @@ export const enum ButtonState {
   Disabled,
 }
 export class Button extends DisplayObject {
-  private currentState: ButtonState = ButtonState.Normal;
   text: string;
+  isVisible: boolean = true;
+
+  private currentState: ButtonState = ButtonState.Normal;
   private clickHandler: () => void;
   private isEnabled: boolean = true;
   private fontSize: number = 16;
@@ -50,6 +52,8 @@ export class Button extends DisplayObject {
   }
 
   draw(context: CanvasRenderingContext2D): void {
+    if (!this.isVisible) return;
+
     if (!this.isEnabled) {
       this.currentState = ButtonState.Disabled;
     }

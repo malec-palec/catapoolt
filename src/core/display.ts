@@ -34,4 +34,9 @@ export class DisplayObject implements IDisplayObject {
     this.position.x = x;
     this.position.y = y;
   }
+
+  setSize(width: number, height: number): void {
+    this.width = width;
+    this.height = height;
+  }
 }

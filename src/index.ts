@@ -12,5 +12,3 @@ const loop = (now: DOMHighResTimeStamp) => {
 };
 
 requestAnimationFrame(loop);
-
-if (import.meta.hot) import.meta.hot.accept();

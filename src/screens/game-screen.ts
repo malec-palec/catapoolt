@@ -5,13 +5,14 @@ import { MuteButton } from "../core/mute-button";
 import { Popup } from "../core/popup";
 import { Text } from "../core/text";
 import { IGame } from "../game";
-import { playMusic } from "../music";
+import { GameField } from "./game/game-field";
 import { StartScreen } from "./start-screen";
-
 export class GameScreen extends BaseScreen {
   private title: Text;
   private menuButton: Button;
   private pausePopup: Popup;
+
+  private gameField: GameField;
 
   constructor(game: IGame) {
     super(game);
@@ -54,16 +55,22 @@ export class GameScreen extends BaseScreen {
       width: 60,
       fontSize: 24,
     });
+    // TODO: uncomment - temporary hide mute button
+    muteButton.isVisible = false;
 
-    this.add(this.title, muteButton, this.menuButton, this.pausePopup);
+    this.gameField = new GameField(c.width, c.height);
 
-    playMusic();
+    this.add(this.title, this.gameField, muteButton, this.menuButton, this.pausePopup);
+
+    // TODO: uncomment - temporary turn off music
+    // playMusic();
 
     if (import.meta.env.DEV) {
       import("dat.gui").then((dat) => {
         const gui = new dat.GUI();
-        const gameFolder = gui.addFolder("GameScreen");
-        gameFolder.open();
+        const fieldFolder = gui.addFolder("GameField");
+        this.gameField.setupGUI(fieldFolder);
+        fieldFolder.open();
       });
     }
   }
@@ -81,9 +88,11 @@ export class GameScreen extends BaseScreen {
   override doResize(): void {
     this.title.setPosition(c.width / 2, c.height / 2);
 
+    this.gameField.setSize(c.width, c.height);
+
     this.menuButton.setPosition(c.width - this.menuButton.width - 16, 16);
     this.pausePopup.onResize();
+
+    console.log("🔥 GameScreen onResize");
   }
 }
-
-// if (import.meta.hot) import.meta.hot.accept(()=>{});

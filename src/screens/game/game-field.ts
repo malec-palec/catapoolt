@@ -1,12 +1,12 @@
 import * as dat from "dat.gui";
-import { BaseScreen } from "../base-screen";
-import { Vector2D } from "../core/vector2d";
-import { Vehicle, VehicleOptions } from "../core/vehicle";
-import { IGame } from "../game";
-import { COLOR_BLACK, COLOR_WHITE } from "../registry";
-import { Cat } from "./game/cat";
-import { SoftBlob } from "./game/soft-blob";
-import { Tail } from "./game/tail";
+import { DisplayObject } from "../../core/display";
+import { Event, MouseEvent, MouseEventType } from "../../core/event";
+import { Vector2D } from "../../core/vector2d";
+import { Vehicle, VehicleOptions } from "../../core/vehicle";
+import { COLOR_BLACK } from "../../registry";
+import { Cat } from "./cat";
+import { SoftBlob } from "./soft-blob";
+import { Tail } from "./tail";
 
 interface VehicleControls {
   vehicleCount: number;
@@ -27,24 +27,23 @@ interface VehicleControls {
   showDebug: boolean;
   resetVehicles: () => void;
 }
-
-export class TestGameScreen extends BaseScreen {
+export class GameField extends DisplayObject {
   private vehicles: Vehicle[] = [];
   private controls: VehicleControls;
-  private gui: dat.GUI;
-  private cat: Cat;
 
+  private cat: Cat;
   private catBody: SoftBlob;
-  catTail: Tail;
+  private catTail: Tail;
 
   // Camera system
   private camera = { x: 0, y: 0 };
-  private gameField = { width: 1600, height: 1200 }; // 2x screen size
+  private gameFieldSize = { width: 1600, height: 1200 }; // 2x screen size
 
-  constructor(game: IGame) {
-    super(game);
+  private curMousePos = { x: 0, y: 0 };
+  private isMouseDown = false;
 
-    this.bgColor = COLOR_WHITE;
+  constructor(width: number, height: number) {
+    super(width, height);
 
     // Initialize controls
     this.controls = {
@@ -64,9 +63,8 @@ export class TestGameScreen extends BaseScreen {
       bufferZone: 160,
       boundaryAvoidance: 50,
       showDebug: false,
-      resetVehicles: () => this.createVehicles(),
+      resetVehicles: () => this.createVehicles(this.controls),
     };
-
     // Create cat at center of game field
     this.cat = new Cat(
       this.controls.gameFieldWidth / 2,
@@ -76,97 +74,46 @@ export class TestGameScreen extends BaseScreen {
     this.cat.setScreenBounds(this.controls.gameFieldWidth, this.controls.gameFieldHeight);
 
     // Update game field size
-    this.gameField.width = this.controls.gameFieldWidth;
-    this.gameField.height = this.controls.gameFieldHeight;
+    this.gameFieldSize.width = this.controls.gameFieldWidth;
+    this.gameFieldSize.height = this.controls.gameFieldHeight;
 
     this.catBody = new SoftBlob(this.cat.position.x, this.cat.position.y, 20, 36, 1.5, 12);
     const anchor = Math.random() < 0.5 ? this.catBody.getRightmostPoint() : this.catBody.getLeftmostPoint();
     this.catTail = new Tail(anchor.point, 8, 15, 12);
 
-    // Create GUI
-    this.gui = new dat.GUI();
-    this.setupGUI();
-
     // Create initial vehicles
-    this.createVehicles();
+    this.createVehicles(this.controls);
   }
 
-  private setupGUI(): void {
-    const miceFolder = this.gui.addFolder("Mice");
-
-    const vehicleFolder = miceFolder.addFolder("Vehicles");
-    vehicleFolder.add(this.controls, "vehicleCount", 1, 100, 1).onChange(() => this.createVehicles());
-    vehicleFolder.add(this.controls, "maxSpeed", 0.1, 10, 0.1).onChange(() => this.updateVehicleProperties());
-    vehicleFolder.add(this.controls, "maxForce", 0.01, 1, 0.01).onChange(() => this.updateVehicleProperties());
-
-    const wanderFolder = miceFolder.addFolder("Wandering");
-    wanderFolder.add(this.controls, "wanderRadius", 5, 100, 1).onChange(() => this.updateVehicleProperties());
-    wanderFolder.add(this.controls, "wanderDistance", 10, 200, 1).onChange(() => this.updateVehicleProperties());
-    wanderFolder.add(this.controls, "wanderChange", 0.01, 1, 0.01).onChange(() => this.updateVehicleProperties());
-
-    const separationFolder = miceFolder.addFolder("Separation");
-    separationFolder.add(this.controls, "separationRadius", 10, 100, 1).onChange(() => this.updateVehicleProperties());
-    separationFolder.add(this.controls, "separationWeight", 0, 5, 0.1).onChange(() => this.updateVehicleProperties());
-
-    const fleeFolder = miceFolder.addFolder("Flee from Cat");
-    fleeFolder.add(this.controls, "fleeRadius", 50, 300, 10).onChange(() => this.updateVehicleProperties());
-    fleeFolder.add(this.controls, "fleeWeight", 0, 10, 0.1).onChange(() => this.updateVehicleProperties());
-
-    const boundaryFolder = miceFolder.addFolder("Boundary Avoidance");
-    boundaryFolder.add(this.controls, "boundaryAvoidance", 0, 150, 5);
-
-    const catFolder = this.gui.addFolder("Cat");
-    catFolder.add(this.controls, "catRadius", 10, 100, 1).onChange(() => this.updateCatProperties());
-    catFolder.add(this.cat, "catHeight", 10, 200, 1);
-    catFolder.add(this.cat, "debugDraw");
-    catFolder.add(this.cat, "shadowScale", 0.1, 3.0, 0.1);
-
-    const physicsFolder = catFolder.addFolder("Physics");
-    physicsFolder.add(this.cat, "mass", 0.1, 5.0, 0.1);
-    physicsFolder.add(this.cat, "gravity", 0.1, 2.0, 0.1);
-    physicsFolder.add(this.cat, "launchPower", 0.01, 0.2, 0.005);
-    physicsFolder.add(this.cat, "maxLaunchPower", 0.05, 0.5, 0.005);
-    physicsFolder.add(this.cat, "bounceDamping", 0.1, 1.0, 0.1);
-    physicsFolder.add(this.cat, "maxBounces", 0, 10, 1);
-
-    const gameFieldFolder = this.gui.addFolder("Game Field");
-    gameFieldFolder.add(this.controls, "gameFieldWidth", 800, 3200, 100).onChange(() => this.updateGameField());
-    gameFieldFolder.add(this.controls, "gameFieldHeight", 600, 2400, 100).onChange(() => this.updateGameField());
-    gameFieldFolder.add(this.controls, "bufferZone", 0, 500, 25);
-
-    const debugFolder = this.gui.addFolder("Debug");
-    debugFolder.add(this.controls, "showDebug");
-    debugFolder.add(this.controls, "resetVehicles");
-
-    vehicleFolder.open();
-    wanderFolder.open();
-    separationFolder.open();
-    fleeFolder.open();
-    boundaryFolder.open();
-    catFolder.open();
-    physicsFolder.open();
-    gameFieldFolder.open();
-    debugFolder.open();
-  }
-
-  private createVehicles(): void {
+  private createVehicles({
+    vehicleCount,
+    maxSpeed,
+    maxForce,
+    wanderRadius,
+    wanderDistance,
+    wanderChange,
+    separationRadius,
+    separationWeight,
+    fleeRadius,
+    fleeWeight,
+  }: VehicleControls): void {
     this.vehicles = [];
 
-    for (let i = 0; i < this.controls.vehicleCount; i++) {
-      const x = Math.random() * this.gameField.width;
-      const y = Math.random() * this.gameField.height;
+    for (let i = 0; i < vehicleCount; i++) {
+      const x = Math.random() * this.gameFieldSize.width;
+      const y = Math.random() * this.gameFieldSize.height;
 
       const options: VehicleOptions = {
-        maxSpeed: this.controls.maxSpeed,
-        maxForce: this.controls.maxForce,
+        maxSpeed,
+        maxForce,
         size: 8,
-        wanderRadius: this.controls.wanderRadius,
-        wanderDistance: this.controls.wanderDistance,
-        wanderChange: this.controls.wanderChange,
-        separationRadius: this.controls.separationRadius,
-        separationWeight: this.controls.separationWeight,
-        fleeRadius: this.controls.fleeRadius,
-        fleeWeight: this.controls.fleeWeight,
+        wanderRadius,
+        wanderDistance,
+        wanderChange,
+        separationRadius,
+        separationWeight,
+        fleeRadius,
+        fleeWeight,
         strokeColor: COLOR_BLACK,
         strokeWidth: 3,
       };
@@ -194,8 +141,8 @@ export class TestGameScreen extends BaseScreen {
   }
 
   private updateGameField(): void {
-    this.gameField.width = this.controls.gameFieldWidth;
-    this.gameField.height = this.controls.gameFieldHeight;
+    this.gameFieldSize.width = this.controls.gameFieldWidth;
+    this.gameFieldSize.height = this.controls.gameFieldHeight;
     this.cat.setScreenBounds(this.controls.gameFieldWidth, this.controls.gameFieldHeight);
   }
 
@@ -222,9 +169,9 @@ export class TestGameScreen extends BaseScreen {
 
     // Calculate camera bounds including buffer zone
     const minCameraX = -this.controls.bufferZone;
-    const maxCameraX = this.gameField.width + this.controls.bufferZone - c.width;
+    const maxCameraX = this.gameFieldSize.width + this.controls.bufferZone - c.width;
     const minCameraY = -this.controls.bufferZone;
-    const maxCameraY = this.gameField.height + this.controls.bufferZone - c.height;
+    const maxCameraY = this.gameFieldSize.height + this.controls.bufferZone - c.height;
 
     // Clamp camera to extended bounds (game field + buffer zone)
     this.camera.x = Math.max(minCameraX, Math.min(maxCameraX, this.camera.x));
@@ -297,62 +244,73 @@ export class TestGameScreen extends BaseScreen {
     return { x: edgeX, y: edgeY };
   }
 
-  private isMouseDown = false;
+  setupGUI(folder: dat.GUI): void {
+    const miceFolder = folder.addFolder("Mice");
 
-  override onClick(x: number, y: number): void {
-    super.onClick(x, y);
-    const worldPos = this.screenToWorld(x, y);
-    // Handle slingshot launch on mouse up
-    if (this.cat.isDragging) {
-      this.cat.launch(worldPos.x, worldPos.y);
-    }
+    const vehicleFolder = miceFolder.addFolder("Vehicles");
+    vehicleFolder.add(this.controls, "vehicleCount", 1, 100, 1).onChange(() => this.createVehicles(this.controls));
+    vehicleFolder.add(this.controls, "maxSpeed", 0.1, 10, 0.1).onChange(() => this.updateVehicleProperties());
+    vehicleFolder.add(this.controls, "maxForce", 0.01, 1, 0.01).onChange(() => this.updateVehicleProperties());
+
+    const wanderFolder = miceFolder.addFolder("Wandering");
+    wanderFolder.add(this.controls, "wanderRadius", 5, 100, 1).onChange(() => this.updateVehicleProperties());
+    wanderFolder.add(this.controls, "wanderDistance", 10, 200, 1).onChange(() => this.updateVehicleProperties());
+    wanderFolder.add(this.controls, "wanderChange", 0.01, 1, 0.01).onChange(() => this.updateVehicleProperties());
+
+    const separationFolder = miceFolder.addFolder("Separation");
+    separationFolder.add(this.controls, "separationRadius", 10, 100, 1).onChange(() => this.updateVehicleProperties());
+    separationFolder.add(this.controls, "separationWeight", 0, 5, 0.1).onChange(() => this.updateVehicleProperties());
+
+    const fleeFolder = miceFolder.addFolder("Flee from Cat");
+    fleeFolder.add(this.controls, "fleeRadius", 50, 300, 10).onChange(() => this.updateVehicleProperties());
+    fleeFolder.add(this.controls, "fleeWeight", 0, 10, 0.1).onChange(() => this.updateVehicleProperties());
+
+    const boundaryFolder = miceFolder.addFolder("Boundary Avoidance");
+    boundaryFolder.add(this.controls, "boundaryAvoidance", 0, 150, 5);
+
+    const catFolder = folder.addFolder("Cat");
+    catFolder.add(this.controls, "catRadius", 10, 100, 1).onChange(() => this.updateCatProperties());
+    catFolder.add(this.cat, "catHeight", 10, 200, 1);
+    catFolder.add(this.cat, "debugDraw");
+    catFolder.add(this.cat, "shadowScale", 0.1, 3.0, 0.1);
+
+    const physicsFolder = catFolder.addFolder("Physics");
+    physicsFolder.add(this.cat, "mass", 0.1, 5.0, 0.1);
+    physicsFolder.add(this.cat, "gravity", 0.1, 2.0, 0.1);
+    physicsFolder.add(this.cat, "launchPower", 0.01, 0.2, 0.005);
+    physicsFolder.add(this.cat, "maxLaunchPower", 0.05, 0.5, 0.005);
+    physicsFolder.add(this.cat, "bounceDamping", 0.1, 1.0, 0.1);
+    physicsFolder.add(this.cat, "maxBounces", 0, 10, 1);
+
+    const gameFieldFolder = folder.addFolder("Game Field");
+    gameFieldFolder.add(this.controls, "gameFieldWidth", 800, 3200, 100).onChange(() => this.updateGameField());
+    gameFieldFolder.add(this.controls, "gameFieldHeight", 600, 2400, 100).onChange(() => this.updateGameField());
+    gameFieldFolder.add(this.controls, "bufferZone", 0, 500, 25);
+
+    const debugFolder = folder.addFolder("Debug");
+    debugFolder.add(this.controls, "showDebug");
+    debugFolder.add(this.controls, "resetVehicles");
+
+    // vehicleFolder.open();
+    // wanderFolder.open();
+    // separationFolder.open();
+    // fleeFolder.open();
+    // boundaryFolder.open();
+    // catFolder.open();
+    // physicsFolder.open();
+    // gameFieldFolder.open();
+    // debugFolder.open();
   }
 
-  onMouseDown(x: number, y: number): void {
-    const worldPos = this.screenToWorld(x, y);
-    // Start drag if clicking on cat
-    if (this.cat.containsPoint(worldPos.x, worldPos.y)) {
-      this.isMouseDown = true;
-      this.cat.startDrag(worldPos.x, worldPos.y);
-    }
-  }
-
-  onMouseUp(x: number, y: number): void {
-    if (this.isMouseDown) {
-      this.isMouseDown = false;
-      if (this.cat.isDragging) {
-        const worldPos = this.screenToWorld(x, y);
-        this.cat.launch(worldPos.x, worldPos.y);
-      }
-    }
-  }
-
-  override onMouseMove(x: number, y: number): void {
-    super.onMouseMove(x, y);
-
-    const worldPos = this.screenToWorld(x, y);
-
-    // Update current mouse position for slingshot preview (in world coordinates)
-    this.currentMousePos.x = worldPos.x;
-    this.currentMousePos.y = worldPos.y;
-
-    // Update drag if dragging
-    if (this.isMouseDown && this.cat.isDragging) {
-      this.cat.updateDrag(worldPos.x, worldPos.y);
-    }
-  }
-
-  override update(dt: number): void {
-    super.update(dt);
-
+  update(dt: number): void {
     // Update cat physics
     this.cat.update();
 
     // Update camera to follow cat
     this.updateCamera();
 
-    const groundLevel = Math.min(this.cat.position.y + this.cat.catHeight, this.gameField.height);
-    this.catBody.update(this.cat.getCollider(), this.gameField.width, groundLevel);
+    const groundLevel = Math.min(this.cat.position.y + this.cat.catHeight, this.gameFieldSize.height);
+    this.catBody.update(this.cat.getCollider(), this.gameFieldSize.width, groundLevel);
 
     this.catTail.stickTo(this.catBody);
     this.catTail.update();
@@ -362,13 +320,13 @@ export class TestGameScreen extends BaseScreen {
       vehicle.applyBehaviors(
         this.vehicles,
         this.cat.position,
-        this.gameField.width,
-        this.gameField.height,
+        this.gameFieldSize.width,
+        this.gameFieldSize.height,
         this.controls.boundaryAvoidance,
       );
       vehicle.update();
       // Use game field borders for vehicle boundary constraints
-      vehicle.borders(this.gameField.width, this.gameField.height);
+      vehicle.borders(this.gameFieldSize.width, this.gameFieldSize.height);
     });
 
     // Check for collisions between cat and vehicles - only when cat is on ground (z <= 5)
@@ -381,7 +339,7 @@ export class TestGameScreen extends BaseScreen {
     }
   }
 
-  protected doDraw(context: CanvasRenderingContext2D): void {
+  draw(context: CanvasRenderingContext2D): void {
     // Apply camera transform
     context.save();
     context.translate(-this.camera.x, -this.camera.y);
@@ -392,13 +350,13 @@ export class TestGameScreen extends BaseScreen {
     context.fillRect(
       -bufferSize,
       -bufferSize,
-      this.gameField.width + bufferSize * 2,
-      this.gameField.height + bufferSize * 2,
+      this.gameFieldSize.width + bufferSize * 2,
+      this.gameFieldSize.height + bufferSize * 2,
     );
 
     // Draw game field background
     context.fillStyle = "#f0f0f0";
-    context.fillRect(0, 0, this.gameField.width, this.gameField.height);
+    context.fillRect(0, 0, this.gameFieldSize.width, this.gameFieldSize.height);
 
     // Draw buffer zone border (outer boundary)
     if (bufferSize > 0) {
@@ -408,8 +366,8 @@ export class TestGameScreen extends BaseScreen {
       context.strokeRect(
         -bufferSize,
         -bufferSize,
-        this.gameField.width + bufferSize * 2,
-        this.gameField.height + bufferSize * 2,
+        this.gameFieldSize.width + bufferSize * 2,
+        this.gameFieldSize.height + bufferSize * 2,
       );
       context.setLineDash([]);
     }
@@ -417,7 +375,7 @@ export class TestGameScreen extends BaseScreen {
     // Draw game field borders (main play area)
     context.strokeStyle = "#333333";
     context.lineWidth = 4;
-    context.strokeRect(0, 0, this.gameField.width, this.gameField.height);
+    context.strokeRect(0, 0, this.gameFieldSize.width, this.gameFieldSize.height);
 
     // Draw all vehicles
     this.vehicles.forEach((vehicle) => {
@@ -473,9 +431,9 @@ export class TestGameScreen extends BaseScreen {
 
     // Show camera bounds info
     const minCameraX = -this.controls.bufferZone;
-    const maxCameraX = this.gameField.width + this.controls.bufferZone - c.width;
+    const maxCameraX = this.gameFieldSize.width + this.controls.bufferZone - c.width;
     const minCameraY = -this.controls.bufferZone;
-    const maxCameraY = this.gameField.height + this.controls.bufferZone - c.height;
+    const maxCameraY = this.gameFieldSize.height + this.controls.bufferZone - c.height;
     context.fillText(
       `Camera Bounds: X(${minCameraX.toFixed(0)} to ${maxCameraX.toFixed(0)}) Y(${minCameraY.toFixed(0)} to ${maxCameraY.toFixed(0)})`,
       10,
@@ -534,13 +492,11 @@ export class TestGameScreen extends BaseScreen {
     });
   }
 
-  private currentMousePos = { x: 0, y: 0 };
-
   private drawSlingshotPreview(context: CanvasRenderingContext2D): void {
     const catX = this.cat.position.x;
     const catY = this.cat.position.y;
-    const dragX = this.currentMousePos.x;
-    const dragY = this.currentMousePos.y;
+    const dragX = this.curMousePos.x;
+    const dragY = this.curMousePos.y;
 
     // Draw main slingshot line (thicker and more visible)
     context.strokeStyle = "#ff0000";
@@ -608,16 +564,65 @@ export class TestGameScreen extends BaseScreen {
     context.stroke();
   }
 
-  override destroy(): void {
-    super.destroy();
-    if (this.gui) {
-      this.gui.destroy();
+  protected handleEvent(event: Event): void {
+    if (event instanceof MouseEvent) {
+      switch (event.type) {
+        case MouseEventType.MOUSE_MOVE:
+          this.onMouseMove(event.mouseX, event.mouseY);
+          break;
+
+        case MouseEventType.MOUSE_DOWN:
+          this.onMouseDown(event.mouseX, event.mouseY);
+          break;
+
+        case MouseEventType.MOUSE_UP:
+          this.onMouseUp(event.mouseX, event.mouseY);
+          break;
+
+        case MouseEventType.CLICK:
+          this.onClick(event.mouseX, event.mouseY);
+          break;
+      }
     }
   }
-}
 
-if (import.meta.hot) {
-  import.meta.hot.accept(() => {
-    console.log("🔥 GameScreen module accept callback triggered");
-  });
+  private onClick(x: number, y: number): void {
+    const worldPos = this.screenToWorld(x, y);
+    // Handle slingshot launch on mouse up
+    if (this.cat.isDragging) {
+      this.cat.launch(worldPos.x, worldPos.y);
+    }
+  }
+
+  private onMouseDown(x: number, y: number): void {
+    const worldPos = this.screenToWorld(x, y);
+    // Start drag if clicking on cat
+    if (this.cat.containsPoint(worldPos.x, worldPos.y)) {
+      this.isMouseDown = true;
+      this.cat.startDrag(worldPos.x, worldPos.y);
+    }
+  }
+
+  private onMouseUp(x: number, y: number): void {
+    if (this.isMouseDown) {
+      this.isMouseDown = false;
+      if (this.cat.isDragging) {
+        const worldPos = this.screenToWorld(x, y);
+        this.cat.launch(worldPos.x, worldPos.y);
+      }
+    }
+  }
+
+  private onMouseMove(x: number, y: number): void {
+    const worldPos = this.screenToWorld(x, y);
+
+    // Update current mouse position for slingshot preview (in world coordinates)
+    this.curMousePos.x = worldPos.x;
+    this.curMousePos.y = worldPos.y;
+
+    // Update drag if dragging
+    if (this.isMouseDown && this.cat.isDragging) {
+      this.cat.updateDrag(worldPos.x, worldPos.y);
+    }
+  }
 }
