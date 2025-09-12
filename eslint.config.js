@@ -36,7 +36,7 @@ export default [
     },
   },
   {
-    files: ["src/**/*.ts"],
+    files: ["{src,tools}/**/*.ts"],
     rules: {
       "no-undef": "off",
       "no-unused-vars": "off",

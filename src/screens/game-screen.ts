@@ -57,7 +57,7 @@ export class GameScreen extends BaseScreen {
       fontSize: 24,
     });
     // TODO: uncomment - temporary hide mute button
-    muteButton.isVisible = false;
+    // muteButton.isVisible = false;
 
     this.gameField = new GameField(c.width, c.height);
 

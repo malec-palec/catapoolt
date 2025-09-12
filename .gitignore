@@ -6,3 +6,4 @@ dist/
 external/
 node_modules/
 src/tunes.ts
+temp/
