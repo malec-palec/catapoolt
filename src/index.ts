@@ -6,7 +6,7 @@ const game = new Game();
 let then = performance.now();
 
 const loop = (now: DOMHighResTimeStamp) => {
-  game.update(now - then);
+  game.tick(now - then);
   then = now;
   requestAnimationFrame(loop);
 };

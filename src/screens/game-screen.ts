@@ -5,6 +5,7 @@ import { MuteButton } from "../core/mute-button";
 import { Popup } from "../core/popup";
 import { Text } from "../core/text";
 import { IGame } from "../game";
+import { playMusic } from "../music";
 import { GameField } from "./game/game-field";
 import { StartScreen } from "./start-screen";
 export class GameScreen extends BaseScreen {
@@ -27,13 +28,13 @@ export class GameScreen extends BaseScreen {
         {
           text: "Continue",
           onClick: () => {
-            this.pausePopup.hide();
+            this.pausePopup.hidePopup();
           },
         },
         {
           text: "Menu",
           onClick: () => {
-            this.pausePopup.hide();
+            this.pausePopup.hidePopup();
             game.changeScreen(StartScreen);
           },
         },
@@ -46,7 +47,7 @@ export class GameScreen extends BaseScreen {
       text: "☰",
       fontSize: 32,
       clickHandler: () => {
-        this.pausePopup.show();
+        this.pausePopup.showPopup();
       },
     });
 
@@ -63,7 +64,7 @@ export class GameScreen extends BaseScreen {
     this.add(this.title, this.gameField, muteButton, this.menuButton, this.pausePopup);
 
     // TODO: uncomment - temporary turn off music
-    // playMusic();
+    playMusic();
 
     if (import.meta.env.DEV) {
       import("dat.gui").then((dat) => {
@@ -75,22 +76,22 @@ export class GameScreen extends BaseScreen {
     }
   }
 
-  override dispatchEvent(event: Event): void {
+  override emitEvent(event: Event): void {
     if (this.pausePopup.isVisible) {
-      this.pausePopup.dispatchEvent(event);
-      if (event.isAccepted) {
+      this.pausePopup.emitEvent(event);
+      if (event.isAcknowledged) {
         return;
       }
     }
-    super.dispatchEvent(event);
+    super.emitEvent(event);
   }
 
   override doResize(): void {
-    this.title.setPosition(c.width / 2, c.height / 2);
+    this.title.setPos(c.width / 2, c.height / 2);
 
     this.gameField.setSize(c.width, c.height);
 
-    this.menuButton.setPosition(c.width - this.menuButton.width - 16, 16);
+    this.menuButton.setPos(c.width - this.menuButton.width - 16, 16);
     this.pausePopup.onResize();
 
     console.log("🔥 GameScreen onResize");

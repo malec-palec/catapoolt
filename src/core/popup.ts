@@ -21,7 +21,7 @@ class RoundCloseButton extends DisplayObject {
     this.handler = handler;
   }
 
-  draw(ctx: CanvasRenderingContext2D): void {
+  render(ctx: CanvasRenderingContext2D): void {
     const r = 16;
     ctx.save();
     ctx.beginPath();
@@ -52,16 +52,16 @@ class RoundCloseButton extends DisplayObject {
       this.hovered = over;
       c.style.cursor = over ? "pointer" : "default";
     } else if (over && (e.type === MouseEventType.MOUSE_DOWN || e.type === MouseEventType.MOUSE_UP)) {
-      e.accept();
+      e.acknowledge();
     } else if (over && e.type === MouseEventType.CLICK) {
       this.handler();
-      e.accept();
+      e.acknowledge();
     }
   }
 
   private isOver(x: number, y: number): boolean {
-    const dx = x - (this.position.x + 16);
-    const dy = y - (this.position.y + 16);
+    const dx = x - (this.pos.x + 16);
+    const dy = y - (this.pos.y + 16);
     return dx * dx + dy * dy <= 256; // 16^2
   }
 }
@@ -79,7 +79,7 @@ export class Popup extends DisplayObject {
     this.onClose = onClose;
     this.body = { x: 0, y: 0, width, height };
     this.title = new Text(title, 24, "Arial", "bold");
-    this.close = new RoundCloseButton(() => this.hide());
+    this.close = new RoundCloseButton(() => this.hidePopup());
 
     buttons?.forEach(({ text, onClick }) => {
       this.buttons.push(
@@ -94,12 +94,12 @@ export class Popup extends DisplayObject {
     });
   }
 
-  show(): void {
+  showPopup(): void {
     this.isVisible = true;
     this.onResize();
   }
 
-  hide(): void {
+  hidePopup(): void {
     this.isVisible = false;
     this.onClose?.();
   }
@@ -107,23 +107,23 @@ export class Popup extends DisplayObject {
   protected handleEvent(event: Event): void {
     if (!this.isVisible) return;
 
-    this.close.dispatchEvent(event);
-    if (event.isAccepted) return;
+    this.close.emitEvent(event);
+    if (event.isAcknowledged) return;
 
     for (const btn of this.buttons) {
-      btn.dispatchEvent(event);
-      if (event.isAccepted) return;
+      btn.emitEvent(event);
+      if (event.isAcknowledged) return;
     }
 
     if (event instanceof MouseEvent && event.type === MouseEventType.CLICK) {
       if (!isCoordsInRect(event.mouseX, event.mouseY, this.body)) {
-        this.hide();
-        event.accept();
+        this.hidePopup();
+        event.acknowledge();
         return;
       }
     }
 
-    if (event instanceof MouseEvent) event.accept();
+    if (event instanceof MouseEvent) event.acknowledge();
   }
 
   onResize(): void {
@@ -134,8 +134,8 @@ export class Popup extends DisplayObject {
     this.body.x = x;
     this.body.y = y;
 
-    this.title.setPosition(x + this.body.width / 2, y + 50);
-    this.close.setPosition(x + this.body.width - 47, y + 15);
+    this.title.setPos(x + this.body.width / 2, y + 50);
+    this.close.setPos(x + this.body.width - 47, y + 15);
 
     const spacing = 15;
     const totalH = this.buttons.length * 45 + (this.buttons.length - 1) * spacing;
@@ -143,18 +143,18 @@ export class Popup extends DisplayObject {
     const btnX = x + (this.body.width - 180) / 2;
 
     this.buttons.forEach((btn, i) => {
-      btn.setPosition(btnX, startY + i * 60);
+      btn.setPos(btnX, startY + i * 60);
     });
   }
 
-  update(dt: number): void {
+  tick(dt: number): void {
     if (!this.isVisible) return;
-    this.title.update(dt);
-    this.close.update(dt);
-    this.buttons.forEach((btn) => btn.update(dt));
+    this.title.tick(dt);
+    this.close.tick(dt);
+    this.buttons.forEach((btn) => btn.tick(dt));
   }
 
-  draw(ctx: CanvasRenderingContext2D): void {
+  render(ctx: CanvasRenderingContext2D): void {
     if (!this.isVisible) return;
 
     // Overlay
@@ -176,19 +176,19 @@ export class Popup extends DisplayObject {
 
     // Elements
     ctx.save();
-    ctx.translate(this.title.position.x, this.title.position.y);
-    this.title.draw(ctx);
+    ctx.translate(this.title.pos.x, this.title.pos.y);
+    this.title.render(ctx);
     ctx.restore();
 
     ctx.save();
-    ctx.translate(this.close.position.x, this.close.position.y);
-    this.close.draw(ctx);
+    ctx.translate(this.close.pos.x, this.close.pos.y);
+    this.close.render(ctx);
     ctx.restore();
 
     this.buttons.forEach((btn) => {
       ctx.save();
-      ctx.translate(btn.position.x, btn.position.y);
-      btn.draw(ctx);
+      ctx.translate(btn.pos.x, btn.pos.y);
+      btn.render(ctx);
       ctx.restore();
     });
   }

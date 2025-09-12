@@ -22,6 +22,6 @@ export class CreditsScreen extends BaseScreen {
   }
 
   override doResize(): void {
-    this.title.setPosition(c.width / 2, c.height / 2);
+    this.title.setPos(c.width / 2, c.height / 2);
   }
 }

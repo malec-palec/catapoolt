@@ -229,6 +229,8 @@ export class GameField extends DisplayObject {
   }
 
   setupGUI(folder: dat.GUI): void {
+    if (import.meta.env.PROD) return;
+
     const miceFolder = folder.addFolder("Mice");
 
     const vehicleFolder = miceFolder.addFolder("Vehicles");
@@ -286,18 +288,18 @@ export class GameField extends DisplayObject {
     // debugFolder.open();
   }
 
-  update(dt: number): void {
+  tick(dt: number): void {
     // Update cat physics
-    this.cat.update();
+    this.cat.tick();
 
     // Update camera to follow cat
     this.updateCamera();
 
     const groundLevel = Math.min(this.cat.position.y + this.cat.catHeight, this.gameFieldSize.height);
-    this.catBody.update(this.cat.getCollider(), this.gameFieldSize.width, groundLevel);
+    this.catBody.tick(this.cat.getCollider(), this.gameFieldSize.width, groundLevel);
 
     this.catTail.stickTo(this.catBody);
-    this.catTail.update();
+    this.catTail.tick();
 
     // Update vehicles with separation and flee behaviors (fleeing from cat)
     this.vehicles.forEach((vehicle) => {
@@ -308,7 +310,7 @@ export class GameField extends DisplayObject {
         this.gameFieldSize.height,
         this.controls.boundaryAvoidance,
       );
-      vehicle.update();
+      vehicle.tick();
       // Use game field borders for vehicle boundary constraints
       vehicle.borders(this.gameFieldSize.width, this.gameFieldSize.height);
     });
@@ -323,7 +325,7 @@ export class GameField extends DisplayObject {
     }
   }
 
-  draw(context: CanvasRenderingContext2D): void {
+  render(context: CanvasRenderingContext2D): void {
     // Apply camera transform
     context.save();
     context.translate(-this.camera.x, -this.camera.y);
@@ -363,7 +365,7 @@ export class GameField extends DisplayObject {
 
     // Draw all vehicles
     this.vehicles.forEach((vehicle) => {
-      vehicle.draw(context);
+      vehicle.render(context);
       if (this.controls.showDebug) {
         vehicle.drawWanderDebug(context);
         vehicle.drawFleeDebug(context, this.cat.position);
@@ -373,10 +375,10 @@ export class GameField extends DisplayObject {
     // Draw cat shadow first (behind everything)
     this.cat.drawShadow(context, this.catBody);
 
-    this.catBody.draw(context);
-    this.catTail.draw(context);
+    this.catBody.render(context);
+    this.catTail.render(context);
     // Draw the cat
-    this.cat.draw(context);
+    this.cat.render(context);
 
     // Draw slingshot trajectory preview if dragging
     if (this.cat.isDragging) {

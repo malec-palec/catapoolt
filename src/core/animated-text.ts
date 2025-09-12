@@ -50,11 +50,11 @@ export class AnimatedText extends DisplayObject {
     this.setupLetters();
   }
 
-  override update(dt: number): void {
+  override tick(dt: number): void {
     this.time += dt;
   }
 
-  draw(context: CanvasRenderingContext2D): void {
+  render(context: CanvasRenderingContext2D): void {
     context.fillStyle = "#000";
     context.font = `${this.fontWeight} ${this.fontSize}px ${this.fontFamily}`;
     this.letters.forEach((letter) => {

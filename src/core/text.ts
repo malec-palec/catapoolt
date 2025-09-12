@@ -18,7 +18,7 @@ export class Text extends DisplayObject {
     this.height = newSize * 1.2;
   }
 
-  draw(context: CanvasRenderingContext2D): void {
+  render(context: CanvasRenderingContext2D): void {
     context.fillStyle = "#000";
     context.textAlign = "center";
     context.textBaseline = "middle";

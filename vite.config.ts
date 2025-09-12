@@ -28,6 +28,46 @@ export default defineConfig({
     assetsDir: ".",
     assetsInlineLimit: 0,
     cssCodeSplit: false,
+    minify: "terser",
+    terserOptions: {
+      mangle: {
+        properties: {
+          // Mangle all properties for maximum compression
+          regex: /./, // This will mangle all property names
+          // Keep some properties that might be accessed externally
+          reserved: [
+            // Canvas context properties that might be accessed
+            "canvas",
+            "getContext",
+            "width",
+            "height",
+            // Event properties that might be needed
+            "preventDefault",
+            "stopPropagation",
+            "target",
+            "type",
+            // Essential DOM properties
+            "style",
+            "cursor",
+            // Audio context properties (if used)
+            "AudioContext",
+            "webkitAudioContext",
+            // Common method names that might be called externally
+            "addEventListener",
+            "removeEventListener",
+            // Package.json properties
+            "version",
+            "name",
+          ],
+        },
+      },
+      compress: {
+        // Additional compression options
+        drop_console: true, // Remove console.log statements
+        drop_debugger: true, // Remove debugger statements
+        pure_funcs: ["console.log", "console.info", "console.debug"], // Remove specific function calls
+      },
+    },
     rollupOptions: {
       output: {
         assetFileNames: "[name].[ext]", // Keep original asset names

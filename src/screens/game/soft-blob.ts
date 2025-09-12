@@ -123,7 +123,7 @@ export class SoftBlob {
     }
   }
 
-  update(collider: ICircleCollider, canvasWidth: number, canvasHeight: number): void {
+  tick(collider: ICircleCollider, canvasWidth: number, canvasHeight: number): void {
     const { points, chordLength, area, circumference } = this;
     for (const point of points) {
       point.verletIntegrate();
@@ -209,7 +209,7 @@ export class SoftBlob {
     };
   }
 
-  draw(context: CanvasRenderingContext2D): void {
+  render(context: CanvasRenderingContext2D): void {
     const { points, outlineSize } = this;
 
     context.strokeStyle = context.fillStyle = "#000000";

@@ -44,14 +44,14 @@ export class Button extends DisplayObject {
 
   private isMouseOver(mouseX: number, mouseY: number): boolean {
     return (
-      mouseX >= this.position.x &&
-      mouseX <= this.position.x + this.width &&
-      mouseY >= this.position.y &&
-      mouseY <= this.position.y + this.height
+      mouseX >= this.pos.x &&
+      mouseX <= this.pos.x + this.width &&
+      mouseY >= this.pos.y &&
+      mouseY <= this.pos.y + this.height
     );
   }
 
-  draw(context: CanvasRenderingContext2D): void {
+  render(context: CanvasRenderingContext2D): void {
     if (!this.isVisible) return;
 
     if (!this.isEnabled) {
@@ -114,7 +114,7 @@ export class Button extends DisplayObject {
         case MouseEventType.MOUSE_DOWN:
           if (isOver) {
             this.currentState = ButtonState.Pressed;
-            event.accept();
+            event.acknowledge();
           }
           break;
 
@@ -127,7 +127,7 @@ export class Button extends DisplayObject {
         case MouseEventType.CLICK:
           if (isOver) {
             this.clickHandler();
-            event.accept();
+            event.acknowledge();
           }
           break;
       }

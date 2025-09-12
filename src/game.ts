@@ -137,8 +137,8 @@ export class Game implements IGame {
     this.screen = newScreen;
   }
 
-  update(dt: number): void {
-    this.screen.update(dt);
-    this.screen.draw(this.context);
+  tick(dt: number): void {
+    this.screen.tick(dt);
+    this.screen.render(this.context);
   }
 }

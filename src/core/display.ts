@@ -1,14 +1,14 @@
-import { Event, IEventDispatcher } from "../core/event";
+import { Event, IEventEmitter } from "../core/event";
 import { Point2D } from "./geom";
 
-export interface IDisplayObject extends IEventDispatcher {
-  position: Point2D;
-  update(dt: number): void;
-  draw(context: CanvasRenderingContext2D): void;
+export interface IDisplayObject extends IEventEmitter {
+  pos: Point2D;
+  tick(dt: number): void;
+  render(context: CanvasRenderingContext2D): void;
 }
 
 export class DisplayObject implements IDisplayObject {
-  position: Point2D;
+  pos: Point2D;
 
   constructor(
     public width: number,
@@ -16,23 +16,23 @@ export class DisplayObject implements IDisplayObject {
     x = 0,
     y = 0,
   ) {
-    this.position = { x, y };
+    this.pos = { x, y };
   }
 
-  update(dt: number): void {}
-  draw(context: CanvasRenderingContext2D): void {}
+  tick(dt: number): void {}
+  render(context: CanvasRenderingContext2D): void {}
 
-  dispatchEvent(event: Event): void {
-    if (!event.isAccepted) {
+  emitEvent(event: Event): void {
+    if (!event.isAcknowledged) {
       this.handleEvent(event);
     }
   }
 
   protected handleEvent(event: Event): void {}
 
-  setPosition(x: number, y: number): void {
-    this.position.x = x;
-    this.position.y = y;
+  setPos(x: number, y: number): void {
+    this.pos.x = x;
+    this.pos.y = y;
   }
 
   setSize(width: number, height: number): void {

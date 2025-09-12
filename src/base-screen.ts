@@ -16,8 +16,8 @@ export interface IScreen {
   onMouseMove(x: number, y: number): void;
 
   onResize(): void;
-  update(dt: number): void;
-  draw(context: CanvasRenderingContext2D): void;
+  tick(dt: number): void;
+  render(context: CanvasRenderingContext2D): void;
   destroy(): void;
 }
 
@@ -41,25 +41,25 @@ export class BaseScreen implements IScreen {
     this.children.push(...children);
   }
 
-  update(dt: number): void {
-    this.children.forEach((child) => child.update(dt));
+  tick(dt: number): void {
+    this.children.forEach((child) => child.tick(dt));
     this.currentTime += dt;
     this.alpha = this.currentTime < this.FADE_IN_TIME_MS ? easeInOut(this.currentTime / this.FADE_IN_TIME_MS) : 1;
     this.doUpdate(dt);
   }
   protected doUpdate(dt: number): void {}
 
-  draw(context: CanvasRenderingContext2D): void {
+  render(context: CanvasRenderingContext2D): void {
     context.fillStyle = this.bgColor;
     context.fillRect(0, 0, c.width, c.height);
 
     this.children.forEach((child) => {
       context.save();
-      context.translate(child.position.x, child.position.y);
+      context.translate(child.pos.x, child.pos.y);
       // context.rotate(child.rotation);
       // context.globalAlpha = child.alpha * this.alpha;
       // context.scale(child.scale.x, child.scale.y);
-      child.draw(context);
+      child.render(context);
       context.restore();
     });
 
@@ -84,24 +84,24 @@ export class BaseScreen implements IScreen {
   protected doResize(): void {}
 
   onClick(mouseX: number, mouseY: number): void {
-    this.dispatchEvent(new MouseEvent(mouseX, mouseY, MouseEventType.CLICK));
+    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.CLICK));
   }
   onMouseDown(mouseX: number, mouseY: number): void {
-    this.dispatchEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_DOWN));
+    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_DOWN));
   }
   onMouseUp(mouseX: number, mouseY: number): void {
-    this.dispatchEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_UP));
+    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_UP));
   }
   onMouseMove(mouseX: number, mouseY: number): void {
-    this.dispatchEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_MOVE));
+    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_MOVE));
   }
 
-  dispatchEvent(event: Event): void {
+  emitEvent(event: Event): void {
     for (const child of this.children) {
-      child.dispatchEvent(event);
-      if (event.isAccepted) return;
+      child.emitEvent(event);
+      if (event.isAcknowledged) return;
     }
-    if (!event.isAccepted) {
+    if (!event.isAcknowledged) {
       this.handleEvent(event);
     }
   }

@@ -1,14 +1,14 @@
-export interface IEventDispatcher {
-  dispatchEvent(event: Event): void;
+export interface IEventEmitter {
+  emitEvent(event: Event): void;
 }
 
 export class Event {
-  private _accepted = false;
-  get isAccepted(): boolean {
-    return this._accepted;
+  private _isAcknowledged = false;
+  get isAcknowledged(): boolean {
+    return this._isAcknowledged;
   }
-  accept(): void {
-    this._accepted = true;
+  acknowledge(): void {
+    this._isAcknowledged = true;
   }
 }
 

@@ -65,7 +65,7 @@ export class Vehicle {
     this.strokeWidth = options.strokeWidth ?? 2;
   }
 
-  update(): void {
+  tick(): void {
     // Update velocity
     this.velocity.add(this.acceleration);
     // Limit speed
@@ -233,7 +233,7 @@ export class Vehicle {
     return steer;
   }
 
-  draw(context: CanvasRenderingContext2D): void {
+  render(context: CanvasRenderingContext2D): void {
     // Draw a triangle pointing left or right based on velocity direction
     const isMovingLeft = this.velocity.x < 0;
 
@@ -376,9 +376,9 @@ export class Vehicle {
     showDebug: boolean = false,
   ): void {
     this.applyBehaviors(vehicles);
-    this.update();
+    this.tick();
     this.borders(width, height);
-    this.draw(context);
+    this.render(context);
 
     if (showDebug) {
       this.drawWanderDebug(context);

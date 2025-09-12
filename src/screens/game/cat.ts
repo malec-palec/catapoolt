@@ -78,7 +78,7 @@ export class Cat {
     };
   }
 
-  draw(context: CanvasRenderingContext2D): void {
+  render(context: CanvasRenderingContext2D): void {
     const headX = this.position.x;
     const headY = this.position.y - this.z; // Adjust visual position based on height
     const headRadius = this.radius;
@@ -219,7 +219,7 @@ export class Cat {
     }
   }
 
-  update(): void {
+  tick(): void {
     if (this.isFlying) {
       // Apply physics
       this.position.add(this.velocity);

@@ -65,7 +65,7 @@ export class Tail {
     }
   }
 
-  update(): void {
+  tick(): void {
     const { nodes, segmentLength } = this;
     for (let i = 1; i < nodes.length; i++) {
       nodes[i].verletIntegrate();
@@ -112,7 +112,7 @@ export class Tail {
     }
   }
 
-  draw(context: CanvasRenderingContext2D): void {
+  render(context: CanvasRenderingContext2D): void {
     const { nodes, tailWidth } = this;
     context.strokeStyle = "#000000";
     context.lineCap = "round";

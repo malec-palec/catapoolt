@@ -62,16 +62,16 @@ export class StartScreen extends BaseScreen {
 
   override doResize(): void {
     this.title.setFontSize(getAdaptiveFontSize(72, this.title.text.length, 1));
-    this.title.setPosition(c.width / 2, 150);
+    this.title.setPos(c.width / 2, 150);
 
     const buttonSpacing = 80;
     const startY = c.height / 2 - buttonSpacing;
     const centerX = c.width / 2;
 
     this.buttons.forEach((button, index) => {
-      button.setPosition(centerX - button.width / 2, startY + buttonSpacing * index);
+      button.setPos(centerX - button.width / 2, startY + buttonSpacing * index);
     });
 
-    this.versionText.setPosition(c.width - 40, c.height - 20);
+    this.versionText.setPos(c.width - 40, c.height - 20);
   }
 }
