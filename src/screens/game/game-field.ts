@@ -1,6 +1,7 @@
 import * as dat from "dat.gui";
 import { DisplayObject } from "../../core/display";
 import { Event, MouseEvent, MouseEventType } from "../../core/event";
+import { Point2D } from "../../core/geom";
 import { Vector2D } from "../../core/vector2d";
 import { Vehicle, VehicleOptions } from "../../core/vehicle";
 import { COLOR_BLACK } from "../../registry";
@@ -146,23 +147,6 @@ export class GameField extends DisplayObject {
     this.cat.setScreenBounds(this.controls.gameFieldWidth, this.controls.gameFieldHeight);
   }
 
-  private getShadowCenter(): { x: number; y: number } {
-    // Get shadow position based on soft body if available
-    if (this.catBody) {
-      const leftPoint = this.catBody.getLeftmostPoint();
-      const rightPoint = this.catBody.getRightmostPoint();
-      const shadowX = (leftPoint.point.pos.x + rightPoint.point.pos.x) / 2;
-      const shadowY = this.cat.position.y + this.cat.catHeight + this.cat.z;
-      return { x: shadowX, y: shadowY };
-    } else {
-      // Fallback to cat position if no soft body
-      return {
-        x: this.cat.position.x,
-        y: this.cat.position.y + this.cat.catHeight + this.cat.z,
-      };
-    }
-  }
-
   private updateCamera(): void {
     this.camera.x = this.cat.position.x - c.width / 2;
     this.camera.y = this.cat.position.y - c.height / 2;
@@ -187,12 +171,12 @@ export class GameField extends DisplayObject {
   }
 
   // Check if a world position is visible in the current camera viewport
-  private isPositionVisible(worldX: number, worldY: number): boolean {
+  private isPositionVisible(worldPos: Point2D): boolean {
     return (
-      worldX >= this.camera.x &&
-      worldX <= this.camera.x + c.width &&
-      worldY >= this.camera.y &&
-      worldY <= this.camera.y + c.height
+      worldPos.x >= this.camera.x &&
+      worldPos.x <= this.camera.x + c.width &&
+      worldPos.y >= this.camera.y &&
+      worldPos.y <= this.camera.y + c.height
     );
   }
 
@@ -405,14 +389,11 @@ export class GameField extends DisplayObject {
     // Draw off-screen vehicle indicators
     this.drawOffScreenIndicators(context);
 
-    // Count visible and off-screen vehicles
-    const visibleCount = this.vehicles.filter((vehicle) =>
-      this.isPositionVisible(vehicle.position.x, vehicle.position.y),
-    ).length;
-    const offScreenCount = this.vehicles.length - visibleCount;
+    if (import.meta.env.PROD) return;
 
-    // Get shadow center for display
-    const shadowCenter = this.getShadowCenter();
+    // Count visible and off-screen vehicles
+    const visibleCount = this.vehicles.filter((vehicle) => this.isPositionVisible(vehicle.position)).length;
+    const offScreenCount = this.vehicles.length - visibleCount;
 
     // Draw UI elements (not affected by camera)
     context.fillStyle = "#666666";
@@ -426,8 +407,7 @@ export class GameField extends DisplayObject {
     context.fillText(`Flying: ${this.cat.isFlying}`, 10, 65);
     context.fillText(`Camera: (${this.camera.x.toFixed(0)}, ${this.camera.y.toFixed(0)})`, 10, 85);
     context.fillText(`Cat Pos: (${this.cat.position.x.toFixed(0)}, ${this.cat.position.y.toFixed(0)})`, 10, 105);
-    context.fillText(`Shadow Center: (${shadowCenter.x.toFixed(0)}, ${shadowCenter.y.toFixed(0)})`, 10, 125);
-    context.fillText(`Buffer Zone: ${this.controls.bufferZone}px`, 10, 145);
+    context.fillText(`Buffer Zone: ${this.controls.bufferZone}px`, 10, 125);
 
     // Show camera bounds info
     const minCameraX = -this.controls.bufferZone;
@@ -437,24 +417,25 @@ export class GameField extends DisplayObject {
     context.fillText(
       `Camera Bounds: X(${minCameraX.toFixed(0)} to ${maxCameraX.toFixed(0)}) Y(${minCameraY.toFixed(0)} to ${maxCameraY.toFixed(0)})`,
       10,
-      165,
+      145,
     );
   }
 
-  private drawOffScreenIndicators(context: CanvasRenderingContext2D): void {
-    // Check if there are any visible vehicles on screen
-    const visibleVehicles = this.vehicles.filter((vehicle) =>
-      this.isPositionVisible(vehicle.position.x, vehicle.position.y),
-    );
-
-    // Only show off-screen indicators if no vehicles are visible on screen
-    if (visibleVehicles.length > 0) {
-      return; // Don't show markers if any mice are visible
+  private isAnyVehicleVisible(): boolean {
+    for (const vehicle of this.vehicles) {
+      if (this.isPositionVisible(vehicle.position)) {
+        return true;
+      }
     }
+    return false;
+  }
+
+  private drawOffScreenIndicators(context: CanvasRenderingContext2D): void {
+    if (this.isAnyVehicleVisible()) return;
 
     // Get all off-screen vehicles with their distances to cat
     const offScreenVehicles = this.vehicles
-      .filter((vehicle) => !this.isPositionVisible(vehicle.position.x, vehicle.position.y))
+      .filter((vehicle) => !this.isPositionVisible(vehicle.position))
       .map((vehicle) => ({
         vehicle,
         distance: Vector2D.dist(vehicle.position, this.cat.position),
