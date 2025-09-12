@@ -5,3 +5,21 @@ export const isVerticalLayout = (): boolean => window.innerHeight > window.inner
 
 export const COLOR_BLACK = "#000000";
 export const COLOR_WHITE = "#FFFFFF";
+
+/**
+ * Calculate adaptive font size based on screen width and text length
+ * @param originalSize - The desired font size for normal screens
+ * @param textLength - Length of the text to be displayed
+ * @param maxWidthRatio - Maximum ratio of screen width the text should occupy (default 0.9)
+ * @returns Scaled font size
+ */
+export const getAdaptiveFontSize = (originalSize: number, textLength: number, maxWidthRatio: number): number => {
+  const maxAllowedWidth = c.width * maxWidthRatio;
+
+  // Approximate character width is about 0.6 * fontSize
+  if (textLength * originalSize * 0.6 > maxAllowedWidth) {
+    // Scale down the font size to fit
+    return Math.floor(maxAllowedWidth / textLength / 0.6);
+  }
+  return originalSize;
+};

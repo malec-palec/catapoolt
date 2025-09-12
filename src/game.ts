@@ -144,15 +144,6 @@ export class Game implements IGame {
     const { screen, context } = this;
     screen.update(dt);
 
-    // if (device.isAndroid) {
-    //   context.save();
-    //   context.setTransform(1, 0, 0, 1, 0, 0);
-    //   context.clearRect(0, 0, c.width, c.height);
-    //   context.restore();
-    // } else {
-    //   context.clearRect(0, 0, c.width, c.height);
-    // }
-
     screen.draw(context);
   }
 }

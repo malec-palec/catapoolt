@@ -2,7 +2,7 @@ import { DisplayObject } from "../core/display";
 
 export class Text extends DisplayObject {
   constructor(
-    private text: string,
+    public text: string,
     private fontSize: number,
     private fontFamily: string = "Arial",
     private fontWeight: string = "normal",
@@ -11,6 +11,13 @@ export class Text extends DisplayObject {
   ) {
     super(text.length * fontSize * 0.6, fontSize * 1.2, x, y);
   }
+
+  public setFontSize(newSize: number): void {
+    this.fontSize = newSize;
+    this.width = this.text.length * newSize * 0.6;
+    this.height = newSize * 1.2;
+  }
+
   draw(context: CanvasRenderingContext2D): void {
     context.fillStyle = "#000";
     context.textAlign = "center";

@@ -1,21 +1,26 @@
 import { BaseScreen } from "../base-screen";
+import { AnimatedText } from "../core/animated-text";
 import { Button } from "../core/button";
 import { Text } from "../core/text";
 import { IGame } from "../game";
 import { stopMusic } from "../music";
+import { getAdaptiveFontSize } from "../registry";
 import { CreditsScreen } from "./credits-screen";
 import { GameScreen } from "./game-screen";
 import { HighScoresScreen } from "./high-scores-screen";
 
 export class StartScreen extends BaseScreen {
-  private title: Text;
+  private title: AnimatedText;
   private buttons: Button[];
   private versionText: Text;
 
   constructor(game: IGame) {
     super(game);
 
-    this.title = new Text("🅒🅐🅣🅐🅟🅞🅞🅛🅣", 72, "Arial", "bold");
+    this.title = new AnimatedText("🅒🅐🅣🅐🅟🅞🅞🅛🅣", 72, "Arial", "bold");
+
+    // Set animation parameters: amplitude, frequency, phase offset
+    this.title.setAnimationParams(20, 0.003, 0.4);
 
     const version = import.meta.env.PACKAGE_VERSION || "1.0.0";
     this.versionText = new Text(`v${version}`, 16);
@@ -55,6 +60,9 @@ export class StartScreen extends BaseScreen {
   }
 
   override doResize(): void {
+    const adaptiveFontSize = getAdaptiveFontSize(72, this.title.text.length, 1);
+    this.title.setFontSize(adaptiveFontSize);
+
     this.title.setPosition(c.width / 2, 150);
 
     const buttonSpacing = 80;
