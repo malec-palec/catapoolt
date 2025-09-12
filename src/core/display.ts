@@ -9,6 +9,7 @@ export interface IDisplayObject extends IEventDispatcher {
 
 export class DisplayObject implements IDisplayObject {
   position: Point2D;
+
   constructor(
     public width: number,
     public height: number,
@@ -17,13 +18,16 @@ export class DisplayObject implements IDisplayObject {
   ) {
     this.position = { x, y };
   }
+
   update(dt: number): void {}
   draw(context: CanvasRenderingContext2D): void {}
+
   dispatchEvent(event: Event): void {
     if (!event.isAccepted) {
       this.handleEvent(event);
     }
   }
+
   protected handleEvent(event: Event): void {}
 
   setPosition(x: number, y: number): void {

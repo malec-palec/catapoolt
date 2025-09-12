@@ -1,7 +1,3 @@
-/**
- * Device detection utilities for platform-specific optimizations
- */
-
 export interface DeviceInfo {
   isIOS: boolean;
   isAndroid: boolean;
@@ -14,15 +10,14 @@ export const detectDevice = (): DeviceInfo => {
   const userAgent = navigator.userAgent.toLowerCase();
 
   const isIOS = /iphone|ipad|ipod/.test(userAgent);
-  const isAndroid = /android/.test(userAgent);
-  const isMobile = isIOS || isAndroid || /mobile/.test(userAgent);
-  const isDesktop = !isMobile;
+  const isAndroid = userAgent.includes("android");
+  const isMobile = isIOS || isAndroid || userAgent.includes("mobile");
 
   return {
     isIOS,
     isAndroid,
     isMobile,
-    isDesktop,
+    isDesktop: !isMobile,
     userAgent,
   };
 };
@@ -36,23 +31,18 @@ console.log("🔍 Device detected:", {
 });
 
 export const getOptimalCanvasSettings = (): CanvasRenderingContext2DSettings => {
-  if (device.isIOS) {
-    // iOS optimizations
-    return {
-      alpha: false,
-      desynchronized: true,
-    };
-  } else if (device.isAndroid) {
-    // Android optimizations - more conservative approach
-    return {
-      alpha: true, // Keep alpha for Android compatibility
-      desynchronized: false, // Disable desynchronized to prevent flickering
-    };
-  } else {
-    // Desktop/other devices
-    return {
-      willReadFrequently: true,
-      alpha: true,
-    };
-  }
+  return device.isIOS
+    ? {
+        alpha: false,
+        desynchronized: true,
+      }
+    : device.isAndroid
+      ? {
+          alpha: true, // Keep alpha for Android compatibility
+          desynchronized: false, // Disable desynchronized to prevent flickering
+        }
+      : {
+          willReadFrequently: true,
+          alpha: true,
+        };
 };

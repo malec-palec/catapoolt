@@ -25,10 +25,8 @@ export class StartScreen extends BaseScreen {
     const version = import.meta.env.PACKAGE_VERSION || "1.0.0";
     this.versionText = new Text(`v${version}`, 16);
 
-    const buttonSize = { width: 200, height: 60 };
-    this.buttons = [
-      new Button({
-        ...buttonSize,
+    const buttonConfigs = [
+      {
         text: "Play",
         clickHandler() {
           this.text = "Loading...";
@@ -38,38 +36,40 @@ export class StartScreen extends BaseScreen {
             });
           });
         },
-      }),
-      new Button({
-        ...buttonSize,
+      },
+      {
         text: "High Scores",
-        clickHandler() {
-          game.changeScreen(HighScoresScreen);
-        },
-      }),
-      new Button({
-        ...buttonSize,
+        clickHandler: () => game.changeScreen(HighScoresScreen),
+      },
+      {
         text: "Credits",
-        clickHandler() {
-          game.changeScreen(CreditsScreen);
-        },
-      }),
+        clickHandler: () => game.changeScreen(CreditsScreen),
+      },
     ];
+
+    this.buttons = buttonConfigs.map(
+      (config) =>
+        new Button({
+          width: 200,
+          height: 60,
+          ...config,
+        }),
+    );
     this.add(this.title, ...this.buttons, this.versionText);
 
     stopMusic();
   }
 
   override doResize(): void {
-    const adaptiveFontSize = getAdaptiveFontSize(72, this.title.text.length, 1);
-    this.title.setFontSize(adaptiveFontSize);
-
+    this.title.setFontSize(getAdaptiveFontSize(72, this.title.text.length, 1));
     this.title.setPosition(c.width / 2, 150);
 
     const buttonSpacing = 80;
     const startY = c.height / 2 - buttonSpacing;
+    const centerX = c.width / 2;
+
     this.buttons.forEach((button, index) => {
-      button.position.x = c.width / 2 - button.width / 2;
-      button.position.y = startY + buttonSpacing * index;
+      button.setPosition(centerX - button.width / 2, startY + buttonSpacing * index);
     });
 
     this.versionText.setPosition(c.width - 40, c.height - 20);

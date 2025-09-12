@@ -55,45 +55,27 @@ export class Button extends DisplayObject {
     }
 
     // Button colors based on state
-    let bgColor: string;
-    let borderColor: string;
-    let textColor: string;
-
-    switch (this.currentState) {
-      case ButtonState.Hover:
-        bgColor = "#e0e0e0";
-        borderColor = "#999";
-        textColor = "#000";
-        break;
-      case ButtonState.Pressed:
-        bgColor = "#d0d0d0";
-        borderColor = "#666";
-        textColor = "#000";
-        break;
-      case ButtonState.Disabled:
-        bgColor = "#f5f5f5";
-        borderColor = "#ccc";
-        textColor = "#999";
-        break;
-      default: // NORMAL
-        bgColor = "#f0f0f0";
-        borderColor = "#aaa";
-        textColor = "#000";
-        break;
-    }
+    const colors =
+      this.currentState === ButtonState.Hover
+        ? { bg: "#e0e0e0", border: "#999", text: "#000" }
+        : this.currentState === ButtonState.Pressed
+          ? { bg: "#d0d0d0", border: "#666", text: "#000" }
+          : this.currentState === ButtonState.Disabled
+            ? { bg: "#f5f5f5", border: "#ccc", text: "#999" }
+            : { bg: "#f0f0f0", border: "#aaa", text: "#000" };
 
     // Draw button background
-    context.fillStyle = bgColor;
+    context.fillStyle = colors.bg;
     context.fillRect(0, 0, this.width, this.height);
 
     // Draw button border
-    context.strokeStyle = borderColor;
+    context.strokeStyle = colors.border;
     context.lineWidth = 2;
     context.strokeRect(0, 0, this.width, this.height);
 
     // Draw text centered
     context.save();
-    context.fillStyle = textColor;
+    context.fillStyle = colors.text;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.font = `${this.fontSize}px Arial`;

@@ -42,20 +42,15 @@ export class BaseScreen implements IScreen {
   }
 
   update(dt: number): void {
-    for (const child of this.children) {
-      child.update(dt);
-    }
+    this.children.forEach((child) => child.update(dt));
     this.currentTime += dt;
     this.alpha = this.currentTime < this.FADE_IN_TIME_MS ? easeInOut(this.currentTime / this.FADE_IN_TIME_MS) : 1;
-
     this.doUpdate(dt);
   }
   protected doUpdate(dt: number): void {}
 
   draw(context: CanvasRenderingContext2D): void {
-    const { alpha, bgColor } = this;
-
-    context.fillStyle = bgColor;
+    context.fillStyle = this.bgColor;
     context.fillRect(0, 0, c.width, c.height);
 
     this.children.forEach((child) => {
@@ -68,9 +63,9 @@ export class BaseScreen implements IScreen {
       context.restore();
     });
 
-    if (alpha <= 1) {
-      context.globalAlpha = 1 - alpha;
-      context.fillStyle = bgColor;
+    if (this.alpha < 1) {
+      context.globalAlpha = 1 - this.alpha;
+      context.fillStyle = this.bgColor;
       context.fillRect(0, 0, c.width, c.height);
       context.globalAlpha = 1;
     }
@@ -81,13 +76,9 @@ export class BaseScreen implements IScreen {
   }
 
   onResize(): void {
-    if (isVerticalLayout()) {
-      c.width = GAME_HEIGHT;
-      c.height = GAME_WIDTH;
-    } else {
-      c.width = GAME_WIDTH;
-      c.height = GAME_HEIGHT;
-    }
+    const vertical = isVerticalLayout();
+    c.width = vertical ? GAME_HEIGHT : GAME_WIDTH;
+    c.height = vertical ? GAME_WIDTH : GAME_HEIGHT;
     this.doResize();
   }
   protected doResize(): void {}
@@ -108,9 +99,7 @@ export class BaseScreen implements IScreen {
   dispatchEvent(event: Event): void {
     for (const child of this.children) {
       child.dispatchEvent(event);
-      if (event.isAccepted) {
-        break;
-      }
+      if (event.isAccepted) return;
     }
     if (!event.isAccepted) {
       this.handleEvent(event);

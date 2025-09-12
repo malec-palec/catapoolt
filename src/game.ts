@@ -25,13 +25,11 @@ const getCanvasCoordinates = (clientX: number, clientY: number): { x: number; y:
   // Calculate scale factors based on actual displayed size vs internal canvas size
   const scaleX = c.width / rect.width;
   const scaleY = c.height / rect.height;
-  // Apply scaling to get internal canvas coordinates
-  let x = relativeX * scaleX;
-  let y = relativeY * scaleY;
-  // Clamp coordinates to internal canvas bounds
-  x = Math.max(0, Math.min(c.width, x));
-  y = Math.max(0, Math.min(c.height, y));
-  return { x, y };
+  // Apply scaling to get internal canvas coordinates and clamp in one step
+  return {
+    x: Math.max(0, Math.min(c.width, relativeX * scaleX)),
+    y: Math.max(0, Math.min(c.height, relativeY * scaleY)),
+  };
 };
 
 const mouseHandler =
@@ -92,11 +90,10 @@ export class Game implements IGame {
         this.screen.onMouseUp(x, y);
         // Simulate click if touch end is close to touch start
         if (this.touchStartPosition) {
-          const distance = Math.sqrt(
-            Math.pow(x - this.touchStartPosition.x, 2) + Math.pow(y - this.touchStartPosition.y, 2),
-          );
+          const dx = x - this.touchStartPosition.x;
+          const dy = y - this.touchStartPosition.y;
           // If touch moved less than 10 pixels, treat it as a click
-          if (distance < 10) {
+          if (dx * dx + dy * dy < 100) {
             this.screen.onClick(x, y);
           }
           this.touchStartPosition = null;
@@ -141,9 +138,7 @@ export class Game implements IGame {
   }
 
   update(dt: number): void {
-    const { screen, context } = this;
-    screen.update(dt);
-
-    screen.draw(context);
+    this.screen.update(dt);
+    this.screen.draw(this.context);
   }
 }

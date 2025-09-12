@@ -15,11 +15,8 @@ export const COLOR_WHITE = "#FFFFFF";
  */
 export const getAdaptiveFontSize = (originalSize: number, textLength: number, maxWidthRatio: number): number => {
   const maxAllowedWidth = c.width * maxWidthRatio;
+  const estimatedWidth = textLength * originalSize * 0.6;
 
   // Approximate character width is about 0.6 * fontSize
-  if (textLength * originalSize * 0.6 > maxAllowedWidth) {
-    // Scale down the font size to fit
-    return Math.floor(maxAllowedWidth / textLength / 0.6);
-  }
-  return originalSize;
+  return estimatedWidth > maxAllowedWidth ? Math.floor(maxAllowedWidth / textLength / 0.6) : originalSize;
 };
