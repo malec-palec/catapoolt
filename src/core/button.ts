@@ -9,7 +9,7 @@ export const enum ButtonState {
 }
 export class Button extends DisplayObject {
   private currentState: ButtonState = ButtonState.Normal;
-  private text: string;
+  text: string;
   private clickHandler: () => void;
   private isEnabled: boolean = true;
   private fontSize: number = 16;

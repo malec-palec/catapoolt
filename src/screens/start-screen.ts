@@ -27,9 +27,11 @@ export class StartScreen extends BaseScreen {
         text: "Play",
         clickHandler() {
           this.text = "Loading...";
-          setTimeout(() => {
-            game.changeScreen(GameScreen);
-          }, 0);
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              game.changeScreen(GameScreen);
+            });
+          });
         },
       }),
       new Button({

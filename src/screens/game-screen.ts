@@ -1,5 +1,6 @@
 import { BaseScreen } from "../base-screen";
 import { Button } from "../core/button";
+import { MuteButton } from "../core/mute-button";
 import { Text } from "../core/text";
 import { IGame } from "../game";
 import { playMusic } from "../music";
@@ -7,6 +8,7 @@ import { StartScreen } from "./start-screen";
 
 export class GameScreen extends BaseScreen {
   private title: Text;
+  private muteButton: MuteButton;
 
   constructor(game: IGame) {
     super(game);
@@ -21,7 +23,13 @@ export class GameScreen extends BaseScreen {
       clickHandler: () => this.game.changeScreen(StartScreen),
     });
 
-    this.add(this.title, backButton);
+    this.muteButton = new MuteButton({
+      width: 60,
+      height: 60,
+      fontSize: 24,
+    });
+
+    this.add(this.title, backButton, this.muteButton);
 
     playMusic();
 
@@ -36,6 +44,8 @@ export class GameScreen extends BaseScreen {
 
   override doResize(): void {
     this.title.setPosition(c.width / 2, c.height / 2);
+
+    this.muteButton.setPosition(c.width - this.muteButton.width - 20, 20);
   }
 }
 
