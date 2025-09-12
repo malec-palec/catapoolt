@@ -13,6 +13,7 @@ export class GameScreen extends BaseScreen {
   private pausePopup: Popup;
 
   private gameField: GameField;
+  private originalGameFieldTick: (dt: number) => void;
 
   constructor(game: IGame) {
     super(game);
@@ -59,6 +60,14 @@ export class GameScreen extends BaseScreen {
     muteButton.isVisible = false;
 
     this.gameField = new GameField(c.width, c.height);
+
+    // Store the original tick method and override it for pause functionality
+    this.originalGameFieldTick = this.gameField.tick.bind(this.gameField);
+    this.gameField.tick = (dt: number) => {
+      if (!this.pausePopup.isVisible) {
+        this.originalGameFieldTick(dt);
+      }
+    };
 
     this.add(this.title, this.gameField, muteButton, this.menuButton, this.pausePopup);
 
