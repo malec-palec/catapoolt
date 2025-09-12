@@ -3,6 +3,7 @@ import { DisplayObject } from "./display";
 import { Event, MouseEvent, MouseEventType } from "./event";
 import { isCoordsInRect, Rectangle } from "./geom";
 import { Text } from "./text";
+import { easeInOut, easeOutBack } from "./tween";
 
 export interface PopupOptions {
   title: string;
@@ -22,10 +23,9 @@ class RoundCloseButton extends DisplayObject {
   }
 
   render(ctx: CanvasRenderingContext2D): void {
-    const r = 16;
     ctx.save();
     ctx.beginPath();
-    ctx.arc(r, r, r, 0, 6.28);
+    ctx.arc(16, 16, 16, 0, 6.28);
     ctx.fillStyle = this.hovered ? "#ff6b6b" : "#ff4757";
     ctx.fill();
     ctx.strokeStyle = "#fff";
@@ -51,10 +51,8 @@ class RoundCloseButton extends DisplayObject {
     if (e.type === MouseEventType.MOUSE_MOVE) {
       this.hovered = over;
       c.style.cursor = over ? "pointer" : "default";
-    } else if (over && (e.type === MouseEventType.MOUSE_DOWN || e.type === MouseEventType.MOUSE_UP)) {
-      e.acknowledge();
-    } else if (over && e.type === MouseEventType.CLICK) {
-      this.handler();
+    } else if (over) {
+      if (e.type === MouseEventType.CLICK) this.handler();
       e.acknowledge();
     }
   }
@@ -74,6 +72,13 @@ export class Popup extends DisplayObject {
   private buttons: Button[] = [];
   private onClose?: () => void;
 
+  // Animation properties
+  private readonly ANIMATION_DURATION = 300; // ms
+  private animationTime = 0;
+  private animationState = 0; // 0: none, 1: in, 2: out
+  private currentScale = 0;
+  private currentAlpha = 0;
+
   constructor({ title, width, height, onClose, buttons }: PopupOptions) {
     super(width, height);
     this.onClose = onClose;
@@ -81,31 +86,46 @@ export class Popup extends DisplayObject {
     this.title = new Text(title, 24, "Arial", "bold");
     this.close = new RoundCloseButton(() => this.hidePopup());
 
-    buttons?.forEach(({ text, onClick }) => {
-      this.buttons.push(
-        new Button({
-          width: 180,
-          height: 45,
-          text,
-          fontSize: 16,
-          clickHandler: onClick,
-        }),
+    if (buttons) {
+      this.buttons = buttons.map(
+        ({ text, onClick }) =>
+          new Button({
+            width: 180,
+            height: 45,
+            text,
+            fontSize: 16,
+            clickHandler: onClick,
+          }),
       );
-    });
+    }
   }
 
   showPopup(): void {
+    if (this.isVisible) return;
+
     this.isVisible = true;
+    this.animationState = 1;
+    this.animationTime = 0;
+    this.currentScale = 0;
+    this.currentAlpha = 0;
     this.onResize();
   }
 
   hidePopup(): void {
-    this.isVisible = false;
-    this.onClose?.();
+    if (!this.isVisible || this.animationState === 2) return;
+
+    this.animationState = 2;
+    this.animationTime = 0;
   }
 
   protected handleEvent(event: Event): void {
-    if (!this.isVisible) return;
+    if (!this.isVisible || this.animationState === 2) return;
+
+    // Only handle interactions if animation is complete or nearly complete
+    if (this.animationState === 1 && this.currentAlpha < 0.8) {
+      if (event instanceof MouseEvent) event.acknowledge();
+      return;
+    }
 
     this.close.emitEvent(event);
     if (event.isAcknowledged) return;
@@ -134,13 +154,12 @@ export class Popup extends DisplayObject {
     this.body.x = x;
     this.body.y = y;
 
-    this.title.setPos(x + this.body.width / 2, y + 50);
+    this.title.setPos(x + this.body.width * 0.5, y + 50);
     this.close.setPos(x + this.body.width - 47, y + 15);
 
-    const spacing = 15;
-    const totalH = this.buttons.length * 45 + (this.buttons.length - 1) * spacing;
+    const totalH = this.buttons.length * 60 - 15;
     const startY = y + this.body.height - totalH - 40;
-    const btnX = x + (this.body.width - 180) / 2;
+    const btnX = x + (this.body.width - 180) * 0.5;
 
     this.buttons.forEach((btn, i) => {
       btn.setPos(btnX, startY + i * 60);
@@ -149,22 +168,64 @@ export class Popup extends DisplayObject {
 
   tick(dt: number): void {
     if (!this.isVisible) return;
-    this.title.tick(dt);
-    this.close.tick(dt);
-    this.buttons.forEach((btn) => btn.tick(dt));
+
+    // Update animation
+    if (this.animationState) {
+      this.animationTime += dt;
+      const progress = Math.min(this.animationTime / this.ANIMATION_DURATION, 1);
+      const easedProgress = easeInOut(progress);
+
+      if (this.animationState === 1) {
+        this.currentScale = easeOutBack(progress);
+        this.currentAlpha = easedProgress;
+
+        if (progress >= 1) {
+          this.animationState = 0;
+          this.currentScale = 1;
+          this.currentAlpha = 1;
+        }
+      } else {
+        this.currentScale = 1 - easedProgress;
+        this.currentAlpha = 1 - easedProgress;
+
+        if (progress >= 1) {
+          this.animationState = 0;
+          this.isVisible = false;
+          this.currentScale = 0;
+          this.currentAlpha = 0;
+          this.onClose?.();
+        }
+      }
+    }
+
+    // Only update interactive elements if not animating out
+    if (this.animationState !== 2) {
+      this.title.tick(dt);
+      this.close.tick(dt);
+      this.buttons.forEach((btn) => btn.tick(dt));
+    }
   }
 
   render(ctx: CanvasRenderingContext2D): void {
     if (!this.isVisible) return;
 
-    // Overlay
-    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    // Apply alpha to overlay
+    ctx.fillStyle = `rgba(0,0,0,${this.currentAlpha * 0.7})`;
     ctx.fillRect(0, 0, c.width, c.height);
 
-    // Body
+    // Apply scale and alpha transforms for the popup body
     const { x, y, width: w, height: h } = this.body;
-    const r = 8;
+    const centerX = x + w * 0.5;
+    const centerY = y + h * 0.5;
 
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.scale(this.currentScale, this.currentScale);
+    ctx.globalAlpha = this.currentAlpha;
+    ctx.translate(-centerX, -centerY);
+
+    // Body
+    const r = 8;
     ctx.fillStyle = "#fff";
     this.roundRect(ctx, x, y, w, h, r);
     ctx.fill();
@@ -175,22 +236,21 @@ export class Popup extends DisplayObject {
     ctx.stroke();
 
     // Elements
-    ctx.save();
-    ctx.translate(this.title.pos.x, this.title.pos.y);
-    this.title.render(ctx);
-    ctx.restore();
+    this.renderTranslated(ctx, this.title);
+    this.renderTranslated(ctx, this.close);
+    this.buttons.forEach((btn) => this.renderTranslated(ctx, btn));
 
-    ctx.save();
-    ctx.translate(this.close.pos.x, this.close.pos.y);
-    this.close.render(ctx);
-    ctx.restore();
+    ctx.restore(); // Restore scale and alpha transforms
+  }
 
-    this.buttons.forEach((btn) => {
-      ctx.save();
-      ctx.translate(btn.pos.x, btn.pos.y);
-      btn.render(ctx);
-      ctx.restore();
-    });
+  private renderTranslated(
+    ctx: CanvasRenderingContext2D,
+    obj: { pos: { x: number; y: number }; render: (ctx: CanvasRenderingContext2D) => void },
+  ): void {
+    ctx.save();
+    ctx.translate(obj.pos.x, obj.pos.y);
+    obj.render(ctx);
+    ctx.restore();
   }
 
   private roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
