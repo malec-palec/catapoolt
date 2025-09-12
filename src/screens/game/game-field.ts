@@ -297,6 +297,7 @@ export class GameField extends DisplayObject {
     physicsFolder.add(this.cat, "launchPower", 0.01, 0.2, 0.005);
     physicsFolder.add(this.cat, "maxLaunchPower", 0.05, 0.5, 0.005);
     physicsFolder.add(this.cat, "maxDragDistance", 50, 400, 10);
+    physicsFolder.add(this.cat, "jumpHeightMultiplier", 0.1, 3.0, 0.1).name("Jump Height");
     physicsFolder.add(this.cat, "bounceDamping", 0.1, 1.0, 0.1);
     physicsFolder.add(this.cat, "maxBounces", 0, 10, 1);
 
@@ -307,6 +308,10 @@ export class GameField extends DisplayObject {
 
     const debugFolder = folder.addFolder("Debug");
     debugFolder.add(this.controls, "showDebug");
+    debugFolder.add(this.cat, "debugTrajectory").name("Show Cat Trajectory");
+    debugFolder.add(this.cat, "showPredictiveTrajectory").name("Show Predictive Trajectory");
+    debugFolder.add(this.cat, "predictiveSteps", 50, 300, 10).name("Prediction Steps");
+    debugFolder.add(this.cat, "predictiveStepSize", 0.1, 2.0, 0.1).name("Prediction Accuracy");
     debugFolder.add(this.controls, "resetVehicles");
 
     // vehicleFolder.open();
@@ -399,11 +404,18 @@ export class GameField extends DisplayObject {
 
     this.catBody.render(context);
     this.catTail.render(context);
+
     // Draw the cat
     this.cat.render(context);
 
+    // Draw trajectory before cat for better visibility
+    this.cat.renderTrajectory(context);
+
     // Draw slingshot trajectory preview if dragging
     if (this.cat.isDragging) {
+      // Draw predictive trajectory first (behind slingshot line)
+      this.cat.renderPredictiveTrajectory(context, this.curMousePos.x, this.curMousePos.y);
+
       this.drawSlingshotPreview(context);
     }
 
@@ -415,38 +427,18 @@ export class GameField extends DisplayObject {
 
     if (import.meta.env.PROD) return;
 
-    // Count visible and off-screen vehicles (using same visibility check as rendering)
-    const visibleVehicles = this.vehicles.filter((vehicle) => this.isCircleVisible(vehicle.position, vehicle.size * 2));
-    const culledVehicles = this.vehicles.length - visibleVehicles.length;
-    const onScreenVehicles = this.vehicles.filter((vehicle) => this.isPositionVisible(vehicle.position)).length;
-
     // Draw UI elements (not affected by camera)
     context.fillStyle = "#666666";
     context.font = "14px Arial";
-    context.fillText(
-      `Vehicles: ${this.vehicles.length} (${visibleVehicles.length} rendered, ${culledVehicles} culled, ${onScreenVehicles} on-screen)`,
-      10,
-      25,
-    );
-    context.fillText(`Cat Z: ${this.cat.z.toFixed(1)}`, 10, 45);
-    context.fillText(`Flying: ${this.cat.isFlying}`, 10, 65);
-    context.fillText(`Camera: (${this.camera.x.toFixed(0)}, ${this.camera.y.toFixed(0)})`, 10, 85);
-    context.fillText(`Cat Pos: (${this.cat.position.x.toFixed(0)}, ${this.cat.position.y.toFixed(0)})`, 10, 105);
-    context.fillText(`Buffer Zone: ${this.controls.bufferZone}px`, 10, 125);
 
-    // Show camera bounds info
-    const minCameraX = -this.controls.bufferZone;
-    const maxCameraX = this.gameFieldSize.width + this.controls.bufferZone - c.width;
-    const minCameraY = -this.controls.bufferZone;
-    const maxCameraY = this.gameFieldSize.height + this.controls.bufferZone - c.height;
+    let lineY = 5;
+    context.fillText(`Window size: ${window.innerWidth} x ${window.innerHeight}`, 10, (lineY += 20));
+    context.fillText(`Screen size: ${c.width} x ${c.height}`, 10, (lineY += 20));
     context.fillText(
-      `Camera Bounds: X(${minCameraX.toFixed(0)} to ${maxCameraX.toFixed(0)}) Y(${minCameraY.toFixed(0)} to ${maxCameraY.toFixed(0)})`,
+      `Cat Pos: (${this.cat.position.x.toFixed(0)}, ${this.cat.position.y.toFixed(0)}, ${this.cat.z.toFixed(0)})`,
       10,
-      145,
+      (lineY += 20),
     );
-
-    context.fillText(`Screen size: ${c.width} x ${c.height}`, 10, 165);
-    context.fillText(`Window size: ${window.innerWidth} x ${window.innerHeight}`, 10, 185);
   }
 
   private isAnyVehicleVisible(): boolean {

@@ -64,7 +64,8 @@ export class Game implements IGame {
 
     this.context = c.getContext("2d", canvasSettings)!;
 
-    const screenName = import.meta.env.VITE_HOME_SCREEN || "SplashScreen";
+    let screenName = "SplashScreen";
+    if (import.meta.env.DEV) screenName = import.meta.env.VITE_HOME_SCREEN!;
     const homeScreenCtor = SCREENS[screenName];
     this.screen = new homeScreenCtor(this);
 

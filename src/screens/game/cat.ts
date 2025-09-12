@@ -49,12 +49,23 @@ export class Cat {
   public screenWidth = 800; // Screen width for edge bouncing
   public screenHeight = 600; // Screen height for edge bouncing
 
+  // Debug trajectory visualization
+  public debugTrajectory = import.meta.env.DEV;
+  public trajectoryPoints: Array<{ x: number; y: number; z: number; type: "normal" | "bounce" | "ground" }> = [];
+  public maxTrajectoryPoints = 100;
+
+  // Predictive trajectory
+  public showPredictiveTrajectory = true;
+  public predictiveSteps = 150; // Number of simulation steps
+  public predictiveStepSize = 0.5; // Time step for simulation
+
   // Slingshot properties
   public isDragging = false;
   public dragStartPos: Vector2D;
   public launchPower = 0.05; // Launch power multiplier (reduced from 0.1)
   public maxLaunchPower = 0.15; // Maximum allowed launch power
   public maxDragDistance = 200; // Maximum drag distance in pixels
+  public jumpHeightMultiplier = 1.2; // Multiplier for vertical velocity (higher = higher jumps)
 
   constructor(x: number, y: number, radius: number = 30) {
     this.position = new Vector2D(x, y);
@@ -216,10 +227,15 @@ export class Cat {
 
       // Set velocity directly without creating intermediate vectors
       this.velocity = Vector2D.mult(rawDragVector, powerScale);
-      this.velocityZ = effectiveMagnitude * effectivePower * 0.5;
+      this.velocityZ = effectiveMagnitude * effectivePower * this.jumpHeightMultiplier;
 
       this.isFlying = true;
       this.bounceCount = 0;
+
+      // Clear previous trajectory when launching
+      if (this.debugTrajectory) {
+        this.trajectoryPoints = [];
+      }
     }
   }
 
@@ -228,6 +244,11 @@ export class Cat {
       // Apply physics
       this.position.add(this.velocity);
       this.z += this.velocityZ;
+
+      // Record trajectory point for debug visualization
+      if (this.debugTrajectory) {
+        this.addTrajectoryPoint("normal");
+      }
 
       // Apply gravity to Z velocity
       this.velocityZ -= this.gravity;
@@ -244,11 +265,21 @@ export class Cat {
           this.velocityZ = -this.velocityZ * this.bounceDamping;
           this.velocity.mult(this.bounceDamping); // Reduce horizontal velocity on bounce
           this.bounceCount++;
+
+          // Record bounce point for debug visualization
+          if (this.debugTrajectory) {
+            this.addTrajectoryPoint("bounce");
+          }
         } else {
           // Stop flying
           this.isFlying = false;
           this.velocity.mult(0);
           this.velocityZ = 0;
+
+          // Record final ground point for debug visualization
+          if (this.debugTrajectory) {
+            this.addTrajectoryPoint("ground");
+          }
         }
       }
     }
@@ -310,6 +341,203 @@ export class Cat {
 
   isPressed(v: Vector2D): boolean {
     return Vector2D.dist(this.position, v) <= this.radius * 2;
+  }
+
+  private addTrajectoryPoint(type: "normal" | "bounce" | "ground"): void {
+    this.trajectoryPoints.push({
+      x: this.position.x,
+      y: this.position.y - this.z + this.catHeight, // Visual position accounting for height
+      z: this.z,
+      type,
+    });
+
+    // Limit trajectory points to prevent memory issues
+    if (this.trajectoryPoints.length > this.maxTrajectoryPoints) {
+      this.trajectoryPoints.shift();
+    }
+  }
+
+  renderTrajectory(context: CanvasRenderingContext2D): void {
+    if (!this.debugTrajectory || this.trajectoryPoints.length < 2) return;
+
+    // Draw trajectory line
+    context.strokeStyle = "rgba(255, 100, 100, 0.7)";
+    context.lineWidth = 2;
+    context.setLineDash([4, 4]);
+    context.beginPath();
+
+    for (let i = 0; i < this.trajectoryPoints.length; i++) {
+      const point = this.trajectoryPoints[i];
+      if (i === 0) {
+        context.moveTo(point.x, point.y);
+      } else {
+        context.lineTo(point.x, point.y);
+      }
+    }
+    context.stroke();
+    context.setLineDash([]);
+
+    // Draw special markers for bounces and ground hits
+    for (const point of this.trajectoryPoints) {
+      if (point.type === "bounce") {
+        context.fillStyle = "rgba(255, 255, 0, 0.8)";
+        context.beginPath();
+        context.arc(point.x, point.y, 6, 0, Math.PI * 2);
+        context.fill();
+      } else if (point.type === "ground") {
+        context.fillStyle = "rgba(0, 255, 0, 0.8)";
+        context.beginPath();
+        context.arc(point.x, point.y, 8, 0, Math.PI * 2);
+        context.fill();
+      }
+    }
+  }
+
+  calculatePredictiveTrajectory(
+    launchX: number,
+    launchY: number,
+  ): Array<{ x: number; y: number; z: number; type: "normal" | "bounce" | "ground" }> {
+    // Calculate initial velocity based on launch parameters
+    const rawDragVector = Vector2D.sub(this.dragStartPos, new Vector2D(launchX, launchY));
+    const dragMagnitude = rawDragVector.mag();
+    const effectiveMagnitude = Math.min(dragMagnitude, this.maxDragDistance);
+    const effectivePower = Math.min(this.launchPower, this.maxLaunchPower);
+    const powerScale = (effectivePower / this.mass) * (effectiveMagnitude / Math.max(dragMagnitude, 1));
+
+    // Initial conditions
+    let simX = this.position.x;
+    let simY = this.position.y;
+    let simZ = this.z;
+    let simVelX = rawDragVector.x * powerScale;
+    let simVelY = rawDragVector.y * powerScale;
+    let simVelZ = effectiveMagnitude * effectivePower * this.jumpHeightMultiplier;
+
+    const points: Array<{ x: number; y: number; z: number; type: "normal" | "bounce" | "ground" }> = [];
+    let bounceCount = 0;
+    const dampingZone = 100;
+    const dampingStrength = 0.95;
+    const dampingRange = 1 - dampingStrength;
+
+    for (let step = 0; step < this.predictiveSteps; step++) {
+      // Apply physics simulation
+      simX += simVelX * this.predictiveStepSize;
+      simY += simVelY * this.predictiveStepSize;
+      simZ += simVelZ * this.predictiveStepSize;
+      simVelZ -= this.gravity * this.predictiveStepSize;
+
+      // Simulate boundary damping
+      const applyEdgeDamping = (
+        position: number,
+        velocity: number,
+        minBound: number,
+        maxBound: number,
+      ): [number, number] => {
+        const distance = position - minBound;
+        if (distance <= 0) {
+          return [minBound, Math.max(0, velocity)];
+        }
+        if (distance <= dampingZone && velocity < 0) {
+          return [position, velocity * (dampingStrength + dampingRange * (distance / dampingZone))];
+        }
+
+        const distanceFromMax = maxBound - position;
+        if (distanceFromMax <= 0) {
+          return [maxBound, Math.min(0, velocity)];
+        }
+        if (distanceFromMax <= dampingZone && velocity > 0) {
+          return [position, velocity * (dampingStrength + dampingRange * (distanceFromMax / dampingZone))];
+        }
+
+        return [position, velocity];
+      };
+
+      [simX, simVelX] = applyEdgeDamping(simX, simVelX, this.radius, this.screenWidth - this.radius);
+      [simY, simVelY] = applyEdgeDamping(simY, simVelY, this.radius + simZ, this.screenHeight - this.radius);
+
+      // Ground collision simulation
+      if (simZ <= 0) {
+        simZ = 0;
+        if (bounceCount < this.maxBounces && Math.abs(simVelZ) > 0.5) {
+          simVelZ = -simVelZ * this.bounceDamping;
+          simVelX *= this.bounceDamping;
+          simVelY *= this.bounceDamping;
+          bounceCount++;
+          points.push({ x: simX, y: simY - simZ + this.catHeight, z: simZ, type: "bounce" });
+        } else {
+          points.push({ x: simX, y: simY - simZ + this.catHeight, z: simZ, type: "ground" });
+          break; // End simulation when cat stops
+        }
+      } else {
+        // Only add every few points to avoid clutter
+        if (step % 3 === 0) {
+          points.push({ x: simX, y: simY - simZ + this.catHeight, z: simZ, type: "normal" });
+        }
+      }
+
+      // Stop if velocity is very low and on ground
+      if (simZ <= 0 && Math.abs(simVelX) + Math.abs(simVelY) + Math.abs(simVelZ) < 0.1) {
+        break;
+      }
+    }
+
+    return points;
+  }
+
+  renderPredictiveTrajectory(context: CanvasRenderingContext2D, launchX: number, launchY: number): void {
+    if (!this.showPredictiveTrajectory || !this.isDragging) return;
+
+    const predictedPoints = this.calculatePredictiveTrajectory(launchX, launchY);
+    if (predictedPoints.length < 2) return;
+
+    // Draw predicted trajectory line
+    context.strokeStyle = "rgba(0, 150, 255, 0.6)";
+    context.lineWidth = 3;
+    context.setLineDash([8, 8]);
+    context.beginPath();
+
+    for (let i = 0; i < predictedPoints.length; i++) {
+      const point = predictedPoints[i];
+      if (point.type !== "bounce" && point.type !== "ground") {
+        if (i === 0) {
+          context.moveTo(point.x, point.y);
+        } else {
+          context.lineTo(point.x, point.y);
+        }
+      }
+    }
+    context.stroke();
+    context.setLineDash([]);
+
+    // Draw predicted bounce and landing markers
+    for (const point of predictedPoints) {
+      if (point.type === "bounce") {
+        context.fillStyle = "rgba(255, 200, 0, 0.8)";
+        context.strokeStyle = "rgba(255, 255, 0, 1.0)";
+        context.lineWidth = 2;
+        context.beginPath();
+        context.arc(point.x, point.y, 8, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+      } else if (point.type === "ground") {
+        context.fillStyle = "rgba(0, 255, 100, 0.8)";
+        context.strokeStyle = "rgba(0, 255, 0, 1.0)";
+        context.lineWidth = 3;
+        context.beginPath();
+        context.arc(point.x, point.y, 12, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+
+        // Add landing cross marker
+        context.strokeStyle = "rgba(255, 255, 255, 0.9)";
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(point.x - 8, point.y);
+        context.lineTo(point.x + 8, point.y);
+        context.moveTo(point.x, point.y - 8);
+        context.lineTo(point.x, point.y + 8);
+        context.stroke();
+      }
+    }
   }
 
   drawShadow(context: CanvasRenderingContext2D, shadowProvider?: IShadowProvider): void {

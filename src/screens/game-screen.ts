@@ -5,6 +5,7 @@ import { MuteButton } from "../core/mute-button";
 import { Popup } from "../core/popup";
 import { Text } from "../core/text";
 import { IGame } from "../game";
+import { playMusic } from "../music";
 import { GameField } from "./game/game-field";
 import { StartScreen } from "./start-screen";
 export class GameScreen extends BaseScreen {
@@ -56,8 +57,7 @@ export class GameScreen extends BaseScreen {
       width: 60,
       fontSize: 24,
     });
-    // TODO: delete - temporary hide mute button
-    muteButton.isVisible = false;
+    if (import.meta.env.DEV) muteButton.isVisible = false;
 
     this.gameField = new GameField(c.width, c.height);
 
@@ -71,8 +71,7 @@ export class GameScreen extends BaseScreen {
 
     this.add(this.title, this.gameField, muteButton, this.menuButton, this.pausePopup);
 
-    // TODO: uncomment - temporary turn off music
-    // playMusic();
+    if (import.meta.env.PROD) playMusic();
 
     if (import.meta.env.DEV) {
       import("dat.gui").then((dat) => {
