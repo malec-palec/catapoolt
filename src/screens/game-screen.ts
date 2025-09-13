@@ -7,11 +7,13 @@ import { Popup } from "../core/popup";
 import { Text } from "../core/text";
 import { IGame } from "../game";
 import { GameField } from "./game/game-field";
+import { HighScoresScreen } from "./high-scores-screen";
 import { StartScreen } from "./start-screen";
 export class GameScreen extends BaseScreen {
   private title: Text;
   private menuButton: Button;
   private pausePopup: Popup;
+  private gameOverPopup: Popup;
 
   private gameField: GameField;
   private originalGameFieldTick: (dt: number) => void;
@@ -42,6 +44,29 @@ export class GameScreen extends BaseScreen {
       ],
     });
 
+    this.gameOverPopup = new Popup({
+      title: "Game Over",
+      width: 400,
+      height: 300,
+      onClose() {
+        game.changeScreen(StartScreen);
+      },
+      buttons: [
+        {
+          text: "Scores",
+          onClick: () => {
+            game.changeScreen(HighScoresScreen);
+          },
+        },
+        {
+          text: "Restart",
+          onClick: () => {
+            game.changeScreen(GameScreen);
+          },
+        },
+      ],
+    });
+
     this.menuButton = new Button({
       width: 60,
       x: 16,
@@ -61,15 +86,21 @@ export class GameScreen extends BaseScreen {
 
     this.gameField = new GameField(c.width, c.height);
 
+    this.gameField.onGameOverCallback = (miceEaten: number) => {
+      this.gameOverPopup.updateTitle("Game Over");
+      this.gameOverPopup.setBodyText(`Your score: ${miceEaten} mice eaten`);
+      this.gameOverPopup.showPopup();
+    };
+
     // Store the original tick method and override it for pause functionality
     this.originalGameFieldTick = this.gameField.tick.bind(this.gameField);
     this.gameField.tick = (dt: number) => {
-      if (!this.pausePopup.isVisible) {
+      if (!this.pausePopup.isVisible && !this.gameOverPopup.isVisible) {
         this.originalGameFieldTick(dt);
       }
     };
 
-    this.add(this.title, this.gameField, muteButton, this.menuButton, this.pausePopup);
+    this.add(this.title, this.gameField, muteButton, this.menuButton, this.pausePopup, this.gameOverPopup);
 
     if (import.meta.env.PROD) playMusic();
     // playMusic();
@@ -85,6 +116,12 @@ export class GameScreen extends BaseScreen {
   }
 
   override emitEvent(event: Event): void {
+    if (this.gameOverPopup.isVisible) {
+      this.gameOverPopup.emitEvent(event);
+      if (event.isAcknowledged) {
+        return;
+      }
+    }
     if (this.pausePopup.isVisible) {
       this.pausePopup.emitEvent(event);
       if (event.isAcknowledged) {
@@ -101,7 +138,6 @@ export class GameScreen extends BaseScreen {
 
     this.menuButton.setPos(c.width - this.menuButton.width - 16, 16);
     this.pausePopup.onResize();
-
-    console.log("🔥 GameScreen onResize");
+    this.gameOverPopup.onResize();
   }
 }

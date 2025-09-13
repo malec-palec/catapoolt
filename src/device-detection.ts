@@ -38,11 +38,11 @@ export const getOptimalCanvasSettings = (): CanvasRenderingContext2DSettings => 
       }
     : device.isAndroid
       ? {
-          alpha: true, // Keep alpha for Android compatibility
+          alpha: false, // Keep alpha for Android compatibility
           desynchronized: false, // Disable desynchronized to prevent flickering
         }
       : {
           willReadFrequently: true,
-          alpha: true,
+          alpha: false,
         };
 };

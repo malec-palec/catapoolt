@@ -65,9 +65,10 @@ class RoundCloseButton extends DisplayObject {
 }
 
 export class Popup extends DisplayObject {
+  title: Text;
   isVisible = false;
   private body: Rectangle;
-  private title: Text;
+  private bodyText?: Text;
   private close: RoundCloseButton;
   private buttons: Button[] = [];
   private onClose?: () => void;
@@ -109,6 +110,14 @@ export class Popup extends DisplayObject {
     this.currentScale = 0;
     this.currentAlpha = 0;
     this.onResize();
+  }
+
+  updateTitle(newTitle: string): void {
+    this.title = new Text(newTitle, 24, "Arial", "bold");
+  }
+
+  setBodyText(text: string): void {
+    this.bodyText = new Text(text, 16, "Arial", "normal");
   }
 
   hidePopup(): void {
@@ -155,6 +164,9 @@ export class Popup extends DisplayObject {
     this.body.y = y;
 
     this.title.setPos(x + this.body.width * 0.5, y + 50);
+    if (this.bodyText) {
+      this.bodyText.setPos(x + this.body.width * 0.5, y + 90);
+    }
     this.close.setPos(x + this.body.width - 47, y + 15);
 
     const totalH = this.buttons.length * 60 - 15;
@@ -201,6 +213,9 @@ export class Popup extends DisplayObject {
     // Only update interactive elements if not animating out
     if (this.animationState !== 2) {
       this.title.tick(dt);
+      if (this.bodyText) {
+        this.bodyText.tick(dt);
+      }
       this.close.tick(dt);
       this.buttons.forEach((btn) => btn.tick(dt));
     }
@@ -237,6 +252,9 @@ export class Popup extends DisplayObject {
 
     // Elements
     this.renderTranslated(ctx, this.title);
+    if (this.bodyText) {
+      this.renderTranslated(ctx, this.bodyText);
+    }
     this.renderTranslated(ctx, this.close);
     this.buttons.forEach((btn) => this.renderTranslated(ctx, btn));
 

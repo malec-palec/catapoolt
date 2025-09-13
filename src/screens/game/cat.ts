@@ -1,4 +1,5 @@
 import { playSound, Sounds } from "../../core/audio/sound";
+import { easeInOut } from "../../core/tween";
 import { Vector2D } from "../../core/vector2d";
 import { ICircleCollider } from "./soft-blob";
 
@@ -66,7 +67,27 @@ export class Cat {
   public maxDragDistance = 200; // Maximum drag distance in pixels
   public jumpHeightMultiplier = 1.2; // Multiplier for vertical velocity (higher = higher jumps)
 
-  constructor(x: number, y: number, radius: number = 30) {
+  // Stamina system
+  public maxStamina = 100;
+  public currentStamina = 100;
+  public displayStamina = 100; // Visual stamina for smooth animation
+  public staminaCostMultiplier = 0.025; // How much stamina is consumed per jump distance (max jump ~5%)
+  public staminaRestoreAmount = 10; // How much stamina is restored when eating a mouse
+  private shouldTriggerGameOverAfterLanding = false;
+
+  // Stamina animation
+  private staminaAnimationTime = 0;
+  private staminaAnimationDuration = 800; // ms
+  private staminaStartValue = 100;
+  private staminaTargetValue = 100;
+  private isAnimatingStamina = false;
+
+  constructor(
+    x: number,
+    y: number,
+    radius: number = 30,
+    private onStaminaEmpty?: () => void,
+  ) {
     this.position = new Vector2D(x, y);
     this.targetPosition = new Vector2D(x, y);
     this.radius = radius;
@@ -213,12 +234,28 @@ export class Cat {
   }
 
   launch(x: number, y: number): void {
-    if (this.isDragging && !this.isFlying) {
+    if (this.isDragging && !this.isFlying && this.currentStamina > 0) {
       this.isDragging = false;
 
       // Calculate launch vector (opposite direction of drag)
       const rawDragVector = Vector2D.sub(this.dragStartPos, new Vector2D(x, y));
       const dragMagnitude = rawDragVector.mag();
+
+      // Calculate stamina cost based on jump distance
+      const staminaCost = Math.min(dragMagnitude * this.staminaCostMultiplier, this.currentStamina);
+      const newStamina = Math.max(0, this.currentStamina - staminaCost);
+
+      // Start stamina animation
+      this.staminaStartValue = this.displayStamina;
+      this.staminaTargetValue = newStamina;
+      this.staminaAnimationTime = 0;
+      this.isAnimatingStamina = true;
+      this.currentStamina = newStamina;
+
+      // Check if game should end after landing
+      if (this.currentStamina <= 0) {
+        this.shouldTriggerGameOverAfterLanding = true;
+      }
 
       // Apply magnitude limit and power constraints in one step
       const effectiveMagnitude = Math.min(dragMagnitude, this.maxDragDistance);
@@ -240,6 +277,20 @@ export class Cat {
   }
 
   tick(): void {
+    // Update stamina animation
+    if (this.isAnimatingStamina) {
+      this.staminaAnimationTime += 16; // Assuming ~60fps (16ms per frame)
+      const progress = Math.min(this.staminaAnimationTime / this.staminaAnimationDuration, 1);
+      const easedProgress = easeInOut(progress);
+
+      this.displayStamina = this.staminaStartValue + (this.staminaTargetValue - this.staminaStartValue) * easedProgress;
+
+      if (progress >= 1) {
+        this.isAnimatingStamina = false;
+        this.displayStamina = this.staminaTargetValue;
+      }
+    }
+
     if (this.isFlying) {
       // Apply physics
       this.position.add(this.velocity);
@@ -280,6 +331,14 @@ export class Cat {
           // Record final ground point for debug visualization
           if (this.debugTrajectory) {
             this.addTrajectoryPoint("ground");
+          }
+
+          // Check if game should end after landing
+          if (this.shouldTriggerGameOverAfterLanding) {
+            this.shouldTriggerGameOverAfterLanding = false;
+            if (this.onStaminaEmpty) {
+              this.onStaminaEmpty();
+            }
           }
         }
       }
@@ -592,5 +651,17 @@ export class Cat {
     context.arc(0, 0, finalShadowRadius, 0, Math.PI * 2);
     context.fill();
     context.restore();
+  }
+
+  restoreStamina(): void {
+    const newStamina = Math.min(this.maxStamina, this.currentStamina + this.staminaRestoreAmount);
+
+    // Start stamina animation to new value
+    this.staminaStartValue = this.displayStamina;
+    this.staminaTargetValue = newStamina;
+    this.staminaAnimationTime = 0;
+    this.isAnimatingStamina = true;
+
+    this.currentStamina = newStamina;
   }
 }

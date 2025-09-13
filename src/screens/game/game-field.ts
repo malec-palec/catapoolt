@@ -30,6 +30,8 @@ interface VehicleControls {
   resetVehicles: () => void;
 }
 export class GameField extends DisplayObject {
+  onGameOverCallback?: (miceEaten: number) => void;
+
   private vehicles: Vehicle[] = [];
   private controls: VehicleControls;
 
@@ -43,6 +45,10 @@ export class GameField extends DisplayObject {
 
   private curMousePos = { x: 0, y: 0 };
   private isMouseDown = false;
+
+  // Game state
+  private miceEaten = 0;
+  private isGameOver = false;
 
   constructor(width: number, height: number) {
     super(width, height);
@@ -72,6 +78,12 @@ export class GameField extends DisplayObject {
       this.controls.gameFieldWidth / 2,
       this.controls.gameFieldHeight / 2 - 1,
       this.controls.catRadius,
+      () => {
+        this.isGameOver = true;
+        if (this.onGameOverCallback) {
+          this.onGameOverCallback(this.miceEaten);
+        }
+      },
     );
     this.cat.setScreenBounds(this.controls.gameFieldWidth, this.controls.gameFieldHeight);
 
@@ -301,10 +313,15 @@ export class GameField extends DisplayObject {
     physicsFolder.add(this.cat, "bounceDamping", 0.1, 1.0, 0.1);
     physicsFolder.add(this.cat, "maxBounces", 0, 10, 1);
 
+    const staminaFolder = catFolder.addFolder("Stamina");
+    staminaFolder.add(this.cat, "maxStamina", 50, 200, 10);
+    staminaFolder.add(this.cat, "currentStamina", 0, 200, 1);
+    staminaFolder.add(this.cat, "staminaCostMultiplier", 0.1, 1.0, 0.05).name("Cost Multiplier");
+    staminaFolder.add(this.cat, "staminaRestoreAmount", 5, 50, 5).name("Restore Amount");
+
     const gameFieldFolder = folder.addFolder("Game Field");
     gameFieldFolder.add(this.controls, "gameFieldWidth", 800, 3200, 100).onChange(() => this.updateGameField());
     gameFieldFolder.add(this.controls, "gameFieldHeight", 600, 2400, 100).onChange(() => this.updateGameField());
-    gameFieldFolder.add(this.controls, "bufferZone", 0, 500, 25);
 
     const debugFolder = folder.addFolder("Debug");
     debugFolder.add(this.controls, "showDebug");
@@ -325,6 +342,11 @@ export class GameField extends DisplayObject {
   }
 
   tick(dt: number): void {
+    // Skip game logic if game is over
+    if (this.isGameOver) {
+      return;
+    }
+
     // Update cat physics
     this.cat.tick();
 
@@ -360,9 +382,10 @@ export class GameField extends DisplayObject {
       for (let i = this.vehicles.length - 1; i >= 0; i--) {
         const mouse = this.vehicles[i];
         if (this.cat.checkCollisionWithPoint(mouse.position.x, mouse.position.y, mouse.size)) {
-          // Mouse is eaten - remove from array
           playSound(Sounds.Smacking);
           this.vehicles.splice(i, 1);
+          this.miceEaten++;
+          this.cat.restoreStamina();
         }
       }
     }
@@ -438,6 +461,9 @@ export class GameField extends DisplayObject {
     context.fillText(miceText, c.width / 2, 35);
     context.textAlign = "left"; // Reset text alignment
 
+    // Draw stamina bar
+    this.drawStaminaBar(context);
+
     if (import.meta.env.PROD) return;
 
     // Draw UI elements (not affected by camera)
@@ -504,6 +530,41 @@ export class GameField extends DisplayObject {
 
       context.restore();
     });
+  }
+
+  private drawStaminaBar(context: CanvasRenderingContext2D): void {
+    const barWidth = c.width - 40; // 20px margin on each side
+    const barHeight = 30;
+    const barX = 20;
+    const barY = c.height - barHeight - 20; // 20px from bottom
+
+    // Calculate stamina percentage using display stamina for smooth animation
+    const staminaPercentage = this.cat.displayStamina / this.cat.maxStamina;
+
+    // Draw background (empty bar)
+    context.fillStyle = "#333333";
+    context.fillRect(barX, barY, barWidth, barHeight);
+
+    // Draw filled portion with smooth color interpolation
+    if (staminaPercentage > 0) {
+      const fillWidth = barWidth * staminaPercentage;
+
+      // Interpolate color from green to red based on stamina percentage
+      const red = Math.round(255 * (1 - staminaPercentage));
+      const green = Math.round(255 * staminaPercentage);
+      const blue = 0;
+
+      const fillColor = `rgb(${red}, ${green}, ${blue})`;
+
+      context.fillStyle = fillColor;
+      context.fillRect(barX, barY, fillWidth, barHeight);
+    }
+
+    // Draw label (aligned to left edge of bar)
+    context.fillStyle = "#000000";
+    context.font = "bold 16px Arial";
+    context.textAlign = "left";
+    context.fillText("Stamina", barX, barY - 5);
   }
 
   private drawSlingshotPreview(context: CanvasRenderingContext2D): void {
@@ -603,6 +664,11 @@ export class GameField extends DisplayObject {
   }
 
   protected handleEvent(event: Event): void {
+    // Skip handling events if game is over
+    if (this.isGameOver) {
+      return;
+    }
+
     if (event instanceof MouseEvent) {
       switch (event.type) {
         case MouseEventType.MOUSE_MOVE:
