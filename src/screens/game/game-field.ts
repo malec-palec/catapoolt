@@ -348,7 +348,7 @@ export class GameField extends DisplayObject {
     }
 
     // Update cat physics
-    this.cat.tick();
+    this.cat.tick(dt);
 
     // Update camera to follow cat
     this.updateCamera();
@@ -718,10 +718,5 @@ export class GameField extends DisplayObject {
     if (this.isMouseDown && this.cat.isDragging) {
       this.cat.updateDrag(worldPos.x, worldPos.y);
     }
-
-    // const safeZone = 10;
-    // if (x < safeZone || x > c.width - safeZone || y < safeZone || y > c.height - safeZone) {
-    //   this.onMouseUp(x, y);
-    // }
   }
 }

@@ -13,8 +13,6 @@ export class Cat {
   public position: Vector2D;
   public targetPosition: Vector2D;
   public radius: number;
-  public color: string;
-  public strokeColor: string;
   public strokeWidth: number;
   public speed: number;
   public debugDraw: boolean = false;
@@ -66,6 +64,14 @@ export class Cat {
   public maxDragDistance = 200; // Maximum drag distance in pixels
   public jumpHeightMultiplier = 1.2; // Multiplier for vertical velocity (higher = higher jumps)
 
+  // Head lowering during drag
+  public headOffset = 0; // Current head vertical offset during drag
+  public maxHeadOffset = 0; // Maximum head offset (calculated based on shadow position)
+  public headOscillationX = 0; // Horizontal oscillation offset when head is lowered
+  private oscillationTime = 0; // Time counter for oscillation
+  public oscillationFrequency = 3; // Oscillation frequency (cycles per second)
+  public oscillationAmplitude = 2; // Maximum horizontal oscillation distance
+
   // Stamina system
   public maxStamina = 100;
   public currentStamina = 100;
@@ -90,8 +96,6 @@ export class Cat {
     this.position = new Vector2D(x, y);
     this.targetPosition = new Vector2D(x, y);
     this.radius = radius;
-    this.color = "#000000";
-    this.strokeColor = "#000000";
     this.strokeWidth = 3;
     this.speed = 3;
 
@@ -109,11 +113,10 @@ export class Cat {
   }
 
   render(context: CanvasRenderingContext2D): void {
-    const headX = this.position.x;
-    const headY = this.position.y - this.z;
+    const headX = this.position.x + this.headOscillationX;
+    const headY = this.position.y - this.z + this.headOffset;
 
-    context.fillStyle = this.color;
-    context.strokeStyle = this.strokeColor;
+    context.fillStyle = context.strokeStyle = "#000";
     context.lineWidth = this.strokeWidth;
 
     // Draw main body circle
@@ -195,19 +198,35 @@ export class Cat {
       playSound(Sounds.Stretching);
       this.isDragging = true;
       this.dragStartPos.set(x, y);
+      this.headOffset = 0; // Reset head position when starting drag
+      this.headOscillationX = 0; // Reset horizontal oscillation
+      this.oscillationTime = 0; // Reset oscillation timer
     }
   }
 
   updateDrag(x: number, y: number): void {
     if (this.isDragging && !this.isFlying) {
-      // Visual feedback during drag (optional - could move cat slightly)
-      // For now, we'll just store the current drag position for launch calculation
+      // Calculate drag distance for head lowering
+      const dragVector = Vector2D.sub(new Vector2D(x, y), this.dragStartPos);
+      const dragDistance = dragVector.mag();
+
+      // Calculate maximum head offset (distance from head bottom to shadow top)
+      const shadowY = this.position.y + this.catHeight + this.z;
+      const headBottomY = this.position.y + this.radius - this.z;
+      this.maxHeadOffset = Math.max(0, shadowY - headBottomY);
+
+      // Calculate head offset based on drag distance (normalized to maxDragDistance)
+      const dragRatio = Math.min(dragDistance / this.maxDragDistance, 1);
+      this.headOffset = dragRatio * this.maxHeadOffset;
     }
   }
 
   launch(x: number, y: number): void {
     if (this.isDragging && !this.isFlying && this.currentStamina > 0) {
       this.isDragging = false;
+      this.headOffset = 0; // Reset head position
+      this.headOscillationX = 0; // Reset horizontal oscillation
+      this.oscillationTime = 0; // Reset oscillation timer
 
       // Calculate launch vector (opposite direction of drag)
       const rawDragVector = Vector2D.sub(this.dragStartPos, new Vector2D(x, y));
@@ -245,10 +264,10 @@ export class Cat {
     }
   }
 
-  tick(): void {
+  tick(dt: number): void {
     // Update stamina animation
     if (this.isAnimatingStamina) {
-      this.staminaAnimationTime += 16; // Assuming ~60fps (16ms per frame)
+      this.staminaAnimationTime += dt;
       const progress = Math.min(this.staminaAnimationTime / this.staminaAnimationDuration, 1);
       const easedProgress = easeInOut(progress);
 
@@ -258,6 +277,21 @@ export class Cat {
         this.isAnimatingStamina = false;
         this.displayStamina = this.staminaTargetValue;
       }
+    }
+
+    // Update head oscillation during drag
+    if (this.isDragging && !this.isFlying) {
+      // Update oscillation time
+      this.oscillationTime += dt;
+
+      // Calculate oscillation intensity based on how lowered the head is
+      const oscillationIntensity = this.headOffset / Math.max(this.maxHeadOffset, 1);
+
+      // Calculate horizontal oscillation using sine wave
+      this.headOscillationX =
+        Math.sin(this.oscillationTime * this.oscillationFrequency * 0.001 * Math.PI * 2) *
+        this.oscillationAmplitude *
+        oscillationIntensity;
     }
 
     if (this.isFlying) {
