@@ -388,8 +388,8 @@ export class Vehicle {
       0,
       shadowRadius, // Outer circle (edge)
     );
-    gradient.addColorStop(0, "rgba(0, 0, 0, 0.3)"); // Lighter center than cat shadow
-    gradient.addColorStop(0.7, "rgba(0, 0, 0, 0.2)"); // Medium transparency
+    gradient.addColorStop(0, "rgba(0, 0, 0, 0.15)"); // Much lighter center for mice
+    gradient.addColorStop(0.7, "rgba(0, 0, 0, 0.1)"); // Very light transparency
     gradient.addColorStop(1, "rgba(0, 0, 0, 0)"); // Transparent edge
 
     context.fillStyle = gradient;

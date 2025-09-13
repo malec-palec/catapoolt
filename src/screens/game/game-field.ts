@@ -7,6 +7,7 @@ import { Vector2D } from "../../core/vector2d";
 import { Vehicle, VehicleOptions } from "../../core/vehicle";
 import { COLOR_BLACK } from "../../registry";
 import { Cat } from "./cat";
+import { Clover } from "./clover";
 import { Poop } from "./poop";
 import { SoftBlob } from "./soft-blob";
 import { Tail } from "./tail";
@@ -41,6 +42,9 @@ export class GameField extends DisplayObject {
   private catBody: SoftBlob;
   private catTail: Tail;
   private poops: Poop[] = [];
+  private clover: Clover | null = null;
+  private cloverCollectedThisWave = false;
+  private lastCloverPosition: { x: number; y: number } | null = null;
 
   // Camera system
   private camera = { x: 0, y: 0 };
@@ -110,6 +114,9 @@ export class GameField extends DisplayObject {
 
     // Create initial vehicles
     this.createVehicles(this.controls);
+
+    // Create initial clover
+    this.createClover();
   }
 
   private createVehicles({
@@ -171,6 +178,68 @@ export class GameField extends DisplayObject {
     this.gameFieldSize.width = this.controls.gameFieldWidth;
     this.gameFieldSize.height = this.controls.gameFieldHeight;
     this.cat.setScreenBounds(this.controls.gameFieldWidth, this.controls.gameFieldHeight);
+  }
+
+  private createClover(): void {
+    const position = this.getRandomCloverPosition();
+    this.clover = new Clover(position.x, position.y);
+    this.lastCloverPosition = { x: position.x, y: position.y };
+  }
+
+  private repositionClover(): void {
+    if (this.clover) {
+      const position = this.getRandomCloverPosition();
+      this.clover.reposition(position.x, position.y);
+      this.lastCloverPosition = { x: position.x, y: position.y };
+    }
+  }
+
+  private getRandomCloverPosition(): { x: number; y: number } {
+    const minDistance = 300; // Minimum distance from previous position
+    const maxAttempts = 20; // Maximum attempts to find a good position
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      const x = Math.random() * this.gameFieldSize.width;
+      const y = Math.random() * this.gameFieldSize.height;
+
+      // If no previous position, any position is fine
+      if (!this.lastCloverPosition) {
+        return { x, y };
+      }
+
+      // Calculate distance from last position
+      const dx = x - this.lastCloverPosition.x;
+      const dy = y - this.lastCloverPosition.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // If far enough from previous position, use this position
+      if (distance >= minDistance) {
+        return { x, y };
+      }
+
+      attempts++;
+    }
+
+    // If we couldn't find a good position after max attempts,
+    // just use a position on the opposite side of the field
+    if (this.lastCloverPosition) {
+      const oppositeX =
+        this.lastCloverPosition.x > this.gameFieldSize.width / 2
+          ? Math.random() * (this.gameFieldSize.width / 2)
+          : this.gameFieldSize.width / 2 + Math.random() * (this.gameFieldSize.width / 2);
+      const oppositeY =
+        this.lastCloverPosition.y > this.gameFieldSize.height / 2
+          ? Math.random() * (this.gameFieldSize.height / 2)
+          : this.gameFieldSize.height / 2 + Math.random() * (this.gameFieldSize.height / 2);
+      return { x: oppositeX, y: oppositeY };
+    }
+
+    // Fallback to random position
+    return {
+      x: Math.random() * this.gameFieldSize.width,
+      y: Math.random() * this.gameFieldSize.height,
+    };
   }
 
   private constrainCatHeadToSoftBody(): void {
@@ -427,6 +496,16 @@ export class GameField extends DisplayObject {
       }
     }
 
+    // Update clover - only if it hasn't been collected this wave
+    if (this.clover && this.clover.active && !this.cloverCollectedThisWave) {
+      this.clover.tick(dt);
+
+      // Check if clover should be repositioned after 3 seconds
+      if (this.clover.shouldReposition()) {
+        this.repositionClover();
+      }
+    }
+
     // Check for poop collisions - only when cat is on ground and not protected
     if (this.cat.z <= 5) {
       for (let i = this.poops.length - 1; i >= 0; i--) {
@@ -435,6 +514,19 @@ export class GameField extends DisplayObject {
           // Remove the poop that was collided with
           this.poops.splice(i, 1);
           playSound(Sounds.Poop);
+        }
+      }
+
+      // Check for clover collision - only when cat is on ground and clover hasn't been collected this wave
+      if (this.clover && this.clover.active && !this.cloverCollectedThisWave) {
+        if (this.clover.checkCollision(this.cat.position.x, this.cat.position.y, this.cat.radius)) {
+          // Collect the clover and restore full stamina
+          this.clover.collect();
+          this.cloverCollectedThisWave = true;
+          this.cat.fullRestoreStamina();
+          playSound(Sounds.ReleaseWobble); // Use existing sound for now
+
+          // No new clover will be created until next wave
         }
       }
     }
@@ -538,6 +630,16 @@ export class GameField extends DisplayObject {
       if (poop.isVisible(this.camera.x, this.camera.y, c.width, c.height)) {
         poop.render(context);
       }
+    }
+
+    // Draw clover if visible and not collected this wave
+    if (
+      this.clover &&
+      this.clover.active &&
+      !this.cloverCollectedThisWave &&
+      this.clover.isVisible(this.camera.x, this.camera.y, c.width, c.height)
+    ) {
+      this.clover.render(context);
     }
 
     this.catBody.render(context);
@@ -862,6 +964,11 @@ export class GameField extends DisplayObject {
       // Boundary avoidance is handled through applyBehaviors method
       this.vehicles.push(vehicle);
     }
+
+    // Reset clover collection flag and position tracking, then create a new clover for the new wave
+    this.cloverCollectedThisWave = false;
+    this.lastCloverPosition = null; // Reset position tracking for new wave
+    this.createClover();
   }
 
   private onMouseUp(x: number, y: number): void {
