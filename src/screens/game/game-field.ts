@@ -415,6 +415,20 @@ export class GameField extends DisplayObject {
     context.lineWidth = 4;
     context.strokeRect(0, 0, this.gameFieldSize.width, this.gameFieldSize.height);
 
+    // Draw all vehicle shadows first (behind everything)
+    this.vehicles.forEach((vehicle) => {
+      if (this.isCircleVisible(vehicle.position, vehicle.size * 2)) {
+        vehicle.drawShadow(context);
+      }
+    });
+
+    if (this.cat.isDragging) {
+      // Draw predictive trajectory first (behind slingshot line)
+      this.drawSlingshotPreview(context);
+    }
+
+    this.cat.drawShadow(context, this.catBody);
+
     // Draw all vehicles (only render visible ones)
     this.vehicles.forEach((vehicle) => {
       if (this.isCircleVisible(vehicle.position, vehicle.size * 2)) {
@@ -425,8 +439,6 @@ export class GameField extends DisplayObject {
         }
       }
     });
-
-    this.cat.drawShadow(context, this.catBody);
 
     this.catBody.render(context);
     this.catTail.render(context);
@@ -444,7 +456,6 @@ export class GameField extends DisplayObject {
     if (this.cat.isDragging) {
       // Draw predictive trajectory first (behind slingshot line)
       this.cat.drawPredictiveTrajectory(context, this.curMousePos.x, this.curMousePos.y);
-      this.drawSlingshotPreview(context);
     }
 
     // Restore camera transform
@@ -604,13 +615,13 @@ export class GameField extends DisplayObject {
     // Draw cone with gradient
     if (coneLength > 10) {
       // Only draw if drag distance is meaningful
-      // Create gradient from transparent at center to red at edge
+      // Create gradient from transparent at center to blue at edge (same color as trajectory)
       const gradient = context.createLinearGradient(centerX, centerY, visualDragX, visualDragY);
 
-      // Calculate color based on power ratio (green to red)
-      const red = Math.round(255 * powerRatio);
-      const green = Math.round(255 * (1 - powerRatio));
-      const blue = 0;
+      // Use same color as predictive trajectory: blue (0, 150, 255)
+      const red = 0;
+      const green = 150;
+      const blue = 255;
 
       // Start transparent, end with color based on power
       const alpha = powerRatio * 0.6; // Max alpha of 0.6
@@ -644,10 +655,10 @@ export class GameField extends DisplayObject {
 
     // Draw rounded end of cone
     if (coneLength > 10) {
-      // Calculate color based on power ratio (green to red) - same as cone
-      const red = Math.round(255 * powerRatio);
-      const green = Math.round(255 * (1 - powerRatio));
-      const blue = 0;
+      // Use same color as predictive trajectory: blue (0, 150, 255)
+      const red = 0;
+      const green = 150;
+      const blue = 255;
       const alpha = powerRatio * 0.6; // Same alpha as cone edge
 
       context.fillStyle = `rgba(${red}, ${green}, ${blue}, ${alpha})`;

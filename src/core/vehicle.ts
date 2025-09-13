@@ -35,6 +35,11 @@ export class Vehicle {
   public strokeColor: string;
   public strokeWidth: number;
 
+  // Tail properties
+  public tailLength: number = 2; // Distance between tail nodes
+  public tailNodes: number = 15; // Number of tail segments
+  public tailHistory: Array<{ x: number; y: number }> = [];
+
   constructor(x: number, y: number, options: VehicleOptions = {}) {
     this.position = new Vector2D(x, y);
     this.velocity = Vector2D.random();
@@ -62,7 +67,12 @@ export class Vehicle {
     // Visual parameters
     this.color = "#7f7f7f";
     this.strokeColor = options.strokeColor ?? "#000000";
-    this.strokeWidth = options.strokeWidth ?? 2;
+    this.strokeWidth = options.strokeWidth ?? 1;
+
+    // Initialize tail history
+    for (let i = 0; i < this.tailNodes; i++) {
+      this.tailHistory[i] = { x: this.position.x, y: this.position.y };
+    }
   }
 
   tick(): void {
@@ -73,6 +83,40 @@ export class Vehicle {
     this.position.add(this.velocity);
     // Reset acceleration to 0 each cycle
     this.acceleration.mult(0);
+
+    // Update tail following the rope algorithm
+    // Determine movement direction
+    const isMovingLeft = this.velocity.x < 0;
+
+    // Calculate tail attachment point (opposite side from nose)
+    // Triangle dimensions (same as in render method)
+    const baseWidth = this.size * 4;
+    const leftBase = -baseWidth / 2;
+    const rightBase = baseWidth / 2;
+
+    // Attach tail to opposite side from nose
+    // If nose is on left side (moving left), tail attaches to right side
+    // If nose is on right side (moving right), tail attaches to left side
+    const tailAttachX = this.position.x + (isMovingLeft ? rightBase - 2 : leftBase + 2);
+    const tailAttachY = this.position.y + this.size * 0.6; // Slightly below center
+
+    // Set head position (tail attachment point)
+    this.tailHistory[0] = { x: tailAttachX, y: tailAttachY };
+
+    // Update each tail segment to follow the previous one
+    for (let i = 1; i < this.tailNodes; i++) {
+      const prevNode = this.tailHistory[i - 1];
+      const currentNode = this.tailHistory[i];
+
+      // Calculate angle from current node to previous node
+      const nodeAngle = Math.atan2(currentNode.y - prevNode.y, currentNode.x - prevNode.x);
+
+      // Position current node at fixed distance from previous node
+      this.tailHistory[i] = {
+        x: prevNode.x + this.tailLength * Math.cos(nodeAngle),
+        y: prevNode.y + this.tailLength * Math.sin(nodeAngle),
+      };
+    }
   }
 
   applyForce(force: Vector2D): void {
@@ -234,36 +278,129 @@ export class Vehicle {
   }
 
   render(context: CanvasRenderingContext2D): void {
-    // Draw a triangle pointing left or right based on velocity direction
-    const isMovingLeft = this.velocity.x < 0;
+    const { tailHistory, position, velocity, size, strokeWidth, strokeColor, color } = this;
 
-    context.fillStyle = this.color;
-    context.strokeStyle = this.strokeColor;
-    context.lineWidth = this.strokeWidth;
+    const isMovingLeft = velocity.x < 0;
+
+    // Draw a triangle with horizontal base and rounded corner slightly right of center
+    context.fillStyle = color;
+    context.strokeStyle = strokeColor;
+    context.lineWidth = strokeWidth;
 
     context.save();
-    context.translate(this.position.x, this.position.y);
+    context.translate(position.x, position.y);
+
+    // Triangle dimensions
+    const baseWidth = size * 4;
+    const height = size * 1.5;
+    const roundedCornerRadius = size;
+
+    // Calculate triangle points
+    const leftBase = -baseWidth / 2;
+    const rightBase = baseWidth / 2;
+    const topPoint = baseWidth * 0.15 * (isMovingLeft ? 1 : -1); // Slightly right of center (15% to the right)
+    const baseY = height / 2;
+    const topY = -height / 2;
 
     context.beginPath();
-    if (isMovingLeft) {
-      // Triangle pointing left
-      context.moveTo(-this.size * 2, 0);
-      context.lineTo(this.size * 2, -this.size);
-      context.lineTo(this.size * 2, this.size);
-    } else {
-      // Triangle pointing right
-      context.moveTo(this.size * 2, 0);
-      context.lineTo(-this.size * 2, -this.size);
-      context.lineTo(-this.size * 2, this.size);
-    }
-    context.closePath();
 
+    // Start from left base corner
+    context.moveTo(leftBase, baseY);
+
+    // Draw horizontal base line to right
+    context.lineTo(rightBase, baseY);
+
+    // Draw line from right base to top point, but stop before the rounded corner
+    const rightToTopDx = topPoint - rightBase;
+    const rightToTopDy = topY - baseY;
+    const rightToTopLength = Math.sqrt(rightToTopDx * rightToTopDx + rightToTopDy * rightToTopDy);
+    const rightToTopUnitX = rightToTopDx / rightToTopLength;
+    const rightToTopUnitY = rightToTopDy / rightToTopLength;
+
+    // Stop at rounded corner distance from top point
+    const rightCornerStartX = topPoint - rightToTopUnitX * roundedCornerRadius;
+    const rightCornerStartY = topY - rightToTopUnitY * roundedCornerRadius;
+
+    context.lineTo(rightCornerStartX, rightCornerStartY);
+
+    // Draw rounded corner at top point
+    const leftToTopDx = topPoint - leftBase;
+    const leftToTopDy = topY - baseY;
+    const leftToTopLength = Math.sqrt(leftToTopDx * leftToTopDx + leftToTopDy * leftToTopDy);
+    const leftToTopUnitX = leftToTopDx / leftToTopLength;
+    const leftToTopUnitY = leftToTopDy / leftToTopLength;
+
+    const leftCornerStartX = topPoint - leftToTopUnitX * roundedCornerRadius;
+    const leftCornerStartY = topY - leftToTopUnitY * roundedCornerRadius;
+
+    // Calculate control points for quadratic curve
+    context.quadraticCurveTo(topPoint, topY, leftCornerStartX, leftCornerStartY);
+
+    // Draw line from rounded corner back to left base
+    context.lineTo(leftBase, baseY);
+
+    context.closePath();
     context.fill();
+    // context.stroke();
+
+    // Draw nose (gray dot at the top point)
+    context.fillStyle = "#999999";
+    context.beginPath();
+    context.arc(isMovingLeft ? leftBase + 2 : rightBase - 2, baseY - 2, this.size * 0.2, 0, Math.PI * 2);
+    context.fill();
+
+    context.restore();
+
+    // draw tail
+    if (tailHistory.length < 2) return;
+
+    context.strokeStyle = "#666666";
+    context.lineWidth = 1.5;
+    context.lineCap = context.lineJoin = "round";
+
+    context.beginPath();
+    context.moveTo(tailHistory[0].x, tailHistory[0].y);
+    for (let i = 1; i < tailHistory.length; i++) {
+      context.lineTo(tailHistory[i].x, tailHistory[i].y);
+    }
     context.stroke();
+  }
+
+  drawShadow(context: CanvasRenderingContext2D): void {
+    // Calculate shadow position (slightly below the mouse)
+    const shadowX = this.position.x;
+    const shadowY = this.position.y + this.size * 0.8; // Shadow offset below mouse
+
+    // Calculate shadow radius based on mouse size
+    const shadowRadius = this.size * 2;
+
+    // Draw ellipse (flattened vertically by 2)
+    context.save();
+    context.translate(shadowX, shadowY);
+    context.scale(1, 0.4); // Flatten vertically more than cat shadow
+
+    // Create radial gradient
+    const gradient = context.createRadialGradient(
+      0,
+      0,
+      0, // Inner circle (center at origin after transform)
+      0,
+      0,
+      shadowRadius, // Outer circle (edge)
+    );
+    gradient.addColorStop(0, "rgba(0, 0, 0, 0.3)"); // Lighter center than cat shadow
+    gradient.addColorStop(0.7, "rgba(0, 0, 0, 0.2)"); // Medium transparency
+    gradient.addColorStop(1, "rgba(0, 0, 0, 0)"); // Transparent edge
+
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.arc(0, 0, shadowRadius, 0, Math.PI * 2);
+    context.fill();
     context.restore();
   }
 
   drawWanderDebug(context: CanvasRenderingContext2D): void {
+    if (import.meta.env.PROD) return;
     // Calculate the center of the wander circle
     const circlePos = this.velocity.copy();
     circlePos.normalize();
@@ -311,6 +448,7 @@ export class Vehicle {
   }
 
   drawFleeDebug(context: CanvasRenderingContext2D, mousePosition?: Vector2D): void {
+    if (import.meta.env.PROD) return;
     if (!mousePosition) return;
 
     const distance = Vector2D.dist(this.position, mousePosition);
