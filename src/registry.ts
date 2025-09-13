@@ -6,6 +6,8 @@ export const isVerticalLayout = (): boolean => window.innerHeight > window.inner
 export const COLOR_BLACK = "#000000";
 export const COLOR_WHITE = "#FFFFFF";
 
+export const HIGH_SCORE_KEY = "catapoolt_highScore";
+
 /**
  * Calculate adaptive font size based on screen width and text length
  * @param originalSize - The desired font size for normal screens

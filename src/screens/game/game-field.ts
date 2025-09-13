@@ -549,9 +549,6 @@ export class GameField extends DisplayObject {
     // Draw cat collision debug
     this.cat.renderCollisionDebug(context);
 
-    // Draw trajectory before cat for better visibility
-    this.cat.renderTrajectory(context);
-
     // Draw slingshot trajectory preview if dragging
     if (this.cat.isDragging) {
       // Draw predictive trajectory first (behind slingshot line)
@@ -568,7 +565,7 @@ export class GameField extends DisplayObject {
     context.fillStyle = "#333333";
     context.font = "bold 24px Arial";
     context.textAlign = "center";
-    const miceText = `Mice: ${this.vehicles.length}`;
+    const miceText = `Mice ${this.vehicles.length}`;
     context.fillText(miceText, c.width / 2 - 80, 35);
 
     const waveText = `Wave ${this.currentWave}`;
@@ -588,22 +585,38 @@ export class GameField extends DisplayObject {
     context.textAlign = "left"; // Reset text alignment
 
     // Draw stamina bar
-    this.drawStaminaBar(context);
+    const barWidth = c.width - 40; // 20px margin on each side
+    const barHeight = 30;
+    const barX = 20;
+    const barY = c.height - barHeight - 20; // 20px from bottom
 
-    if (import.meta.env.PROD) return;
+    // Calculate stamina percentage using display stamina for smooth animation
+    const staminaPercentage = this.cat.displayStamina / this.cat.maxStamina;
 
-    // Draw UI elements (not affected by camera)
-    context.fillStyle = "#666666";
-    context.font = "14px Arial";
+    // Draw background (empty bar)
+    context.fillStyle = "#333333";
+    context.fillRect(barX, barY, barWidth, barHeight);
 
-    let lineY = 5;
-    context.fillText(`Window size: ${window.innerWidth} x ${window.innerHeight}`, 10, (lineY += 20));
-    context.fillText(`Screen size: ${c.width} x ${c.height}`, 10, (lineY += 20));
-    context.fillText(
-      `Cat Pos: (${this.cat.position.x.toFixed(0)}, ${this.cat.position.y.toFixed(0)}, ${this.cat.z.toFixed(0)})`,
-      10,
-      (lineY += 20),
-    );
+    // Draw filled portion with smooth color interpolation
+    if (staminaPercentage > 0) {
+      const fillWidth = barWidth * staminaPercentage;
+
+      // Interpolate color from green to red based on stamina percentage
+      const red = Math.round(255 * (1 - staminaPercentage));
+      const green = Math.round(255 * staminaPercentage);
+      const blue = 0;
+
+      const fillColor = `rgb(${red}, ${green}, ${blue})`;
+
+      context.fillStyle = fillColor;
+      context.fillRect(barX, barY, fillWidth, barHeight);
+    }
+
+    // Draw label (aligned to left edge of bar)
+    context.fillStyle = "#000000";
+    context.font = "bold 16px Arial";
+    context.textAlign = "left";
+    context.fillText("Stamina", barX, barY - 5);
   }
 
   private isAnyVehicleVisible(): boolean {
@@ -656,41 +669,6 @@ export class GameField extends DisplayObject {
 
       context.restore();
     });
-  }
-
-  private drawStaminaBar(context: CanvasRenderingContext2D): void {
-    const barWidth = c.width - 40; // 20px margin on each side
-    const barHeight = 30;
-    const barX = 20;
-    const barY = c.height - barHeight - 20; // 20px from bottom
-
-    // Calculate stamina percentage using display stamina for smooth animation
-    const staminaPercentage = this.cat.displayStamina / this.cat.maxStamina;
-
-    // Draw background (empty bar)
-    context.fillStyle = "#333333";
-    context.fillRect(barX, barY, barWidth, barHeight);
-
-    // Draw filled portion with smooth color interpolation
-    if (staminaPercentage > 0) {
-      const fillWidth = barWidth * staminaPercentage;
-
-      // Interpolate color from green to red based on stamina percentage
-      const red = Math.round(255 * (1 - staminaPercentage));
-      const green = Math.round(255 * staminaPercentage);
-      const blue = 0;
-
-      const fillColor = `rgb(${red}, ${green}, ${blue})`;
-
-      context.fillStyle = fillColor;
-      context.fillRect(barX, barY, fillWidth, barHeight);
-    }
-
-    // Draw label (aligned to left edge of bar)
-    context.fillStyle = "#000000";
-    context.font = "bold 16px Arial";
-    context.textAlign = "left";
-    context.fillText("Stamina", barX, barY - 5);
   }
 
   private drawSlingshotPreview(context: CanvasRenderingContext2D): void {
@@ -850,11 +828,9 @@ export class GameField extends DisplayObject {
     // Trigger wave popup through callback
     if (this.onNextWaveCallback) {
       this.onNextWaveCallback(this.currentWave, () => {
-        // This callback will be called when the user clicks "Continue"
         this.spawnNewWaveMice();
       });
     } else {
-      // Fallback if no callback is set
       this.spawnNewWaveMice();
     }
   }

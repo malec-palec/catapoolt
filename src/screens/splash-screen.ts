@@ -9,7 +9,7 @@ export class SplashScreen extends BaseScreen {
   constructor(game: IGame) {
     super(game);
 
-    this.title = new Text("Splash Screen", 64, "Arial", "bold");
+    this.title = new Text("A game by Gleb V.", 64, "Arial", "bold");
     this.add(this.title);
   }
 

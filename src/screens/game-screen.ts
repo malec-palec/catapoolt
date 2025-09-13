@@ -6,6 +6,7 @@ import { MuteButton } from "../core/mute-button";
 import { Popup } from "../core/popup";
 import { Text } from "../core/text";
 import { IGame } from "../game";
+import { HIGH_SCORE_KEY } from "../registry";
 import { GameField } from "./game/game-field";
 import { HighScoresScreen } from "./high-scores-screen";
 import { StartScreen } from "./start-screen";
@@ -116,6 +117,13 @@ export class GameScreen extends BaseScreen {
     this.gameField = new GameField(c.width, c.height);
 
     this.gameField.onGameOverCallback = (miceEaten: number) => {
+      const currentHighScore = localStorage.getItem(HIGH_SCORE_KEY);
+      const currentHighScoreNum = currentHighScore ? parseInt(currentHighScore, 10) : 0;
+
+      if (miceEaten > currentHighScoreNum) {
+        localStorage.setItem(HIGH_SCORE_KEY, miceEaten.toString());
+      }
+
       this.gameOverPopup.updateTitle("Game Over");
       this.gameOverPopup.setBodyText(`Your score: ${miceEaten} mice eaten`);
       this.gameOverPopup.showPopup();

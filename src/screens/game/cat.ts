@@ -518,42 +518,6 @@ export class Cat {
     }
   }
 
-  renderTrajectory(context: CanvasRenderingContext2D): void {
-    if (!this.debugTrajectory || this.trajectoryPoints.length < 2) return;
-
-    // Draw trajectory line
-    context.strokeStyle = "rgba(255, 100, 100, 0.7)";
-    context.lineWidth = 2;
-    context.setLineDash([4, 4]);
-    context.beginPath();
-
-    for (let i = 0; i < this.trajectoryPoints.length; i++) {
-      const point = this.trajectoryPoints[i];
-      if (i === 0) {
-        context.moveTo(point.x, point.y);
-      } else {
-        context.lineTo(point.x, point.y);
-      }
-    }
-    context.stroke();
-    context.setLineDash([]);
-
-    // Draw special markers for bounces and ground hits
-    for (const point of this.trajectoryPoints) {
-      if (point.type === "bounce") {
-        context.fillStyle = "rgba(255, 255, 0, 0.8)";
-        context.beginPath();
-        context.arc(point.x, point.y, 6, 0, Math.PI * 2);
-        context.fill();
-      } else if (point.type === "ground") {
-        context.fillStyle = "rgba(0, 255, 0, 0.8)";
-        context.beginPath();
-        context.arc(point.x, point.y, 8, 0, Math.PI * 2);
-        context.fill();
-      }
-    }
-  }
-
   calculatePredictiveTrajectory(
     launchX: number,
     launchY: number,
