@@ -17,7 +17,6 @@ export class Cat {
   public strokeColor: string;
   public strokeWidth: number;
   public speed: number;
-  public easing: number;
   public debugDraw: boolean = false;
 
   // Cat face properties
@@ -95,7 +94,6 @@ export class Cat {
     this.strokeColor = "#000000";
     this.strokeWidth = 3;
     this.speed = 3;
-    this.easing = 0.05; // Lower = smoother, higher = faster
 
     // Initialize physics
     this.velocity = new Vector2D(0, 0);
@@ -112,8 +110,7 @@ export class Cat {
 
   render(context: CanvasRenderingContext2D): void {
     const headX = this.position.x;
-    const headY = this.position.y - this.z; // Adjust visual position based on height
-    const headRadius = this.radius;
+    const headY = this.position.y - this.z;
 
     context.fillStyle = this.color;
     context.strokeStyle = this.strokeColor;
@@ -125,97 +122,72 @@ export class Cat {
     context.fill();
     context.stroke();
 
-    // Calculate ear positions
-    const angleRad = (this.earAngle * Math.PI) / 180; // Convert to radians
-    const halfAngle = angleRad / 2;
+    // Calculate ear positions once
+    const halfAngle = (this.earAngle * Math.PI) / 360; // Direct calculation
+    const sinHalf = Math.sin(halfAngle);
+    const cosHalf = Math.cos(halfAngle);
+    const earOffset = this.radius * 0.8;
+    const earHalfWidth = this.earWidth / 2;
 
-    // Left ear position (top-left of head)
-    const leftEarBaseX = headX - Math.sin(halfAngle) * headRadius * 0.8;
-    const leftEarBaseY = headY - Math.cos(halfAngle) * headRadius * 0.8 + this.earOffsetY;
+    // Draw ears using shared calculations
+    const drawEar = (xSign: number) => {
+      const baseX = headX + xSign * sinHalf * earOffset;
+      const baseY = headY - cosHalf * earOffset + this.earOffsetY;
 
-    // Right ear position (top-right of head)
-    const rightEarBaseX = headX + Math.sin(halfAngle) * headRadius * 0.8;
-    const rightEarBaseY = headY - Math.cos(halfAngle) * headRadius * 0.8 + this.earOffsetY;
+      context.beginPath();
+      context.moveTo(baseX - earHalfWidth, baseY);
+      context.lineTo(baseX + earHalfWidth, baseY);
+      context.lineTo(baseX, baseY - this.earHeight);
+      context.closePath();
+      context.fill();
+    };
 
-    // Draw left ear (triangle)
+    drawEar(-1); // Left ear
+    drawEar(1); // Right ear
+
+    // Redraw body to cover ear bases
     context.beginPath();
-    context.moveTo(leftEarBaseX - this.earWidth / 2, leftEarBaseY);
-    context.lineTo(leftEarBaseX + this.earWidth / 2, leftEarBaseY);
-    context.lineTo(leftEarBaseX, leftEarBaseY - this.earHeight);
-    context.closePath();
+    context.arc(headX, headY, this.radius, 0, Math.PI * 2);
     context.fill();
 
-    // Draw right ear (triangle)
-    context.beginPath();
-    context.moveTo(rightEarBaseX - this.earWidth / 2, rightEarBaseY);
-    context.lineTo(rightEarBaseX + this.earWidth / 2, rightEarBaseY);
-    context.lineTo(rightEarBaseX, rightEarBaseY - this.earHeight);
-    context.closePath();
-    context.fill();
+    // Calculate eye properties once
+    const eyeRadius = this.radius * this.eyeRadius;
+    const eyeOffsetX = this.radius * this.eyeOffsetX;
+    const eyeOffsetY = this.radius * this.eyeOffsetY;
+    const pupilHalfWidth = (eyeRadius * this.pupilWidth) / 2;
+    const pupilHalfHeight = (eyeRadius * this.pupilHeight) / 2;
 
-    // Draw main black circle (cat body)
-    context.beginPath();
-    context.arc(headX, headY, this.radius, 0, 2 * Math.PI);
-    context.fill();
+    // Draw eyes using shared calculations
+    const drawEye = (xSign: number) => {
+      const eyeX = headX + xSign * eyeOffsetX;
+      const eyeY = headY - eyeOffsetY;
 
-    // Draw cat eyes
-    const actualEyeRadius = this.radius * this.eyeRadius; // Eye size relative to controller radius
-    const actualEyeOffsetX = this.radius * this.eyeOffsetX; // Horizontal distance from center
-    const actualEyeOffsetY = this.radius * this.eyeOffsetY; // Vertical offset (slightly above center)
+      // Eye
+      context.fillStyle = "#228B22";
+      context.beginPath();
+      context.arc(eyeX, eyeY, eyeRadius, 0, Math.PI * 2);
+      context.fill();
 
-    // Left eye position
-    const leftEyeX = headX - actualEyeOffsetX;
-    const leftEyeY = headY - actualEyeOffsetY;
+      // Pupil
+      context.fillStyle = "#000000";
+      context.fillRect(eyeX - pupilHalfWidth, eyeY - pupilHalfHeight, pupilHalfWidth * 2, pupilHalfHeight * 2);
+    };
 
-    // Right eye position
-    const rightEyeX = headX + actualEyeOffsetX;
-    const rightEyeY = headY - actualEyeOffsetY;
+    drawEye(-1); // Left eye
+    drawEye(1); // Right eye
 
-    // Draw left eye (rich green)
-    context.fillStyle = "#228B22"; // Rich green color
-    context.beginPath();
-    context.arc(leftEyeX, leftEyeY, actualEyeRadius, 0, 2 * Math.PI);
-    context.fill();
+    if (this.debugDraw) {
+      context.strokeStyle = "#4444ff";
+      context.lineWidth = 3;
+      context.beginPath();
+      context.arc(headX, headY, this.radius, 0, Math.PI * 2);
+      context.stroke();
 
-    // Draw right eye (rich green)
-    context.beginPath();
-    context.arc(rightEyeX, rightEyeY, actualEyeRadius, 0, 2 * Math.PI);
-    context.fill();
-
-    // Draw pupils (narrow black rectangles)
-    const actualPupilWidth = actualEyeRadius * this.pupilWidth; // Narrow width
-    const actualPupilHeight = actualEyeRadius * this.pupilHeight; // Taller than wide for cat-like appearance
-
-    context.fillStyle = "#000000";
-
-    // Left pupil
-    context.fillRect(
-      leftEyeX - actualPupilWidth / 2,
-      leftEyeY - actualPupilHeight / 2,
-      actualPupilWidth,
-      actualPupilHeight,
-    );
-
-    // Right pupil
-    context.fillRect(
-      rightEyeX - actualPupilWidth / 2,
-      rightEyeY - actualPupilHeight / 2,
-      actualPupilWidth,
-      actualPupilHeight,
-    );
-
-    if (!this.debugDraw) return;
-
-    context.strokeStyle = "#4444ff";
-    context.lineWidth = 3;
-    context.beginPath();
-    context.arc(headX, headY, this.radius, 0, 2 * Math.PI);
-    context.stroke();
-
-    context.fillStyle = "#4444ff";
-    context.beginPath();
-    context.arc(headX, headY, 8, 0, 2 * Math.PI);
-    context.fill();
+      context.fillStyle = "#4444ff";
+      context.beginPath();
+      context.arc(headX, headY, 8, 0, Math.PI * 2);
+      context.fill();
+    }
   }
 
   startDrag(x: number, y: number): void {
@@ -246,10 +218,7 @@ export class Cat {
       const newStamina = Math.max(0, this.currentStamina - staminaCost);
 
       // Start stamina animation
-      this.staminaStartValue = this.displayStamina;
-      this.staminaTargetValue = newStamina;
-      this.staminaAnimationTime = 0;
-      this.isAnimatingStamina = true;
+      this.animateStaminaTo(newStamina);
       this.currentStamina = newStamina;
 
       // Check if game should end after landing
@@ -368,9 +337,12 @@ export class Cat {
     if (this.z > 5) return false; // Only check collisions when on ground
 
     const collisionData = this.getCollisionData();
-    const distance = Math.sqrt(Math.pow(x - collisionData.centerX, 2) + Math.pow(y - collisionData.centerY, 2));
+    const dx = x - collisionData.centerX;
+    const dy = y - collisionData.centerY;
+    const distanceSquared = dx * dx + dy * dy;
+    const radiusSum = collisionData.radius + objectRadius;
 
-    return distance <= collisionData.radius + objectRadius;
+    return distanceSquared <= radiusSum * radiusSum;
   }
 
   // Render collision debug visualization
@@ -391,49 +363,51 @@ export class Cat {
   private applySmoothBoundaryDamping(): void {
     const dampingZone = 100;
     const dampingStrength = 0.95;
-    const dampingRange = 1 - dampingStrength;
+    const dampingRange = 0.05; // 1 - dampingStrength
 
-    // Helper function to apply edge damping
-    const applyEdgeDamping = (
-      position: number,
-      velocity: number,
-      minBound: number,
-      maxBound: number,
-    ): [number, number] => {
-      const distance = position - minBound;
-      if (distance <= 0) {
-        return [minBound, Math.max(0, velocity)];
-      }
-      if (distance <= dampingZone && velocity < 0) {
-        return [position, velocity * (dampingStrength + dampingRange * (distance / dampingZone))];
-      }
-
-      const distanceFromMax = maxBound - position;
-      if (distanceFromMax <= 0) {
-        return [maxBound, Math.min(0, velocity)];
-      }
-      if (distanceFromMax <= dampingZone && velocity > 0) {
-        return [position, velocity * (dampingStrength + dampingRange * (distanceFromMax / dampingZone))];
-      }
-
-      return [position, velocity];
-    };
-
-    // Apply horizontal damping
-    [this.position.x, this.velocity.x] = applyEdgeDamping(
+    // Apply horizontal and vertical damping
+    [this.position.x, this.velocity.x] = this.applyEdgeDamping(
       this.position.x,
       this.velocity.x,
       this.radius,
       this.screenWidth - this.radius,
+      dampingZone,
+      dampingStrength,
+      dampingRange,
     );
-
-    // Apply vertical damping
-    [this.position.y, this.velocity.y] = applyEdgeDamping(
+    [this.position.y, this.velocity.y] = this.applyEdgeDamping(
       this.position.y,
       this.velocity.y,
       this.radius + this.z,
       this.screenHeight - this.radius,
+      dampingZone,
+      dampingStrength,
+      dampingRange,
     );
+  }
+
+  private applyEdgeDamping(
+    position: number,
+    velocity: number,
+    minBound: number,
+    maxBound: number,
+    dampingZone: number,
+    dampingStrength: number,
+    dampingRange: number,
+  ): [number, number] {
+    const distance = position - minBound;
+    if (distance <= 0) return [minBound, Math.max(0, velocity)];
+    if (distance <= dampingZone && velocity < 0) {
+      return [position, velocity * (dampingStrength + dampingRange * (distance / dampingZone))];
+    }
+
+    const distanceFromMax = maxBound - position;
+    if (distanceFromMax <= 0) return [maxBound, Math.min(0, velocity)];
+    if (distanceFromMax <= dampingZone && velocity > 0) {
+      return [position, velocity * (dampingStrength + dampingRange * (distanceFromMax / dampingZone))];
+    }
+
+    return [position, velocity];
   }
 
   isPressed(v: Vector2D): boolean {
@@ -512,7 +486,7 @@ export class Cat {
     const points: Array<{ x: number; y: number; z: number; type: "normal" | "bounce" | "ground" }> = [];
     const dampingZone = 100;
     const dampingStrength = 0.95;
-    const dampingRange = 1 - dampingStrength;
+    const dampingRange = 0.05; // 1 - dampingStrength
 
     for (let step = 0; step < this.predictiveSteps; step++) {
       // Apply physics simulation
@@ -521,46 +495,33 @@ export class Cat {
       simZ += simVelZ * this.predictiveStepSize;
       simVelZ -= this.gravity * this.predictiveStepSize;
 
-      // Simulate boundary damping
-      const applyEdgeDamping = (
-        position: number,
-        velocity: number,
-        minBound: number,
-        maxBound: number,
-      ): [number, number] => {
-        const distance = position - minBound;
-        if (distance <= 0) {
-          return [minBound, Math.max(0, velocity)];
-        }
-        if (distance <= dampingZone && velocity < 0) {
-          return [position, velocity * (dampingStrength + dampingRange * (distance / dampingZone))];
-        }
-
-        const distanceFromMax = maxBound - position;
-        if (distanceFromMax <= 0) {
-          return [maxBound, Math.min(0, velocity)];
-        }
-        if (distanceFromMax <= dampingZone && velocity > 0) {
-          return [position, velocity * (dampingStrength + dampingRange * (distanceFromMax / dampingZone))];
-        }
-
-        return [position, velocity];
-      };
-
-      [simX, simVelX] = applyEdgeDamping(simX, simVelX, this.radius, this.screenWidth - this.radius);
-      [simY, simVelY] = applyEdgeDamping(simY, simVelY, this.radius + simZ, this.screenHeight - this.radius);
+      // Simulate boundary damping using existing method
+      [simX, simVelX] = this.applyEdgeDamping(
+        simX,
+        simVelX,
+        this.radius,
+        this.screenWidth - this.radius,
+        dampingZone,
+        dampingStrength,
+        dampingRange,
+      );
+      [simY, simVelY] = this.applyEdgeDamping(
+        simY,
+        simVelY,
+        this.radius + simZ,
+        this.screenHeight - this.radius,
+        dampingZone,
+        dampingStrength,
+        dampingRange,
+      );
 
       // Ground collision simulation - stop at first ground contact
       if (simZ <= 0) {
         simZ = 0;
-        // Mark first ground contact and stop simulation
         points.push({ x: simX, y: simY - simZ + this.catHeight, z: simZ, type: "ground" });
-        break; // End simulation at first ground contact
-      } else {
-        // Only add every few points to avoid clutter
-        if (step % 3 === 0) {
-          points.push({ x: simX, y: simY - simZ + this.catHeight, z: simZ, type: "normal" });
-        }
+        break;
+      } else if (step % 3 === 0) {
+        points.push({ x: simX, y: simY - simZ + this.catHeight, z: simZ, type: "normal" });
       }
     }
 
@@ -655,13 +616,14 @@ export class Cat {
 
   restoreStamina(): void {
     const newStamina = Math.min(this.maxStamina, this.currentStamina + this.staminaRestoreAmount);
+    this.animateStaminaTo(newStamina);
+    this.currentStamina = newStamina;
+  }
 
-    // Start stamina animation to new value
+  private animateStaminaTo(targetValue: number): void {
     this.staminaStartValue = this.displayStamina;
-    this.staminaTargetValue = newStamina;
+    this.staminaTargetValue = targetValue;
     this.staminaAnimationTime = 0;
     this.isAnimatingStamina = true;
-
-    this.currentStamina = newStamina;
   }
 }

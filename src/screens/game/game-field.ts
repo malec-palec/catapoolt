@@ -568,14 +568,16 @@ export class GameField extends DisplayObject {
   }
 
   private drawSlingshotPreview(context: CanvasRenderingContext2D): void {
-    const catX = this.cat.position.x;
-    const catY = this.cat.position.y;
+    // Get cat collision center
+    const centerX = this.cat.position.x;
+    const centerY = this.cat.position.y + this.cat.catHeight + this.cat.z;
+
     const dragX = this.curMousePos.x;
     const dragY = this.curMousePos.y;
 
-    // Calculate drag vector and distance once
-    const dragVectorX = dragX - catX;
-    const dragVectorY = dragY - catY;
+    // Calculate drag vector and distance
+    const dragVectorX = dragX - centerX;
+    const dragVectorY = dragY - centerY;
     const dragDistance = Math.sqrt(dragVectorX * dragVectorX + dragVectorY * dragVectorY);
     const maxDragDistance = this.cat.maxDragDistance;
 
@@ -585,82 +587,80 @@ export class GameField extends DisplayObject {
 
     if (dragDistance > maxDragDistance) {
       const scale = maxDragDistance / dragDistance;
-      visualDragX = catX + dragVectorX * scale;
-      visualDragY = catY + dragVectorY * scale;
+      visualDragX = centerX + dragVectorX * scale;
+      visualDragY = centerY + dragVectorY * scale;
     }
 
-    // Calculate power ratio and line color once
+    // Calculate power ratio for color intensity
     const powerRatio = Math.min(dragDistance / maxDragDistance, 1.0);
-    const red = Math.floor(255 * powerRatio);
-    const green = Math.floor(255 * (1 - powerRatio));
-    const lineColor = `rgb(${red}, ${green}, 0)`;
 
-    // Draw main slingshot line
-    context.strokeStyle = lineColor;
-    context.lineWidth = 4;
-    context.lineCap = "round";
-    context.setLineDash([]);
-    context.beginPath();
-    context.moveTo(catX, catY);
-    context.lineTo(visualDragX, visualDragY);
-    context.stroke();
+    // Calculate cone parameters
+    const coneLength = Math.min(dragDistance, maxDragDistance);
+    const coneAngle = Math.atan2(visualDragY - centerY, visualDragX - centerX);
+    const minConeWidth = 8; // Minimum width when no power
+    const maxConeWidth = 40; // Maximum width at full power
+    const coneWidth = minConeWidth + (maxConeWidth - minConeWidth) * powerRatio;
 
-    // Draw drag point indicator with same color
-    context.fillStyle = lineColor;
-    context.beginPath();
-    context.arc(visualDragX, visualDragY, 8, 0, Math.PI * 2);
-    context.fill();
+    // Draw cone with gradient
+    if (coneLength > 10) {
+      // Only draw if drag distance is meaningful
+      // Create gradient from transparent at center to red at edge
+      const gradient = context.createLinearGradient(centerX, centerY, visualDragX, visualDragY);
 
-    // Draw trajectory preview using visual drag position
-    const trajectoryVectorX = catX - visualDragX;
-    const trajectoryVectorY = catY - visualDragY;
-    const trajectoryDistance = Math.sqrt(trajectoryVectorX * trajectoryVectorX + trajectoryVectorY * trajectoryVectorY);
-    const trajectoryLength = Math.min(trajectoryDistance * 2, 200);
+      // Calculate color based on power ratio (green to red)
+      const red = Math.round(255 * powerRatio);
+      const green = Math.round(255 * (1 - powerRatio));
+      const blue = 0;
 
-    if (trajectoryLength > 0) {
-      const normalizedX = trajectoryVectorX / trajectoryDistance;
-      const normalizedY = trajectoryVectorY / trajectoryDistance;
+      // Start transparent, end with color based on power
+      const alpha = powerRatio * 0.6; // Max alpha of 0.6
+      gradient.addColorStop(0, `rgba(${red}, ${green}, ${blue}, 0)`); // Transparent at cat
+      gradient.addColorStop(0.3, `rgba(${red}, ${green}, ${blue}, ${alpha * 0.3})`); // Mid color
+      gradient.addColorStop(1, `rgba(${red}, ${green}, ${blue}, ${alpha})`); // Full color at cursor
 
-      const trajectoryEndX = catX + normalizedX * trajectoryLength;
-      const trajectoryEndY = catY + normalizedY * trajectoryLength;
+      // Calculate cone vertices
+      const perpX = Math.cos(coneAngle + Math.PI / 2);
+      const perpY = Math.sin(coneAngle + Math.PI / 2);
 
-      // Draw trajectory arrow
-      context.strokeStyle = "rgba(255, 255, 0, 0.8)";
-      context.lineWidth = 3;
-      context.setLineDash([8, 4]);
+      const halfWidth = coneWidth / 2;
+
+      // Cone vertices
+      const vertex1X = centerX;
+      const vertex1Y = centerY;
+      const vertex2X = visualDragX + perpX * halfWidth;
+      const vertex2Y = visualDragY + perpY * halfWidth;
+      const vertex3X = visualDragX - perpX * halfWidth;
+      const vertex3Y = visualDragY - perpY * halfWidth;
+
+      // Draw cone
+      context.fillStyle = gradient;
       context.beginPath();
-      context.moveTo(catX, catY);
-      context.lineTo(trajectoryEndX, trajectoryEndY);
-      context.stroke();
-
-      // Draw arrowhead
-      const arrowSize = 15;
-      const arrowAngle = Math.atan2(normalizedY, normalizedX);
-
-      context.fillStyle = "rgba(255, 255, 0, 0.8)";
-      context.setLineDash([]);
-      context.beginPath();
-      context.moveTo(trajectoryEndX, trajectoryEndY);
-      context.lineTo(
-        trajectoryEndX - arrowSize * Math.cos(arrowAngle - Math.PI / 6),
-        trajectoryEndY - arrowSize * Math.sin(arrowAngle - Math.PI / 6),
-      );
-      context.lineTo(
-        trajectoryEndX - arrowSize * Math.cos(arrowAngle + Math.PI / 6),
-        trajectoryEndY - arrowSize * Math.sin(arrowAngle + Math.PI / 6),
-      );
+      context.moveTo(vertex1X, vertex1Y);
+      context.lineTo(vertex2X, vertex2Y);
+      context.lineTo(vertex3X, vertex3Y);
       context.closePath();
       context.fill();
     }
 
-    // Draw power indicator circle around cat
-    const power = Math.min(dragDistance / 100, 1);
-    context.strokeStyle = `rgba(255, 0, 0, ${0.3 + power * 0.5})`;
-    context.lineWidth = 3;
-    context.setLineDash([]);
-    context.beginPath();
-    context.arc(catX, catY, this.cat.radius + 10 + power * 20, 0, Math.PI * 2);
-    context.stroke();
+    // Draw rounded end of cone
+    if (coneLength > 10) {
+      // Calculate color based on power ratio (green to red) - same as cone
+      const red = Math.round(255 * powerRatio);
+      const green = Math.round(255 * (1 - powerRatio));
+      const blue = 0;
+      const alpha = powerRatio * 0.6; // Same alpha as cone edge
+
+      context.fillStyle = `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+
+      // Calculate the angle perpendicular to cone direction (pointing away from cat)
+      const outwardAngle = coneAngle;
+      const startAngle = outwardAngle - Math.PI / 2;
+      const endAngle = outwardAngle + Math.PI / 2;
+
+      context.beginPath();
+      context.arc(visualDragX, visualDragY, coneWidth / 2, startAngle, endAngle, false);
+      context.fill();
+    }
   }
 
   protected handleEvent(event: Event): void {
