@@ -95,6 +95,7 @@ export class BlobPoint {
 export class SoftBlob {
   points: BlobPoint[] = [];
   area: number;
+  baseArea: number; // Original area for reference
   circumference: number;
   chordLength: number;
 
@@ -106,7 +107,8 @@ export class SoftBlob {
     puffiness: number,
     public outlineSize: number,
   ) {
-    this.area = radius * radius * Math.PI * puffiness;
+    this.baseArea = radius * radius * Math.PI * puffiness;
+    this.area = this.baseArea;
     this.circumference = radius * 2 * Math.PI;
     this.chordLength = this.circumference / numPoints;
 
@@ -298,5 +300,15 @@ export class SoftBlob {
       }
     }
     return inside;
+  }
+
+  // Update the target area for inflation
+  setTargetArea(targetArea: number): void {
+    this.area = targetArea;
+  }
+
+  // Get the base (original) area
+  getBaseArea(): number {
+    return this.baseArea;
   }
 }

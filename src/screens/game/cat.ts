@@ -64,6 +64,21 @@ export class Cat {
   public maxDragDistance = 200; // Maximum drag distance in pixels
   public jumpHeightMultiplier = 1.2; // Multiplier for vertical velocity (higher = higher jumps)
 
+  // Double tap for purge
+  private lastTapTime = 0;
+  private doubleTapDelay = 300; // ms
+
+  // Inflation deflation animation
+  private _isDeflating = false;
+  private deflationStartTime = 0;
+  private deflationDuration = 800; // ms
+  private deflationStartValue = 0;
+  private deflationTargetValue = 0;
+
+  // Vulnerability window after purge
+  private purgeProtectionTime = 0;
+  private purgeProtectionDuration = 500; // 0.5 seconds in milliseconds
+
   // Head lowering during drag
   public headOffset = 0; // Current head vertical offset during drag
   public maxHeadOffset = 0; // Maximum head offset (calculated based on shadow position)
@@ -79,6 +94,15 @@ export class Cat {
   public staminaCostMultiplier = 0.025; // How much stamina is consumed per jump distance (max jump ~5%)
   public staminaRestoreAmount = 10; // How much stamina is restored when eating a mouse
   private shouldTriggerGameOverAfterLanding = false;
+
+  // Inflation system
+  public inflationLevel = 0; // Current inflation level (0 = normal size)
+  public maxInflationLevel = 10; // Maximum inflation level
+  public inflationPerMouse = 2; // How much inflation per mouse eaten
+  public baseBodyArea: number = 0; // Original body area for reference
+  public inflationMultiplier = 1.5; // How much the body area increases per inflation level
+  public inflationStaminaPenalty = 0.1; // Additional stamina cost per inflation level (10% per level)
+  public inflationJumpPenalty = 0.05; // Jump distance reduction per inflation level (5% per level)
 
   // Stamina animation
   private staminaAnimationTime = 0;
@@ -103,6 +127,10 @@ export class Cat {
     this.velocity = new Vector2D(0, 0);
     this.dragStartPos = new Vector2D(x, y);
     this.groundLevel = y;
+  }
+
+  getFloorLevel(): number {
+    return this.position.y + this.catHeight + this.z;
   }
 
   getCollider(): ICircleCollider {
@@ -232,8 +260,10 @@ export class Cat {
       const rawDragVector = Vector2D.sub(this.dragStartPos, new Vector2D(x, y));
       const dragMagnitude = rawDragVector.mag();
 
-      // Calculate stamina cost based on jump distance
-      const staminaCost = Math.min(dragMagnitude * this.staminaCostMultiplier, this.currentStamina);
+      // Calculate stamina cost based on jump distance and inflation penalty
+      const baseStaminaCost = dragMagnitude * this.staminaCostMultiplier;
+      const inflationStaminaMultiplier = this.getInflationStaminaMultiplier();
+      const staminaCost = Math.min(baseStaminaCost * inflationStaminaMultiplier, this.currentStamina);
       const newStamina = Math.max(0, this.currentStamina - staminaCost);
 
       // Start stamina animation
@@ -250,9 +280,12 @@ export class Cat {
       const effectivePower = Math.min(this.launchPower, this.maxLaunchPower);
       const powerScale = (effectivePower / this.mass) * (effectiveMagnitude / Math.max(dragMagnitude, 1));
 
+      // Apply inflation penalty to jump distance
+      const inflationJumpMultiplier = this.getInflationJumpMultiplier();
+
       // Set velocity directly without creating intermediate vectors
-      this.velocity = Vector2D.mult(rawDragVector, powerScale);
-      this.velocityZ = effectiveMagnitude * effectivePower * this.jumpHeightMultiplier;
+      this.velocity = Vector2D.mult(rawDragVector, powerScale * inflationJumpMultiplier);
+      this.velocityZ = effectiveMagnitude * effectivePower * this.jumpHeightMultiplier * inflationJumpMultiplier;
 
       this.isFlying = true;
       this.bounceCount = 0;
@@ -276,6 +309,29 @@ export class Cat {
       if (progress >= 1) {
         this.isAnimatingStamina = false;
         this.displayStamina = this.staminaTargetValue;
+      }
+    }
+
+    // Update deflation animation
+    if (this._isDeflating) {
+      this.deflationStartTime += dt;
+      const progress = Math.min(this.deflationStartTime / this.deflationDuration, 1);
+      const easedProgress = easeInOut(progress);
+
+      this.inflationLevel =
+        this.deflationStartValue + (this.deflationTargetValue - this.deflationStartValue) * easedProgress;
+
+      if (progress >= 1) {
+        this._isDeflating = false;
+        this.inflationLevel = this.deflationTargetValue;
+      }
+    }
+
+    // Update purge protection timer
+    if (this.purgeProtectionTime > 0) {
+      this.purgeProtectionTime -= dt;
+      if (this.purgeProtectionTime < 0) {
+        this.purgeProtectionTime = 0;
       }
     }
 
@@ -509,13 +565,16 @@ export class Cat {
     const effectivePower = Math.min(this.launchPower, this.maxLaunchPower);
     const powerScale = (effectivePower / this.mass) * (effectiveMagnitude / Math.max(dragMagnitude, 1));
 
+    // Apply inflation penalty to predicted trajectory
+    const inflationJumpMultiplier = this.getInflationJumpMultiplier();
+
     // Initial conditions
     let simX = this.position.x;
     let simY = this.position.y;
     let simZ = this.z;
-    let simVelX = rawDragVector.x * powerScale;
-    let simVelY = rawDragVector.y * powerScale;
-    let simVelZ = effectiveMagnitude * effectivePower * this.jumpHeightMultiplier;
+    let simVelX = rawDragVector.x * powerScale * inflationJumpMultiplier;
+    let simVelY = rawDragVector.y * powerScale * inflationJumpMultiplier;
+    let simVelZ = effectiveMagnitude * effectivePower * this.jumpHeightMultiplier * inflationJumpMultiplier;
 
     const points: Array<{ x: number; y: number; z: number; type: "normal" | "bounce" | "ground" }> = [];
     const dampingZone = 100;
@@ -621,6 +680,7 @@ export class Cat {
 
     // Scale shadow based on height (higher = smaller shadow)
     const heightScale = Math.max(0.1, 1 - this.z / 200); // Shadow gets smaller as cat goes higher
+
     const finalShadowRadius = shadowRadius * heightScale;
 
     // Draw ellipse (flattened vertically by 2)
@@ -659,5 +719,127 @@ export class Cat {
     this.staminaTargetValue = targetValue;
     this.staminaAnimationTime = 0;
     this.isAnimatingStamina = true;
+  }
+
+  // Inflation methods
+  inflateFromEatingMouse(): void {
+    if (this.inflationLevel < this.maxInflationLevel) {
+      this.inflationLevel = Math.min(this.maxInflationLevel, this.inflationLevel + this.inflationPerMouse);
+    }
+  }
+
+  setInflationLevel(level: number): void {
+    this.inflationLevel = Math.max(0, Math.min(this.maxInflationLevel, level));
+  }
+
+  // Handle tap for potential purge (double-tap)
+  handleTap(): boolean {
+    const currentTime = Date.now();
+    const timeSinceLastTap = currentTime - this.lastTapTime;
+
+    if (timeSinceLastTap < this.doubleTapDelay) {
+      // Double tap detected - purge if at max inflation
+      if (this.inflationLevel >= this.maxInflationLevel && !this._isDeflating) {
+        this.startDeflation();
+        return true; // Purge started
+      }
+    }
+
+    this.lastTapTime = currentTime;
+    return false; // No purge
+  }
+
+  private startDeflation(): void {
+    this._isDeflating = true;
+    this.deflationStartTime = 0;
+    this.deflationStartValue = this.inflationLevel;
+    this.deflationTargetValue = 0;
+
+    // Activate purge protection window
+    this.purgeProtectionTime = this.purgeProtectionDuration;
+
+    // Launch cat in random direction with minimal force (purge effect)
+    // Generate random direction
+    const randomAngle = Math.random() * Math.PI * 2;
+    const purgeForce = 0.05; // Minimal force, much less than normal launch
+    const purgeDistance = 80; // Small distance for the purge effect
+
+    // Set velocity without stamina cost
+    this.velocity.x = Math.cos(randomAngle) * purgeForce * purgeDistance;
+    this.velocity.y = Math.sin(randomAngle) * purgeForce * purgeDistance;
+    this.velocityZ = purgeDistance * purgeForce * this.jumpHeightMultiplier * 0.5; // Lower jump
+
+    this.isFlying = true;
+    this.bounceCount = 0;
+
+    // Clear trajectory when launching from purge
+    if (this.debugTrajectory) {
+      this.trajectoryPoints = [];
+    }
+  }
+
+  getCurrentInflationMultiplier(): number {
+    // Calculate current inflation multiplier based on inflation level
+    return 1 + (this.inflationLevel / this.maxInflationLevel) * (this.inflationMultiplier - 1);
+  }
+
+  get isDeflating(): boolean {
+    return this._isDeflating;
+  }
+
+  get isProtectedFromPoop(): boolean {
+    return this.purgeProtectionTime > 0;
+  }
+
+  checkPoopCollision(poopX: number, poopY: number, poopSize: number): boolean {
+    // Skip collision if protected
+    if (this.isProtectedFromPoop) {
+      return false;
+    }
+
+    // Calculate collision distance
+    const dx = this.position.x - poopX;
+    const dy = this.getFloorLevel() - poopY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Check if collision occurred (cat radius + poop radius)
+    const catRadius = 15; // Approximate cat collision radius
+    const poopRadius = poopSize * 0.6; // Same as poop visual radius
+
+    if (distance < catRadius + poopRadius) {
+      // Collision detected - reduce stamina
+      const staminaLoss = 15;
+      const newStamina = Math.max(0, this.currentStamina - staminaLoss);
+      this.animateStaminaTo(newStamina);
+      this.currentStamina = newStamina;
+
+      // Check if game should end after stamina loss
+      if (this.currentStamina <= 0) {
+        this.shouldTriggerGameOverAfterLanding = true;
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
+  getInflationStaminaMultiplier(): number {
+    // Calculate stamina cost multiplier based on inflation (1.0 = normal, higher = more expensive)
+    return 1 + this.inflationLevel * this.inflationStaminaPenalty;
+  }
+
+  getInflationJumpMultiplier(): number {
+    // Calculate jump distance multiplier based on inflation (1.0 = normal, lower = shorter jumps)
+    return Math.max(0.2, 1 - this.inflationLevel * this.inflationJumpPenalty);
+  }
+
+  setBaseBodyArea(area: number): void {
+    this.baseBodyArea = area;
+  }
+
+  getTargetBodyArea(): number {
+    if (this.baseBodyArea === 0) return 0;
+    return this.baseBodyArea * this.getCurrentInflationMultiplier();
   }
 }

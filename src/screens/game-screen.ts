@@ -110,7 +110,7 @@ export class GameScreen extends BaseScreen {
         const gui = new dat.GUI();
         const fieldFolder = gui.addFolder("GameField");
         this.gameField.setupGUI(fieldFolder);
-        // fieldFolder.open();
+        fieldFolder.open();
       });
     }
   }

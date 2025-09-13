@@ -7,6 +7,7 @@ import { Vector2D } from "../../core/vector2d";
 import { Vehicle, VehicleOptions } from "../../core/vehicle";
 import { COLOR_BLACK } from "../../registry";
 import { Cat } from "./cat";
+import { Poop } from "./poop";
 import { SoftBlob } from "./soft-blob";
 import { Tail } from "./tail";
 
@@ -38,6 +39,7 @@ export class GameField extends DisplayObject {
   private cat: Cat;
   private catBody: SoftBlob;
   private catTail: Tail;
+  private poops: Poop[] = [];
 
   // Camera system
   private camera = { x: 0, y: 0 };
@@ -49,6 +51,9 @@ export class GameField extends DisplayObject {
   // Game state
   private miceEaten = 0;
   private isGameOver = false;
+
+  // Blinking message animation
+  private blinkTime = 0;
 
   constructor(width: number, height: number) {
     super(width, height);
@@ -92,6 +97,10 @@ export class GameField extends DisplayObject {
     this.gameFieldSize.height = this.controls.gameFieldHeight;
 
     this.catBody = new SoftBlob(this.cat.position.x, this.cat.position.y, 20, 36, 1.5, 12);
+
+    // Initialize cat's base body area for inflation system
+    this.cat.setBaseBodyArea(this.catBody.getBaseArea());
+
     const anchor = Math.random() < 0.5 ? this.catBody.getRightmostPoint() : this.catBody.getLeftmostPoint();
     this.catTail = new Tail(anchor.point, 8, 15, 12);
 
@@ -319,6 +328,29 @@ export class GameField extends DisplayObject {
     staminaFolder.add(this.cat, "staminaCostMultiplier", 0.1, 1.0, 0.05).name("Cost Multiplier");
     staminaFolder.add(this.cat, "staminaRestoreAmount", 5, 50, 5).name("Restore Amount");
 
+    const inflationFolder = catFolder.addFolder("Inflation");
+    inflationFolder.add(this.cat, "inflationLevel", 0, 20, 0.1).name("Inflation Level").listen();
+    inflationFolder.add(this.cat, "maxInflationLevel", 5, 20, 1).name("Max Inflation");
+    inflationFolder.add(this.cat, "inflationPerMouse", 0.5, 3, 0.1).name("Inflation Per Mouse");
+    inflationFolder.add(this.cat, "inflationMultiplier", 1.1, 3.0, 0.1).name("Size Multiplier");
+    inflationFolder.add(this.cat, "inflationStaminaPenalty", 0.0, 0.5, 0.01).name("Stamina Penalty");
+    inflationFolder.add(this.cat, "inflationJumpPenalty", 0.0, 0.2, 0.01).name("Jump Penalty");
+
+    // Test buttons for inflation
+    const inflationTestControls = {
+      inflateCat: () => this.cat.inflateFromEatingMouse(),
+      resetInflation: () => {
+        this.cat.setInflationLevel(0);
+      },
+      maxInflation: () => {
+        this.cat.setInflationLevel(this.cat.maxInflationLevel);
+      },
+    };
+    inflationFolder.add(inflationTestControls, "inflateCat").name("🐭 Inflate Cat");
+    inflationFolder.add(inflationTestControls, "resetInflation").name("🔄 Reset Inflation");
+    inflationFolder.add(inflationTestControls, "maxInflation").name("🎈 Max Inflation");
+    inflationFolder.open();
+
     const gameFieldFolder = folder.addFolder("Game Field");
     gameFieldFolder.add(this.controls, "gameFieldWidth", 800, 3200, 100).onChange(() => this.updateGameField());
     gameFieldFolder.add(this.controls, "gameFieldHeight", 600, 2400, 100).onChange(() => this.updateGameField());
@@ -330,12 +362,23 @@ export class GameField extends DisplayObject {
     debugFolder.add(this.cat, "predictiveStepSize", 0.1, 2.0, 0.1).name("Prediction Accuracy");
     debugFolder.add(this.controls, "resetVehicles");
 
+    const poopControls = {
+      poopCount: () => this.poops.length,
+      clearAllPoops: () => {
+        this.poops = [];
+      },
+      createTestPoop: () => this.createPoop(),
+    };
+    debugFolder.add(poopControls, "poopCount").name("Poop Count").listen();
+    debugFolder.add(poopControls, "clearAllPoops").name("Clear All Poops");
+    debugFolder.add(poopControls, "createTestPoop").name("Create Test Poop");
+
     // vehicleFolder.open();
     // wanderFolder.open();
     // separationFolder.open();
     // fleeFolder.open();
     // boundaryFolder.open();
-    // catFolder.open();
+    catFolder.open();
     // physicsFolder.open();
     // gameFieldFolder.open();
     // debugFolder.open();
@@ -347,6 +390,9 @@ export class GameField extends DisplayObject {
       return;
     }
 
+    // Update blinking animation
+    this.blinkTime += dt;
+
     // Update cat physics
     this.cat.tick(dt);
 
@@ -354,6 +400,13 @@ export class GameField extends DisplayObject {
     this.updateCamera();
 
     const groundLevel = Math.min(this.cat.position.y + this.cat.catHeight, this.gameFieldSize.height);
+
+    // Update soft body area based on cat's inflation level
+    const targetArea = this.cat.getTargetBodyArea();
+    if (targetArea > 0) {
+      this.catBody.setTargetArea(targetArea);
+    }
+
     this.catBody.tick(this.cat.getCollider(), this.gameFieldSize.width, groundLevel);
 
     // Constrain cat head to stay inside soft body
@@ -361,6 +414,26 @@ export class GameField extends DisplayObject {
 
     this.catTail.stickTo(this.catBody);
     this.catTail.tick();
+
+    // Update only visible poops for performance
+    for (let i = 0; i < this.poops.length; i++) {
+      const poop = this.poops[i];
+      if (poop.isVisible(this.camera.x, this.camera.y, c.width, c.height)) {
+        poop.tick(dt);
+      }
+    }
+
+    // Check for poop collisions - only when cat is on ground and not protected
+    if (this.cat.z <= 5) {
+      for (let i = this.poops.length - 1; i >= 0; i--) {
+        const poop = this.poops[i];
+        if (this.cat.checkPoopCollision(poop.position.x, poop.position.y, poop.size)) {
+          // Remove the poop that was collided with
+          this.poops.splice(i, 1);
+          playSound(Sounds.Poop);
+        }
+      }
+    }
 
     // Update vehicles with separation and flee behaviors (fleeing from cat)
     this.vehicles.forEach((vehicle) => {
@@ -382,10 +455,17 @@ export class GameField extends DisplayObject {
       for (let i = this.vehicles.length - 1; i >= 0; i--) {
         const mouse = this.vehicles[i];
         if (this.cat.checkCollisionWithPoint(mouse.position.x, mouse.position.y, mouse.size)) {
-          playSound(Sounds.Smacking);
-          this.vehicles.splice(i, 1);
-          this.miceEaten++;
-          this.cat.restoreStamina();
+          // Only eat mouse if not at maximum inflation
+          if (this.cat.inflationLevel < this.cat.maxInflationLevel) {
+            playSound(Sounds.Smacking);
+            this.vehicles.splice(i, 1);
+            this.miceEaten++;
+            this.cat.restoreStamina();
+
+            // Inflate the cat when eating a mouse
+            this.cat.inflateFromEatingMouse();
+          }
+          // If at max inflation, mouse just bounces off (no eating)
         }
       }
     }
@@ -440,6 +520,14 @@ export class GameField extends DisplayObject {
       }
     });
 
+    // Draw only visible poops for performance
+    for (let i = 0; i < this.poops.length; i++) {
+      const poop = this.poops[i];
+      if (poop.isVisible(this.camera.x, this.camera.y, c.width, c.height)) {
+        poop.render(context);
+      }
+    }
+
     this.catBody.render(context);
     this.catTail.render(context);
 
@@ -470,6 +558,18 @@ export class GameField extends DisplayObject {
     context.textAlign = "center";
     const miceText = `Mice: ${this.vehicles.length}`;
     context.fillText(miceText, c.width / 2, 35);
+
+    // Draw blinking warning message if cat is at max inflation
+    if (this.cat.inflationLevel >= this.cat.maxInflationLevel) {
+      // Calculate blinking opacity (blink every 600ms)
+      const blinkCycle = Math.sin(this.blinkTime * 0.005 * Math.PI); // 5 cycles per second
+      const opacity = (blinkCycle + 1) / 2; // Convert from [-1,1] to [0,1]
+
+      context.fillStyle = `rgba(204, 0, 0, ${opacity})`;
+      context.font = "16px Arial";
+      context.fillText("Can't eat more. Need to purge: double-tap on the cat.", c.width / 2, 65);
+    }
+
     context.textAlign = "left"; // Reset text alignment
 
     // Draw stamina bar
@@ -581,7 +681,7 @@ export class GameField extends DisplayObject {
   private drawSlingshotPreview(context: CanvasRenderingContext2D): void {
     // Get cat collision center
     const centerX = this.cat.position.x;
-    const centerY = this.cat.position.y + this.cat.catHeight + this.cat.z;
+    const centerY = this.cat.getFloorLevel();
 
     const dragX = this.curMousePos.x;
     const dragY = this.curMousePos.y;
@@ -701,10 +801,25 @@ export class GameField extends DisplayObject {
   private onMouseDown(x: number, y: number): void {
     const worldPos = this.screenToWorld(x, y);
     if (this.cat.isPressed(worldPos)) {
-      this.isMouseDown = true;
-      // TODO: pass worldPos
-      this.cat.startDrag(worldPos.x, worldPos.y);
+      // Check for double-tap and create poop if purge happened
+      const purgeHappened = this.cat.handleTap();
+      if (purgeHappened) {
+        this.createPoop();
+      }
+
+      // Start dragging if not deflating
+      if (!this.cat.isDeflating) {
+        this.isMouseDown = true;
+        this.cat.startDrag(worldPos.x, worldPos.y);
+      }
     }
+  }
+
+  private createPoop(): void {
+    // Create poop at cat's current position
+    const poopSize = 15 + Math.random() * 10; // Random size between 15-25
+    const poop = new Poop(this.cat.position.x, this.cat.getFloorLevel(), poopSize);
+    this.poops.push(poop);
   }
 
   private onMouseUp(x: number, y: number): void {
