@@ -1,6 +1,6 @@
-# Clawing Up
+# Catapoolt
 
-A game about a black cat who believes in superstitions himself.
+“Jump. Eat. Grow. Oops.”
 
 ## Setup
 
