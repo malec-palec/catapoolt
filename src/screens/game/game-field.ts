@@ -32,6 +32,7 @@ interface VehicleControls {
 }
 export class GameField extends DisplayObject {
   onGameOverCallback?: (miceEaten: number) => void;
+  onNextWaveCallback?: (waveNumber: number, onContinue: () => void) => void;
 
   private vehicles: Vehicle[] = [];
   private controls: VehicleControls;
@@ -51,6 +52,9 @@ export class GameField extends DisplayObject {
   // Game state
   private miceEaten = 0;
   private isGameOver = false;
+
+  // Wave system
+  private currentWave = 1;
 
   // Blinking message animation
   private blinkTime = 0;
@@ -464,6 +468,14 @@ export class GameField extends DisplayObject {
 
             // Inflate the cat when eating a mouse
             this.cat.inflateFromEatingMouse();
+
+            // Check if all mice are eaten to advance to next wave
+            if (this.vehicles.length === 0) {
+              // Use setTimeout to avoid potential race conditions
+              setTimeout(() => {
+                this.advanceToNextWave();
+              }, 100);
+            }
           }
           // If at max inflation, mouse just bounces off (no eating)
         }
@@ -557,7 +569,10 @@ export class GameField extends DisplayObject {
     context.font = "bold 24px Arial";
     context.textAlign = "center";
     const miceText = `Mice: ${this.vehicles.length}`;
-    context.fillText(miceText, c.width / 2, 35);
+    context.fillText(miceText, c.width / 2 - 80, 35);
+
+    const waveText = `Wave ${this.currentWave}`;
+    context.fillText(waveText, c.width / 2 + 80, 35);
 
     // Draw blinking warning message if cat is at max inflation
     if (this.cat.inflationLevel >= this.cat.maxInflationLevel) {
@@ -820,6 +835,57 @@ export class GameField extends DisplayObject {
     const poopSize = 15 + Math.random() * 10; // Random size between 15-25
     const poop = new Poop(this.cat.position.x, this.cat.getFloorLevel(), poopSize);
     this.poops.push(poop);
+  }
+
+  private advanceToNextWave(): void {
+    this.currentWave++;
+
+    // Increase mice strength
+    this.controls.fleeRadius += 50;
+    this.controls.fleeWeight += 1;
+
+    // Restore all stamina for the new wave
+    this.cat.fullRestoreStamina();
+
+    // Trigger wave popup through callback
+    if (this.onNextWaveCallback) {
+      this.onNextWaveCallback(this.currentWave, () => {
+        // This callback will be called when the user clicks "Continue"
+        this.spawnNewWaveMice();
+      });
+    } else {
+      // Fallback if no callback is set
+      this.spawnNewWaveMice();
+    }
+  }
+
+  private spawnNewWaveMice(): void {
+    // Clear existing vehicles
+    this.vehicles = [];
+
+    // Spawn new mice with updated strength
+    for (let i = 0; i < this.controls.vehicleCount; i++) {
+      const options: VehicleOptions = {
+        maxSpeed: this.controls.maxSpeed,
+        maxForce: this.controls.maxForce,
+        wanderRadius: this.controls.wanderRadius,
+        wanderDistance: this.controls.wanderDistance,
+        wanderChange: this.controls.wanderChange,
+        separationRadius: this.controls.separationRadius,
+        separationWeight: this.controls.separationWeight,
+        fleeRadius: this.controls.fleeRadius,
+        fleeWeight: this.controls.fleeWeight,
+      };
+
+      const vehicle = new Vehicle(
+        Math.random() * this.gameFieldSize.width,
+        Math.random() * this.gameFieldSize.height,
+        options,
+      );
+
+      // Boundary avoidance is handled through applyBehaviors method
+      this.vehicles.push(vehicle);
+    }
   }
 
   private onMouseUp(x: number, y: number): void {

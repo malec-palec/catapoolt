@@ -714,6 +714,11 @@ export class Cat {
     this.currentStamina = newStamina;
   }
 
+  fullRestoreStamina(): void {
+    this.currentStamina = this.maxStamina;
+    this.animateStaminaTo(this.maxStamina);
+  }
+
   private animateStaminaTo(targetValue: number): void {
     this.staminaStartValue = this.displayStamina;
     this.staminaTargetValue = targetValue;

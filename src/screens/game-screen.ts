@@ -14,6 +14,8 @@ export class GameScreen extends BaseScreen {
   private menuButton: Button;
   private pausePopup: Popup;
   private gameOverPopup: Popup;
+  private nextWavePopup: Popup;
+  private currentWaveCallback: (() => void) | null = null;
 
   private gameField: GameField;
   private originalGameFieldTick: (dt: number) => void;
@@ -67,6 +69,33 @@ export class GameScreen extends BaseScreen {
       ],
     });
 
+    // Initialize with placeholder - will be updated when wave advances
+    this.nextWavePopup = new Popup({
+      title: "Next Wave",
+      width: 400,
+      height: 200,
+      onClose: () => {
+        // Same behavior as Continue button when closed by X or area click
+        if (this.currentWaveCallback) {
+          this.currentWaveCallback();
+          this.currentWaveCallback = null;
+        }
+      },
+      buttons: [
+        {
+          text: "Continue",
+          onClick: () => {
+            this.nextWavePopup.hidePopup();
+            if (this.currentWaveCallback) {
+              this.currentWaveCallback();
+              this.currentWaveCallback = null;
+            }
+          },
+        },
+      ],
+    });
+    this.nextWavePopup.setBodyText("Mice became stronger");
+
     this.menuButton = new Button({
       width: 60,
       x: 16,
@@ -92,15 +121,29 @@ export class GameScreen extends BaseScreen {
       this.gameOverPopup.showPopup();
     };
 
+    this.gameField.onNextWaveCallback = (waveNumber: number, onContinue: () => void) => {
+      this.nextWavePopup.updateTitle(`Next Wave ${waveNumber}`);
+      this.currentWaveCallback = onContinue;
+      this.nextWavePopup.showPopup();
+    };
+
     // Store the original tick method and override it for pause functionality
     this.originalGameFieldTick = this.gameField.tick.bind(this.gameField);
     this.gameField.tick = (dt: number) => {
-      if (!this.pausePopup.isVisible && !this.gameOverPopup.isVisible) {
+      if (!this.pausePopup.isVisible && !this.gameOverPopup.isVisible && !this.nextWavePopup.isVisible) {
         this.originalGameFieldTick(dt);
       }
     };
 
-    this.add(this.title, this.gameField, muteButton, this.menuButton, this.pausePopup, this.gameOverPopup);
+    this.add(
+      this.title,
+      this.gameField,
+      muteButton,
+      this.menuButton,
+      this.pausePopup,
+      this.gameOverPopup,
+      this.nextWavePopup,
+    );
 
     if (import.meta.env.PROD) playMusic();
     // playMusic();
@@ -128,6 +171,12 @@ export class GameScreen extends BaseScreen {
         return;
       }
     }
+    if (this.nextWavePopup.isVisible) {
+      this.nextWavePopup.emitEvent(event);
+      if (event.isAcknowledged) {
+        return;
+      }
+    }
     super.emitEvent(event);
   }
 
@@ -139,5 +188,6 @@ export class GameScreen extends BaseScreen {
     this.menuButton.setPos(c.width - this.menuButton.width - 16, 16);
     this.pausePopup.onResize();
     this.gameOverPopup.onResize();
+    this.nextWavePopup.onResize();
   }
 }
