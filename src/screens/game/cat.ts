@@ -24,8 +24,8 @@ export class Cat {
   public earOffsetY = 0; // Additional Y offset for ears relative to head
 
   // Eye properties
-  public eyeRadius = 0.17; // Eye size relative to body radius
-  public eyeOffsetX = 0.3; // Horizontal eye distance from center (relative to radius)
+  public eyeRadius = 0.18; // Eye size relative to body radius
+  public eyeOffsetX = 0.35; // Horizontal eye distance from center (relative to radius)
   public eyeOffsetY = 0.2; // Vertical eye offset (relative to radius)
   public pupilWidth = 0.3; // Pupil width relative to eye radius
   public pupilHeight = 1.2; // Pupil height relative to eye radius

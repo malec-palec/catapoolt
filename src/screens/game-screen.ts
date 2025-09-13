@@ -112,7 +112,6 @@ export class GameScreen extends BaseScreen {
       width: 60,
       fontSize: 24,
     });
-    if (import.meta.env.DEV) muteButton.isVisible = false;
 
     this.gameField = new GameField(c.width, c.height);
 
@@ -154,7 +153,6 @@ export class GameScreen extends BaseScreen {
     );
 
     if (import.meta.env.PROD) playMusic();
-    // playMusic();
 
     if (import.meta.env.DEV) {
       import("dat.gui").then((dat) => {
