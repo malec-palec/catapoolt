@@ -7,6 +7,7 @@ import { Popup } from "../core/popup";
 import { Text } from "../core/text";
 import { IGame } from "../game";
 import { HIGH_SCORE_KEY } from "../registry";
+import { isDev } from "../system";
 import { GameField } from "./game/game-field";
 import { HighScoresScreen } from "./high-scores-screen";
 import { StartScreen } from "./start-screen";
@@ -152,15 +153,15 @@ export class GameScreen extends BaseScreen {
       this.nextWavePopup,
     );
 
-    if (import.meta.env.PROD) playMusic();
-
-    if (import.meta.env.DEV) {
+    if (isDev) {
       import("dat.gui").then((dat) => {
         const gui = new dat.GUI();
         const fieldFolder = gui.addFolder("GameField");
         this.gameField.setupGUI(fieldFolder);
         fieldFolder.open();
       });
+    } else {
+      playMusic();
     }
   }
 

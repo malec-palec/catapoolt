@@ -648,9 +648,6 @@ export class GameField extends DisplayObject {
     // Draw the cat
     this.cat.render(context);
 
-    // Draw cat collision debug
-    this.cat.renderCollisionDebug(context);
-
     // Draw slingshot trajectory preview if dragging
     if (this.cat.isDragging) {
       // Draw predictive trajectory first (behind slingshot line)

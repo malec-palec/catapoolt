@@ -1,6 +1,7 @@
 import { playSound, Sounds } from "../../core/audio/sound";
 import { easeInOut } from "../../core/tween";
 import { Vector2D } from "../../core/vector2d";
+import { isDev, isProd } from "../../system";
 import { ICircleCollider } from "./soft-blob";
 
 // Interface for objects that can provide shadow width
@@ -9,26 +10,121 @@ interface IShadowProvider {
   getRightmostPoint(): { point: { pos: { x: number; y: number } }; index: number };
 }
 
+type EarData = {
+  angle: number;
+  width: number;
+  height: number;
+  offsetY: number;
+};
+
+type EyeData = {
+  radius: number;
+  offsetX: number;
+  offsetY: number;
+  pupilWidth: number;
+  pupilHeight: number;
+};
+
+const drawHead = (
+  context: CanvasRenderingContext2D,
+  strokeWidth: number,
+  posX: number,
+  posY: number,
+  radius: number,
+  earData: EarData,
+  eyeData: EyeData,
+  debugDraw = false,
+) => {
+  context.fillStyle = context.strokeStyle = "#000";
+  context.lineWidth = strokeWidth;
+
+  // Calculate ear positions once
+  const halfAngle = (earData.angle * Math.PI) / 360; // Direct calculation
+  const sinHalf = Math.sin(halfAngle);
+  const cosHalf = Math.cos(halfAngle);
+  const earOffset = radius * 0.8;
+  const earHalfWidth = earData.width / 2;
+
+  // Draw ears using shared calculations
+  const drawEar = (xSign: number) => {
+    const baseX = posX + xSign * sinHalf * earOffset;
+    const baseY = posY - cosHalf * earOffset + earData.offsetY;
+
+    context.beginPath();
+    context.moveTo(baseX - earHalfWidth, baseY);
+    context.lineTo(baseX + earHalfWidth, baseY);
+    context.lineTo(baseX, baseY - earData.height);
+    context.closePath();
+    context.fill();
+  };
+
+  drawEar(-1); // draw left ear
+  drawEar(1); // draw right ear
+
+  // Redraw body to cover ear bases
+  context.beginPath();
+  context.arc(posX, posY, radius, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+
+  // Calculate eye properties once
+  const eyeRadius = radius * eyeData.radius;
+  const eyeOffsetX = radius * eyeData.offsetX;
+  const eyeOffsetY = radius * eyeData.offsetY;
+  const pupilHalfWidth = (eyeRadius * eyeData.pupilWidth) / 2;
+  const pupilHalfHeight = (eyeRadius * eyeData.pupilHeight) / 2;
+
+  // Draw eyes using shared calculations
+  const drawEye = (xSign: number) => {
+    const eyeX = posX + xSign * eyeOffsetX;
+    const eyeY = posY - eyeOffsetY;
+
+    // Eye
+    context.fillStyle = "#228B22";
+    context.beginPath();
+    context.arc(eyeX, eyeY, eyeRadius, 0, Math.PI * 2);
+    context.fill();
+
+    // Pupil
+    context.fillStyle = "#000";
+    context.fillRect(eyeX - pupilHalfWidth, eyeY - pupilHalfHeight, pupilHalfWidth * 2, pupilHalfHeight * 2);
+  };
+
+  drawEye(-1); // draw left eye
+  drawEye(1); // draw right eye
+
+  if (isDev && debugDraw) {
+    context.strokeStyle = context.fillStyle = "#4444ff";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.arc(posX, posY, radius, 0, Math.PI * 2);
+    context.stroke();
+
+    context.beginPath();
+    context.arc(posX, posY, 8, 0, Math.PI * 2);
+    context.fill();
+  }
+};
 export class Cat {
-  public position: Vector2D;
-  public targetPosition: Vector2D;
-  public radius: number;
-  public strokeWidth: number;
-  public speed: number;
-  public debugDraw: boolean = false;
+  position: Vector2D;
+  strokeWidth: number = 3;
+  speed: number = 3;
+  debugDraw: boolean = false;
 
-  // Cat face properties
-  public earAngle = 60; // Angle between ears in degrees
-  public earWidth = 20; // Width of ear foundation
-  public earHeight = 30; // Height of ears
-  public earOffsetY = 0; // Additional Y offset for ears relative to head
+  earData: EarData = {
+    angle: 60, // Angle between ears in degrees
+    width: 20, // Width of ear foundation
+    height: 30, // Height of ears
+    offsetY: 0, // Additional Y offset for ears relative to head
+  };
 
-  // Eye properties
-  public eyeRadius = 0.18; // Eye size relative to body radius
-  public eyeOffsetX = 0.35; // Horizontal eye distance from center (relative to radius)
-  public eyeOffsetY = 0.2; // Vertical eye offset (relative to radius)
-  public pupilWidth = 0.3; // Pupil width relative to eye radius
-  public pupilHeight = 1.2; // Pupil height relative to eye radius
+  eyeData: EyeData = {
+    radius: 0.18, // Eye size relative to body radius
+    offsetX: 0.35, // Horizontal eye distance from center (relative to radius)
+    offsetY: 0.2, // Vertical eye offset (relative to radius)
+    pupilWidth: 0.3, // Pupil width relative to eye radius
+    pupilHeight: 1.2, // Pupil height relative to eye radius
+  };
 
   // Shadow properties
   public catHeight = 50; // Height of cat above ground for shadow calculation
@@ -80,7 +176,7 @@ export class Cat {
   private purgeProtectionDuration = 500; // 0.5 seconds in milliseconds
 
   // Head lowering during drag
-  public headOffset = 0; // Current head vertical offset during drag
+  public headOffsetY = 0; // Current head vertical offset during drag
   public maxHeadOffset = 0; // Maximum head offset (calculated based on shadow position)
   public headOscillationX = 0; // Horizontal oscillation offset when head is lowered
   private oscillationTime = 0; // Time counter for oscillation
@@ -114,16 +210,10 @@ export class Cat {
   constructor(
     x: number,
     y: number,
-    radius: number = 30,
+    public radius: number = 30,
     private onStaminaEmpty?: () => void,
   ) {
     this.position = new Vector2D(x, y);
-    this.targetPosition = new Vector2D(x, y);
-    this.radius = radius;
-    this.strokeWidth = 3;
-    this.speed = 3;
-
-    // Initialize physics
     this.velocity = new Vector2D(0, 0);
     this.dragStartPos = new Vector2D(x, y);
     this.groundLevel = y;
@@ -141,84 +231,31 @@ export class Cat {
   }
 
   render(context: CanvasRenderingContext2D): void {
-    const headX = this.position.x + this.headOscillationX;
-    const headY = this.position.y - this.z + this.headOffset;
+    drawHead(
+      context,
+      this.strokeWidth,
+      this.position.x + this.headOscillationX,
+      this.position.y - this.z + this.headOffsetY,
+      this.radius,
+      this.earData,
+      this.eyeData,
+      this.debugDraw,
+    );
 
-    context.fillStyle = context.strokeStyle = "#000";
-    context.lineWidth = this.strokeWidth;
+    if (isProd) return;
 
-    // Draw main body circle
+    // Render collision debug visualization
+    if (!this.debugDraw || this.z > 5) return;
+
+    const collisionData = this.getCollisionData();
+
+    context.strokeStyle = "#ff0000";
+    context.lineWidth = 2;
+    context.setLineDash([4, 4]);
     context.beginPath();
-    context.arc(headX, headY, this.radius, 0, Math.PI * 2);
-    context.fill();
+    context.arc(collisionData.centerX, collisionData.centerY, collisionData.radius, 0, Math.PI * 2);
     context.stroke();
-
-    // Calculate ear positions once
-    const halfAngle = (this.earAngle * Math.PI) / 360; // Direct calculation
-    const sinHalf = Math.sin(halfAngle);
-    const cosHalf = Math.cos(halfAngle);
-    const earOffset = this.radius * 0.8;
-    const earHalfWidth = this.earWidth / 2;
-
-    // Draw ears using shared calculations
-    const drawEar = (xSign: number) => {
-      const baseX = headX + xSign * sinHalf * earOffset;
-      const baseY = headY - cosHalf * earOffset + this.earOffsetY;
-
-      context.beginPath();
-      context.moveTo(baseX - earHalfWidth, baseY);
-      context.lineTo(baseX + earHalfWidth, baseY);
-      context.lineTo(baseX, baseY - this.earHeight);
-      context.closePath();
-      context.fill();
-    };
-
-    drawEar(-1); // Left ear
-    drawEar(1); // Right ear
-
-    // Redraw body to cover ear bases
-    context.beginPath();
-    context.arc(headX, headY, this.radius, 0, Math.PI * 2);
-    context.fill();
-
-    // Calculate eye properties once
-    const eyeRadius = this.radius * this.eyeRadius;
-    const eyeOffsetX = this.radius * this.eyeOffsetX;
-    const eyeOffsetY = this.radius * this.eyeOffsetY;
-    const pupilHalfWidth = (eyeRadius * this.pupilWidth) / 2;
-    const pupilHalfHeight = (eyeRadius * this.pupilHeight) / 2;
-
-    // Draw eyes using shared calculations
-    const drawEye = (xSign: number) => {
-      const eyeX = headX + xSign * eyeOffsetX;
-      const eyeY = headY - eyeOffsetY;
-
-      // Eye
-      context.fillStyle = "#228B22";
-      context.beginPath();
-      context.arc(eyeX, eyeY, eyeRadius, 0, Math.PI * 2);
-      context.fill();
-
-      // Pupil
-      context.fillStyle = "#000000";
-      context.fillRect(eyeX - pupilHalfWidth, eyeY - pupilHalfHeight, pupilHalfWidth * 2, pupilHalfHeight * 2);
-    };
-
-    drawEye(-1); // Left eye
-    drawEye(1); // Right eye
-
-    if (this.debugDraw) {
-      context.strokeStyle = "#4444ff";
-      context.lineWidth = 3;
-      context.beginPath();
-      context.arc(headX, headY, this.radius, 0, Math.PI * 2);
-      context.stroke();
-
-      context.fillStyle = "#4444ff";
-      context.beginPath();
-      context.arc(headX, headY, 8, 0, Math.PI * 2);
-      context.fill();
-    }
+    context.setLineDash([]);
   }
 
   startDrag(x: number, y: number): void {
@@ -226,7 +263,7 @@ export class Cat {
       playSound(Sounds.Stretching);
       this.isDragging = true;
       this.dragStartPos.set(x, y);
-      this.headOffset = 0; // Reset head position when starting drag
+      this.headOffsetY = 0; // Reset head position when starting drag
       this.headOscillationX = 0; // Reset horizontal oscillation
       this.oscillationTime = 0; // Reset oscillation timer
     }
@@ -245,14 +282,14 @@ export class Cat {
 
       // Calculate head offset based on drag distance (normalized to maxDragDistance)
       const dragRatio = Math.min(dragDistance / this.maxDragDistance, 1);
-      this.headOffset = dragRatio * this.maxHeadOffset;
+      this.headOffsetY = dragRatio * this.maxHeadOffset;
     }
   }
 
   launch(x: number, y: number): void {
     if (this.isDragging && !this.isFlying && this.currentStamina > 0) {
       this.isDragging = false;
-      this.headOffset = 0; // Reset head position
+      this.headOffsetY = 0; // Reset head position
       this.headOscillationX = 0; // Reset horizontal oscillation
       this.oscillationTime = 0; // Reset oscillation timer
 
@@ -341,7 +378,7 @@ export class Cat {
       this.oscillationTime += dt;
 
       // Calculate oscillation intensity based on how lowered the head is
-      const oscillationIntensity = this.headOffset / Math.max(this.maxHeadOffset, 1);
+      const oscillationIntensity = this.headOffsetY / Math.max(this.maxHeadOffset, 1);
 
       // Calculate horizontal oscillation using sine wave
       this.headOscillationX =
@@ -411,7 +448,7 @@ export class Cat {
   }
 
   // Calculate collision detection parameters
-  public getCollisionData(): { centerX: number; centerY: number; radius: number } {
+  getCollisionData(): { centerX: number; centerY: number; radius: number } {
     const headTopY = this.position.y - this.radius;
     const shadowCenterY = (this.position.y + this.catHeight + this.z) * 1.02;
 
@@ -423,7 +460,7 @@ export class Cat {
   }
 
   // Check collision with a point (like mouse position)
-  public checkCollisionWithPoint(x: number, y: number, objectRadius: number = 0): boolean {
+  checkCollisionWithPoint(x: number, y: number, objectRadius: number = 0): boolean {
     if (this.z > 5) return false; // Only check collisions when on ground
 
     const collisionData = this.getCollisionData();
@@ -433,21 +470,6 @@ export class Cat {
     const radiusSum = collisionData.radius + objectRadius;
 
     return distanceSquared <= radiusSum * radiusSum;
-  }
-
-  // Render collision debug visualization
-  public renderCollisionDebug(context: CanvasRenderingContext2D): void {
-    if (!this.debugDraw || this.z > 5) return;
-
-    const collisionData = this.getCollisionData();
-
-    context.strokeStyle = "#ff0000";
-    context.lineWidth = 2;
-    context.setLineDash([4, 4]);
-    context.beginPath();
-    context.arc(collisionData.centerX, collisionData.centerY, collisionData.radius, 0, Math.PI * 2);
-    context.stroke();
-    context.setLineDash([]);
   }
 
   private applySmoothBoundaryDamping(): void {
