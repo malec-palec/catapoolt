@@ -1,7 +1,8 @@
 import { playSound, Sounds } from "../../core/audio/sound";
 import { easeInOut } from "../../core/tween";
 import { Vector2D } from "../../core/vector2d";
-import { isDev, isProd } from "../../system";
+import { isProd } from "../../system";
+import { drawHead, EarData, EyeData } from "./cat-head";
 import { ICircleCollider } from "./soft-blob";
 
 // Interface for objects that can provide shadow width
@@ -9,102 +10,6 @@ interface IShadowProvider {
   getLeftmostPoint(): { point: { pos: { x: number; y: number } }; index: number };
   getRightmostPoint(): { point: { pos: { x: number; y: number } }; index: number };
 }
-
-type EarData = {
-  angle: number;
-  width: number;
-  height: number;
-  offsetY: number;
-};
-
-type EyeData = {
-  radius: number;
-  offsetX: number;
-  offsetY: number;
-  pupilWidth: number;
-  pupilHeight: number;
-};
-
-const drawHead = (
-  context: CanvasRenderingContext2D,
-  strokeWidth: number,
-  posX: number,
-  posY: number,
-  radius: number,
-  earData: EarData,
-  eyeData: EyeData,
-  debugDraw = false,
-) => {
-  context.fillStyle = context.strokeStyle = "#000";
-  context.lineWidth = strokeWidth;
-
-  // Calculate ear positions once
-  const halfAngle = (earData.angle * Math.PI) / 360; // Direct calculation
-  const sinHalf = Math.sin(halfAngle);
-  const cosHalf = Math.cos(halfAngle);
-  const earOffset = radius * 0.8;
-  const earHalfWidth = earData.width / 2;
-
-  // Draw ears using shared calculations
-  const drawEar = (xSign: number) => {
-    const baseX = posX + xSign * sinHalf * earOffset;
-    const baseY = posY - cosHalf * earOffset + earData.offsetY;
-
-    context.beginPath();
-    context.moveTo(baseX - earHalfWidth, baseY);
-    context.lineTo(baseX + earHalfWidth, baseY);
-    context.lineTo(baseX, baseY - earData.height);
-    context.closePath();
-    context.fill();
-  };
-
-  drawEar(-1); // draw left ear
-  drawEar(1); // draw right ear
-
-  // Redraw body to cover ear bases
-  context.beginPath();
-  context.arc(posX, posY, radius, 0, Math.PI * 2);
-  context.fill();
-  context.stroke();
-
-  // Calculate eye properties once
-  const eyeRadius = radius * eyeData.radius;
-  const eyeOffsetX = radius * eyeData.offsetX;
-  const eyeOffsetY = radius * eyeData.offsetY;
-  const pupilHalfWidth = (eyeRadius * eyeData.pupilWidth) / 2;
-  const pupilHalfHeight = (eyeRadius * eyeData.pupilHeight) / 2;
-
-  // Draw eyes using shared calculations
-  const drawEye = (xSign: number) => {
-    const eyeX = posX + xSign * eyeOffsetX;
-    const eyeY = posY - eyeOffsetY;
-
-    // Eye
-    context.fillStyle = "#228B22";
-    context.beginPath();
-    context.arc(eyeX, eyeY, eyeRadius, 0, Math.PI * 2);
-    context.fill();
-
-    // Pupil
-    context.fillStyle = "#000";
-    context.fillRect(eyeX - pupilHalfWidth, eyeY - pupilHalfHeight, pupilHalfWidth * 2, pupilHalfHeight * 2);
-  };
-
-  drawEye(-1); // draw left eye
-  drawEye(1); // draw right eye
-
-  if (isDev && debugDraw) {
-    context.strokeStyle = context.fillStyle = "#4444ff";
-    context.lineWidth = 3;
-    context.beginPath();
-    context.arc(posX, posY, radius, 0, Math.PI * 2);
-    context.stroke();
-
-    context.beginPath();
-    context.arc(posX, posY, 8, 0, Math.PI * 2);
-    context.fill();
-  }
-};
 export class Cat {
   position: Vector2D;
   strokeWidth: number = 3;
