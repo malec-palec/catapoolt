@@ -9,7 +9,6 @@ import { COLOR_BLACK } from "../../registry";
 import { Cat } from "./cat";
 import { Clover } from "./clover";
 import { Poop } from "./poop";
-import { SoftBlob } from "./soft-blob";
 import { Tail } from "./tail";
 
 interface VehicleControls {
@@ -39,7 +38,6 @@ export class GameField extends DisplayObject {
   private controls: VehicleControls;
 
   private cat: Cat;
-  private catBody: SoftBlob;
   private catTail: Tail;
   private poops: Poop[] = [];
   private clover: Clover | null = null;
@@ -104,12 +102,7 @@ export class GameField extends DisplayObject {
     this.gameFieldSize.width = this.controls.gameFieldWidth;
     this.gameFieldSize.height = this.controls.gameFieldHeight;
 
-    this.catBody = new SoftBlob(this.cat.position.x, this.cat.position.y, 20, 36, 1.5, 12);
-
-    // Initialize cat's base body area for inflation system
-    this.cat.setBaseBodyArea(this.catBody.getBaseArea());
-
-    const anchor = Math.random() < 0.5 ? this.catBody.getRightmostPoint() : this.catBody.getLeftmostPoint();
+    const anchor = Math.random() < 0.5 ? this.cat.body.getRightmostPoint() : this.cat.body.getLeftmostPoint();
     this.catTail = new Tail(anchor.point, 8, 15, 12);
 
     // Create initial vehicles
@@ -240,28 +233,6 @@ export class GameField extends DisplayObject {
       x: Math.random() * this.gameFieldSize.width,
       y: Math.random() * this.gameFieldSize.height,
     };
-  }
-
-  private constrainCatHeadToSoftBody(): void {
-    // Quick distance check using squared distance to avoid sqrt
-    const bodyCenter = this.catBody.getCenterOfMass();
-    const deltaX = this.cat.position.x - bodyCenter.x;
-    const deltaY = this.cat.position.y - bodyCenter.y;
-    const maxDistance = this.cat.radius * 2;
-
-    // Use squared distance comparison to avoid expensive sqrt
-    if (deltaX * deltaX + deltaY * deltaY > maxDistance * maxDistance) {
-      const catMovementX = this.cat.velocity.x;
-      const catMovementY = this.cat.velocity.y;
-
-      // Move all soft body points by cat movement in single loop
-      for (const point of this.catBody.points) {
-        point.pos.x += catMovementX;
-        point.pos.y += catMovementY;
-        point.prevPos.x += catMovementX;
-        point.prevPos.y += catMovementY;
-      }
-    }
   }
 
   private updateCamera(): void {
@@ -467,25 +438,12 @@ export class GameField extends DisplayObject {
     this.blinkTime += dt;
 
     // Update cat physics
-    this.cat.tick(dt);
+    this.cat.tick(dt, this.gameFieldSize);
 
     // Update camera to follow cat
     this.updateCamera();
 
-    const groundLevel = Math.min(this.cat.position.y + this.cat.catHeight, this.gameFieldSize.height);
-
-    // Update soft body area based on cat's inflation level
-    const targetArea = this.cat.getTargetBodyArea();
-    if (targetArea > 0) {
-      this.catBody.setTargetArea(targetArea);
-    }
-
-    this.catBody.tick(this.cat.getCollider(), this.gameFieldSize.width, groundLevel);
-
-    // Constrain cat head to stay inside soft body
-    this.constrainCatHeadToSoftBody();
-
-    this.catTail.stickTo(this.catBody);
+    this.catTail.stickTo(this.cat.body);
     this.catTail.tick();
 
     // Update only visible poops for performance
@@ -611,7 +569,7 @@ export class GameField extends DisplayObject {
       this.drawSlingshotPreview(context);
     }
 
-    this.cat.drawShadow(context, this.catBody);
+    this.cat.drawShadow(context);
 
     // Draw all vehicles (only render visible ones)
     this.vehicles.forEach((vehicle) => {
@@ -642,10 +600,8 @@ export class GameField extends DisplayObject {
       this.clover.render(context);
     }
 
-    this.catBody.render(context);
     this.catTail.render(context);
 
-    // Draw the cat
     this.cat.render(context);
 
     // Draw slingshot trajectory preview if dragging

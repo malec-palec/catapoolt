@@ -3,7 +3,7 @@ import { easeInOut } from "../../core/tween";
 import { Vector2D } from "../../core/vector2d";
 import { isProd } from "../../system";
 import { drawHead, EarData, EyeData } from "./cat-head";
-import { ICircleCollider } from "./soft-blob";
+import { ICircleCollider, SoftBlob } from "./soft-blob";
 
 // Interface for objects that can provide shadow width
 interface IShadowProvider {
@@ -112,6 +112,8 @@ export class Cat {
   private staminaTargetValue = 100;
   private isAnimatingStamina = false;
 
+  readonly body: SoftBlob;
+
   constructor(
     x: number,
     y: number,
@@ -122,6 +124,9 @@ export class Cat {
     this.velocity = new Vector2D(0, 0);
     this.dragStartPos = new Vector2D(x, y);
     this.groundLevel = y;
+
+    this.body = new SoftBlob(x, y, 20, 36, 1.5, 12);
+    this.baseBodyArea = this.body.getBaseArea();
   }
 
   getFloorLevel(): number {
@@ -136,6 +141,8 @@ export class Cat {
   }
 
   render(context: CanvasRenderingContext2D): void {
+    this.body.render(context);
+
     drawHead(
       context,
       this.strokeWidth,
@@ -239,7 +246,7 @@ export class Cat {
     }
   }
 
-  tick(dt: number): void {
+  tick(dt: number, gameFieldSize: { width: number; height: number }): void {
     // Update stamina animation
     if (this.isAnimatingStamina) {
       this.staminaAnimationTime += dt;
@@ -342,6 +349,41 @@ export class Cat {
             }
           }
         }
+      }
+    }
+
+    const groundLevel = Math.min(this.position.y + this.catHeight, gameFieldSize.height);
+
+    // Update soft body area based on cat's inflation level
+    const targetArea = this.getTargetBodyArea();
+    if (targetArea > 0) {
+      this.body.setTargetArea(targetArea);
+    }
+
+    this.body.tick(this.getCollider(), gameFieldSize.width, groundLevel);
+
+    // Constrain cat head to stay inside soft body
+    this.constrainCatHeadToSoftBody();
+  }
+
+  private constrainCatHeadToSoftBody(): void {
+    // Quick distance check using squared distance to avoid sqrt
+    const bodyCenter = this.body.getCenterOfMass();
+    const deltaX = this.position.x - bodyCenter.x;
+    const deltaY = this.position.y - bodyCenter.y;
+    const maxDistance = this.radius * 2;
+
+    // Use squared distance comparison to avoid expensive sqrt
+    if (deltaX * deltaX + deltaY * deltaY > maxDistance * maxDistance) {
+      const catMovementX = this.velocity.x;
+      const catMovementY = this.velocity.y;
+
+      // Move all soft body points by cat movement in single loop
+      for (const point of this.body.points) {
+        point.pos.x += catMovementX;
+        point.pos.y += catMovementY;
+        point.prevPos.x += catMovementX;
+        point.prevPos.y += catMovementY;
       }
     }
   }
@@ -552,7 +594,7 @@ export class Cat {
     }
   }
 
-  drawShadow(context: CanvasRenderingContext2D, shadowProvider: IShadowProvider): void {
+  drawShadow(context: CanvasRenderingContext2D, shadowProvider: IShadowProvider = this.body): void {
     let shadowX = this.position.x;
 
     // Get the leftmost and rightmost points of the shadow provider (e.g., soft body)
@@ -728,10 +770,6 @@ export class Cat {
   getInflationJumpMultiplier(): number {
     // Calculate jump distance multiplier based on inflation (1.0 = normal, lower = shorter jumps)
     return Math.max(0.2, 1 - this.inflationLevel * this.inflationJumpPenalty);
-  }
-
-  setBaseBodyArea(area: number): void {
-    this.baseBodyArea = area;
   }
 
   getTargetBodyArea(): number {
