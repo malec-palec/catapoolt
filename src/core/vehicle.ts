@@ -280,6 +280,37 @@ export class Vehicle {
   render(context: CanvasRenderingContext2D): void {
     const { tailHistory, position, velocity, size, strokeWidth, strokeColor, color } = this;
 
+    // Calculate shadow position (slightly below the mouse)
+    const shadowX = position.x;
+    const shadowY = position.y + size * 0.8; // Shadow offset below mouse
+
+    // Calculate shadow radius based on mouse size
+    const shadowRadius = size * 2;
+
+    // Draw ellipse (flattened vertically by 2)
+    context.save();
+    context.translate(shadowX, shadowY);
+    context.scale(1, 0.4); // Flatten vertically more than cat shadow
+
+    // Create radial gradient
+    const gradient = context.createRadialGradient(
+      0,
+      0,
+      0, // Inner circle (center at origin after transform)
+      0,
+      0,
+      shadowRadius, // Outer circle (edge)
+    );
+    gradient.addColorStop(0, "rgba(0, 0, 0, 0.15)"); // Much lighter center for mice
+    gradient.addColorStop(0.7, "rgba(0, 0, 0, 0.1)"); // Very light transparency
+    gradient.addColorStop(1, "rgba(0, 0, 0, 0)"); // Transparent edge
+
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.arc(0, 0, shadowRadius, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+
     const isMovingLeft = velocity.x < 0;
 
     // Draw a triangle with horizontal base and rounded corner slightly right of center
@@ -364,39 +395,6 @@ export class Vehicle {
       context.lineTo(tailHistory[i].x, tailHistory[i].y);
     }
     context.stroke();
-  }
-
-  drawShadow(context: CanvasRenderingContext2D): void {
-    // Calculate shadow position (slightly below the mouse)
-    const shadowX = this.position.x;
-    const shadowY = this.position.y + this.size * 0.8; // Shadow offset below mouse
-
-    // Calculate shadow radius based on mouse size
-    const shadowRadius = this.size * 2;
-
-    // Draw ellipse (flattened vertically by 2)
-    context.save();
-    context.translate(shadowX, shadowY);
-    context.scale(1, 0.4); // Flatten vertically more than cat shadow
-
-    // Create radial gradient
-    const gradient = context.createRadialGradient(
-      0,
-      0,
-      0, // Inner circle (center at origin after transform)
-      0,
-      0,
-      shadowRadius, // Outer circle (edge)
-    );
-    gradient.addColorStop(0, "rgba(0, 0, 0, 0.15)"); // Much lighter center for mice
-    gradient.addColorStop(0.7, "rgba(0, 0, 0, 0.1)"); // Very light transparency
-    gradient.addColorStop(1, "rgba(0, 0, 0, 0)"); // Transparent edge
-
-    context.fillStyle = gradient;
-    context.beginPath();
-    context.arc(0, 0, shadowRadius, 0, Math.PI * 2);
-    context.fill();
-    context.restore();
   }
 
   drawWanderDebug(context: CanvasRenderingContext2D): void {
