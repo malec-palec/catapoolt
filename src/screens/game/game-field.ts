@@ -9,7 +9,6 @@ import { COLOR_BLACK } from "../../registry";
 import { Cat } from "./cat";
 import { Clover } from "./clover";
 import { Poop } from "./poop";
-import { Tail } from "./tail";
 
 interface VehicleControls {
   vehicleCount: number;
@@ -38,7 +37,6 @@ export class GameField extends DisplayObject {
   private controls: VehicleControls;
 
   private cat: Cat;
-  private catTail: Tail;
   private poops: Poop[] = [];
   private clover: Clover | null = null;
   private cloverCollectedThisWave = false;
@@ -101,9 +99,6 @@ export class GameField extends DisplayObject {
     // Update game field size
     this.gameFieldSize.width = this.controls.gameFieldWidth;
     this.gameFieldSize.height = this.controls.gameFieldHeight;
-
-    const anchor = Math.random() < 0.5 ? this.cat.body.getRightmostPoint() : this.cat.body.getLeftmostPoint();
-    this.catTail = new Tail(anchor.point, 8, 15, 12);
 
     // Create initial vehicles
     this.createVehicles(this.controls);
@@ -438,13 +433,10 @@ export class GameField extends DisplayObject {
     this.blinkTime += dt;
 
     // Update cat physics
-    this.cat.tick(dt, this.gameFieldSize);
+    this.cat.tick(dt);
 
     // Update camera to follow cat
     this.updateCamera();
-
-    this.catTail.stickTo(this.cat.body);
-    this.catTail.tick();
 
     // Update only visible poops for performance
     for (let i = 0; i < this.poops.length; i++) {
@@ -599,8 +591,6 @@ export class GameField extends DisplayObject {
     ) {
       this.clover.render(context);
     }
-
-    this.catTail.render(context);
 
     this.cat.render(context);
 

@@ -3,7 +3,8 @@ import { easeInOut } from "../../core/tween";
 import { Vector2D } from "../../core/vector2d";
 import { isProd } from "../../system";
 import { drawHead, EarData, EyeData } from "./cat-head";
-import { ICircleCollider, SoftBlob } from "./soft-blob";
+import { SoftBlob } from "./soft-blob";
+import { Tail } from "./tail";
 
 // Interface for objects that can provide shadow width
 interface IShadowProvider {
@@ -112,7 +113,8 @@ export class Cat {
   private staminaTargetValue = 100;
   private isAnimatingStamina = false;
 
-  readonly body: SoftBlob;
+  private body: SoftBlob;
+  private tail: Tail;
 
   constructor(
     x: number,
@@ -127,21 +129,18 @@ export class Cat {
 
     this.body = new SoftBlob(x, y, 20, 36, 1.5, 12);
     this.baseBodyArea = this.body.getBaseArea();
+
+    const anchor = Math.random() < 0.5 ? this.body.getRightmostPoint() : this.body.getLeftmostPoint();
+    this.tail = new Tail(anchor.point, 8, 15, 12);
   }
 
   getFloorLevel(): number {
     return this.position.y + this.catHeight + this.z;
   }
 
-  getCollider(): ICircleCollider {
-    return {
-      position: { x: this.position.x, y: this.position.y - this.z },
-      radius: this.radius,
-    };
-  }
-
   render(context: CanvasRenderingContext2D): void {
     this.body.render(context);
+    this.tail.render(context);
 
     drawHead(
       context,
@@ -246,7 +245,7 @@ export class Cat {
     }
   }
 
-  tick(dt: number, gameFieldSize: { width: number; height: number }): void {
+  tick(dt: number): void {
     // Update stamina animation
     if (this.isAnimatingStamina) {
       this.staminaAnimationTime += dt;
@@ -352,7 +351,7 @@ export class Cat {
       }
     }
 
-    const groundLevel = Math.min(this.position.y + this.catHeight, gameFieldSize.height);
+    const groundLevel = Math.min(this.position.y + this.catHeight, this.screenHeight);
 
     // Update soft body area based on cat's inflation level
     const targetArea = this.getTargetBodyArea();
@@ -360,13 +359,16 @@ export class Cat {
       this.body.setTargetArea(targetArea);
     }
 
-    this.body.tick(this.getCollider(), gameFieldSize.width, groundLevel);
+    this.body.tick(
+      {
+        position: { x: this.position.x, y: this.position.y - this.z },
+        radius: this.radius,
+      },
+      this.screenWidth,
+      groundLevel,
+    );
 
     // Constrain cat head to stay inside soft body
-    this.constrainCatHeadToSoftBody();
-  }
-
-  private constrainCatHeadToSoftBody(): void {
     // Quick distance check using squared distance to avoid sqrt
     const bodyCenter = this.body.getCenterOfMass();
     const deltaX = this.position.x - bodyCenter.x;
@@ -386,6 +388,9 @@ export class Cat {
         point.prevPos.y += catMovementY;
       }
     }
+
+    this.tail.stickTo(this.body);
+    this.tail.tick();
   }
 
   // Method to update screen dimensions
