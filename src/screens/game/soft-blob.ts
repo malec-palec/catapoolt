@@ -1,4 +1,4 @@
-import { abs, cos, hypot, max, min, PI, random, sin, sqrt, TWO_PI } from "../../system";
+import { abs, cos, hypot, max, min, PI, random, sin, TWO_PI } from "../../system";
 
 export interface ICircleCollider {
   position: Vector2D;
@@ -168,7 +168,7 @@ export class SoftBlob {
         const normalX = -secantY;
         const normalY = secantX;
 
-        const length = sqrt(normalX * normalX + normalY * normalY);
+        const length = hypot(normalX, normalY);
         if (length > 0) {
           const normalizedX = (normalX / length) * offset;
           const normalizedY = (normalY / length) * offset;

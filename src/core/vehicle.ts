@@ -1,6 +1,6 @@
 import { IGameFieldSizeProvider } from "../screens/game/game-field";
 import { VehicleOptions as VehicleControls } from "../screens/game/game-scene";
-import { abs, atan2, cos, random, sin, sqrt, TWO_PI } from "../system";
+import { abs, atan2, cos, hypot, random, sin, TWO_PI } from "../system";
 import { IRenderable, ITickable } from "./display";
 import { Point2D } from "./geom";
 import { vecAdd, vecDist, vecRandom, vecSub, Vector2D } from "./vector2d";
@@ -397,7 +397,7 @@ export class Vehicle implements ITickable, IRenderable {
     // Draw line from right base to top point, but stop before the rounded corner
     const rightToTopDx = topPoint - rightBase;
     const rightToTopDy = topY - baseY;
-    const rightToTopLength = sqrt(rightToTopDx * rightToTopDx + rightToTopDy * rightToTopDy);
+    const rightToTopLength = hypot(rightToTopDx, rightToTopDy);
     const rightToTopUnitX = rightToTopDx / rightToTopLength;
     const rightToTopUnitY = rightToTopDy / rightToTopLength;
 
@@ -410,7 +410,7 @@ export class Vehicle implements ITickable, IRenderable {
     // Draw rounded corner at top point
     const leftToTopDx = topPoint - leftBase;
     const leftToTopDy = topY - baseY;
-    const leftToTopLength = sqrt(leftToTopDx * leftToTopDx + leftToTopDy * leftToTopDy);
+    const leftToTopLength = hypot(leftToTopDx, leftToTopDy);
     const leftToTopUnitX = leftToTopDx / leftToTopLength;
     const leftToTopUnitY = leftToTopDy / leftToTopLength;
 

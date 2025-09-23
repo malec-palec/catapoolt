@@ -1,4 +1,4 @@
-import { atan2, cos, hypot, random, sin, sqrt, TWO_PI } from "../system";
+import { atan2, cos, hypot, random, sin, TWO_PI } from "../system";
 
 export const vecDist = (v1: Vector2D, v2: Vector2D): number => hypot(v1.x - v2.x, v1.y - v2.y);
 
@@ -50,7 +50,7 @@ export class Vector2D {
   }
 
   mag(): number {
-    return sqrt(this.x * this.x + this.y * this.y);
+    return hypot(this.x, this.y);
   }
 
   normalize(): Vector2D {

@@ -1,5 +1,5 @@
 import { Point2D } from "../../core/geom";
-import { atan2, cos, min, PI, sin, sqrt } from "../../system";
+import { atan2, cos, hypot, min, PI, sin } from "../../system";
 import { Cat } from "./cat";
 
 export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat, curMousePos: Point2D): void => {
@@ -13,7 +13,7 @@ export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat
   // Calculate drag vector and distance
   const dragVectorX = dragX - centerX;
   const dragVectorY = dragY - centerY;
-  const dragDistance = sqrt(dragVectorX * dragVectorX + dragVectorY * dragVectorY);
+  const dragDistance = hypot(dragVectorX, dragVectorY);
   const maxDragDistance = cat.maxDragDistance;
 
   // Calculate visual drag position (limited to max distance)
