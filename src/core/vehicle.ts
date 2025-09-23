@@ -503,21 +503,4 @@ export class Vehicle {
       this.applyForce(fleeForce);
     }
   }
-
-  run(
-    context: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    vehicles: Vehicle[],
-    showDebug: boolean = false,
-  ): void {
-    this.applyBehaviors(vehicles);
-    this.tick();
-    this.borders(width, height);
-    this.render(context);
-
-    if (showDebug) {
-      this.drawWanderDebug(context);
-    }
-  }
 }

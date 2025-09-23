@@ -30,7 +30,7 @@ interface VehicleControls {
   showDebug: boolean;
   resetVehicles: () => void;
 }
-export class GameField extends DisplayObject {
+export class GameScene extends DisplayObject {
   onGameOverCallback?: (miceEaten: number) => void;
   onNextWaveCallback?: (waveNumber: number, onContinue: () => void) => void;
 

@@ -8,7 +8,7 @@ import { Text } from "../core/text";
 import { IGame } from "../game";
 import { HIGH_SCORE_KEY } from "../registry";
 import { isDev } from "../system";
-import { GameField } from "./game/game-field";
+import { GameScene } from "./game/game-scene";
 import { HighScoresScreen } from "./high-scores-screen";
 import { StartScreen } from "./start-screen";
 export class GameScreen extends BaseScreen {
@@ -19,8 +19,8 @@ export class GameScreen extends BaseScreen {
   private nextWavePopup: Popup;
   private currentWaveCallback: (() => void) | null = null;
 
-  private gameField: GameField;
-  private originalGameFieldTick: (dt: number) => void;
+  private gameScene: GameScene;
+  private originalGameSceneTick: (dt: number) => void;
 
   constructor(game: IGame) {
     super(game);
@@ -114,9 +114,9 @@ export class GameScreen extends BaseScreen {
       fontSize: 24,
     });
 
-    this.gameField = new GameField(c.width, c.height);
+    this.gameScene = new GameScene(c.width, c.height);
 
-    this.gameField.onGameOverCallback = (miceEaten: number) => {
+    this.gameScene.onGameOverCallback = (miceEaten: number) => {
       const currentHighScore = localStorage.getItem(HIGH_SCORE_KEY);
       const currentHighScoreNum = currentHighScore ? parseInt(currentHighScore, 10) : 0;
 
@@ -129,23 +129,23 @@ export class GameScreen extends BaseScreen {
       this.gameOverPopup.showPopup();
     };
 
-    this.gameField.onNextWaveCallback = (waveNumber: number, onContinue: () => void) => {
+    this.gameScene.onNextWaveCallback = (waveNumber: number, onContinue: () => void) => {
       this.nextWavePopup.updateTitle(`Next Wave ${waveNumber}`);
       this.currentWaveCallback = onContinue;
       this.nextWavePopup.showPopup();
     };
 
     // Store the original tick method and override it for pause functionality
-    this.originalGameFieldTick = this.gameField.tick.bind(this.gameField);
-    this.gameField.tick = (dt: number) => {
+    this.originalGameSceneTick = this.gameScene.tick.bind(this.gameScene);
+    this.gameScene.tick = (dt: number) => {
       if (!this.pausePopup.isVisible && !this.gameOverPopup.isVisible && !this.nextWavePopup.isVisible) {
-        this.originalGameFieldTick(dt);
+        this.originalGameSceneTick(dt);
       }
     };
 
     this.add(
       this.title,
-      this.gameField,
+      this.gameScene,
       muteButton,
       this.menuButton,
       this.pausePopup,
@@ -156,9 +156,9 @@ export class GameScreen extends BaseScreen {
     if (isDev) {
       import("dat.gui").then((dat) => {
         const gui = new dat.GUI();
-        const fieldFolder = gui.addFolder("GameField");
-        this.gameField.setupGUI(fieldFolder);
-        fieldFolder.open();
+        const sceneFolder = gui.addFolder("GameScene");
+        this.gameScene.setupGUI(sceneFolder);
+        sceneFolder.open();
       });
     } else {
       playMusic();
@@ -190,7 +190,7 @@ export class GameScreen extends BaseScreen {
   override doResize(): void {
     this.title.setPos(c.width / 2, c.height / 2);
 
-    this.gameField.setSize(c.width, c.height);
+    this.gameScene.setSize(c.width, c.height);
 
     this.menuButton.setPos(c.width - this.menuButton.width - 16, 16);
     this.pausePopup.onResize();
