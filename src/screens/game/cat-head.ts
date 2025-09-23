@@ -1,4 +1,4 @@
-import { isDev } from "../../system";
+import { cos, isDev, PI, sin, TWO_PI } from "../../system";
 
 export type EarData = {
   angle: number;
@@ -29,14 +29,14 @@ export const drawHead = (
   context.lineWidth = strokeWidth;
 
   context.beginPath();
-  context.arc(posX, posY, radius, 0, Math.PI * 2);
+  context.arc(posX, posY, radius, 0, TWO_PI);
   context.fill();
   context.stroke();
 
   // Draw one complete side (ear + eye), then mirror it
   const drawOneSide = () => {
     // Calculate ear positions once
-    const halfAngle = (earData.angle * Math.PI) / 360; // Direct calculation
+    const halfAngle = (earData.angle * PI) / 360; // Direct calculation
     const earOffset = radius * 0.8;
     const earHalfWidth = earData.width / 2;
 
@@ -51,7 +51,7 @@ export const drawHead = (
 
     context.fillStyle = "#228B22";
     context.beginPath();
-    context.arc(eyeX, eyeY, eyeRadius, 0, Math.PI * 2);
+    context.arc(eyeX, eyeY, eyeRadius, 0, TWO_PI);
     context.fill();
 
     // Draw pupil
@@ -59,8 +59,8 @@ export const drawHead = (
     context.fillRect(eyeX - pupilHalfWidth, eyeY - pupilHalfHeight, pupilHalfWidth * 2, pupilHalfHeight * 2);
 
     // Draw ear
-    const baseX = posX - Math.sin(halfAngle) * earOffset;
-    const baseY = posY - Math.cos(halfAngle) * earOffset + earData.offsetY;
+    const baseX = posX - sin(halfAngle) * earOffset;
+    const baseY = posY - cos(halfAngle) * earOffset + earData.offsetY;
 
     context.beginPath();
     context.moveTo(baseX - earHalfWidth, baseY);
@@ -83,11 +83,11 @@ export const drawHead = (
     context.strokeStyle = context.fillStyle = "#4444ff";
     context.lineWidth = 3;
     context.beginPath();
-    context.arc(posX, posY, radius, 0, Math.PI * 2);
+    context.arc(posX, posY, radius, 0, TWO_PI);
     context.stroke();
 
     context.beginPath();
-    context.arc(posX, posY, 8, 0, Math.PI * 2);
+    context.arc(posX, posY, 8, 0, TWO_PI);
     context.fill();
   }
 };

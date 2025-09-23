@@ -1,3 +1,5 @@
+import { abs, cos, hypot, max, min, PI, random, sin, sqrt, TWO_PI } from "../../system";
+
 export interface ICircleCollider {
   position: Vector2D;
   radius: number;
@@ -66,15 +68,15 @@ export class BlobPoint {
   }
 
   keepInBounds(width: number, height: number): void {
-    this.pos.x = Math.max(0, Math.min(width, this.pos.x));
-    this.pos.y = Math.max(0, Math.min(height, this.pos.y));
+    this.pos.x = max(0, min(width, this.pos.x));
+    this.pos.y = max(0, min(height, this.pos.y));
   }
 
   collideWith(collider: ICircleCollider): void {
     const { pos } = this;
     const dx = pos.x - collider.position.x;
     const dy = pos.y - collider.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const distance = hypot(dx, dy);
 
     if (distance < collider.radius) {
       if (distance > 0) {
@@ -84,9 +86,9 @@ export class BlobPoint {
         pos.x = collider.position.x + normalizedX * collider.radius;
         pos.y = collider.position.y + normalizedY * collider.radius;
       } else {
-        const angle = Math.random() * Math.PI * 2;
-        pos.x = collider.position.x + Math.cos(angle) * collider.radius;
-        pos.y = collider.position.y + Math.sin(angle) * collider.radius;
+        const angle = random() * TWO_PI;
+        pos.x = collider.position.x + cos(angle) * collider.radius;
+        pos.y = collider.position.y + sin(angle) * collider.radius;
       }
     }
   }
@@ -107,15 +109,15 @@ export class SoftBlob {
     puffiness: number,
     public outlineSize: number,
   ) {
-    this.baseArea = radius * radius * Math.PI * puffiness;
+    this.baseArea = radius * radius * PI * puffiness;
     this.area = this.baseArea;
-    this.circumference = radius * 2 * Math.PI;
+    this.circumference = radius * 2 * PI;
     this.chordLength = this.circumference / numPoints;
 
     for (let i = 0; i < numPoints; i++) {
-      const angle = (2 * Math.PI * i) / numPoints - Math.PI / 2;
-      const offsetX = Math.cos(angle) * radius;
-      const offsetY = Math.sin(angle) * radius;
+      const angle = (2 * PI * i) / numPoints - PI / 2;
+      const offsetX = cos(angle) * radius;
+      const offsetY = sin(angle) * radius;
       this.points.push(
         new BlobPoint({
           x: originX + offsetX,
@@ -139,7 +141,7 @@ export class SoftBlob {
 
         const dx = next.pos.x - current.pos.x;
         const dy = next.pos.y - current.pos.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distance = hypot(dx, dy);
 
         if (distance > chordLength) {
           const error = (distance - chordLength) / 2;
@@ -166,7 +168,7 @@ export class SoftBlob {
         const normalX = -secantY;
         const normalY = secantX;
 
-        const length = Math.sqrt(normalX * normalX + normalY * normalY);
+        const length = sqrt(normalX * normalX + normalY * normalY);
         if (length > 0) {
           const normalizedX = (normalX / length) * offset;
           const normalizedY = (normalY / length) * offset;
@@ -194,7 +196,7 @@ export class SoftBlob {
       const next = points[(i + 1) % points.length];
       area += ((current.pos.x - next.pos.x) * (current.pos.y + next.pos.y)) / 2;
     }
-    return Math.abs(area);
+    return abs(area);
   }
 
   getCenterOfMass(): Vector2D {
@@ -250,7 +252,7 @@ export class SoftBlob {
     // context.fillStyle = "#2a2c35";
     // for (const point of this.points) {
     //   context.beginPath();
-    //   context.arc(point.pos.x, point.pos.y, 3, 0, 2 * Math.PI);
+    //   context.arc(point.pos.x, point.pos.y, 3, 0, 2 * PI);
     //   context.fill();
     // }
   }

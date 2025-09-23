@@ -3,6 +3,8 @@ export interface Point2D {
   y: number;
 }
 
+export const clonePoint = (point: Point2D): Point2D => ({ ...point });
+
 export type Rectangle = { x: number; y: number; width: number; height: number };
 
 export const isCoordsInRect = (x: number, y: number, rect: Rectangle): boolean =>

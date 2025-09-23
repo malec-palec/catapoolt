@@ -1,4 +1,5 @@
 import { Point2D } from "../../core/geom";
+import { atan2, cos, min, PI, sin, sqrt } from "../../system";
 import { Cat } from "./cat";
 
 export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat, curMousePos: Point2D): void => {
@@ -12,7 +13,7 @@ export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat
   // Calculate drag vector and distance
   const dragVectorX = dragX - centerX;
   const dragVectorY = dragY - centerY;
-  const dragDistance = Math.sqrt(dragVectorX * dragVectorX + dragVectorY * dragVectorY);
+  const dragDistance = sqrt(dragVectorX * dragVectorX + dragVectorY * dragVectorY);
   const maxDragDistance = cat.maxDragDistance;
 
   // Calculate visual drag position (limited to max distance)
@@ -26,11 +27,11 @@ export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat
   }
 
   // Calculate power ratio for color intensity
-  const powerRatio = Math.min(dragDistance / maxDragDistance, 1.0);
+  const powerRatio = min(dragDistance / maxDragDistance, 1.0);
 
   // Calculate cone parameters
-  const coneLength = Math.min(dragDistance, maxDragDistance);
-  const coneAngle = Math.atan2(visualDragY - centerY, visualDragX - centerX);
+  const coneLength = min(dragDistance, maxDragDistance);
+  const coneAngle = atan2(visualDragY - centerY, visualDragX - centerX);
   const minConeWidth = 8; // Minimum width when no power
   const maxConeWidth = 40; // Maximum width at full power
   const coneWidth = minConeWidth + (maxConeWidth - minConeWidth) * powerRatio;
@@ -53,8 +54,8 @@ export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat
     gradient.addColorStop(1, `rgba(${red}, ${green}, ${blue}, ${alpha})`); // Full color at cursor
 
     // Calculate cone vertices
-    const perpX = Math.cos(coneAngle + Math.PI / 2);
-    const perpY = Math.sin(coneAngle + Math.PI / 2);
+    const perpX = cos(coneAngle + PI / 2);
+    const perpY = sin(coneAngle + PI / 2);
 
     const halfWidth = coneWidth / 2;
 
@@ -88,8 +89,8 @@ export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat
 
     // Calculate the angle perpendicular to cone direction (pointing away from cat)
     const outwardAngle = coneAngle;
-    const startAngle = outwardAngle - Math.PI / 2;
-    const endAngle = outwardAngle + Math.PI / 2;
+    const startAngle = outwardAngle - PI / 2;
+    const endAngle = outwardAngle + PI / 2;
 
     context.beginPath();
     context.arc(visualDragX, visualDragY, coneWidth / 2, startAngle, endAngle, false);

@@ -5,6 +5,7 @@ import { GameScreen } from "./screens/game-screen";
 import { HighScoresScreen } from "./screens/high-scores-screen";
 import { SplashScreen } from "./screens/splash-screen";
 import { StartScreen } from "./screens/start-screen";
+import { max, min } from "./system";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface IGame extends IScreenManager {}
@@ -27,8 +28,8 @@ const getCanvasCoordinates = (clientX: number, clientY: number): { x: number; y:
   const scaleY = c.height / rect.height;
   // Apply scaling to get internal canvas coordinates and clamp in one step
   return {
-    x: Math.max(0, Math.min(c.width, relativeX * scaleX)),
-    y: Math.max(0, Math.min(c.height, relativeY * scaleY)),
+    x: max(0, min(c.width, relativeX * scaleX)),
+    y: max(0, min(c.height, relativeY * scaleY)),
   };
 };
 

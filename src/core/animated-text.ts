@@ -1,3 +1,4 @@
+import { sin } from "../system";
 import { DisplayObject } from "./display";
 
 export class AnimatedText extends DisplayObject {
@@ -62,7 +63,7 @@ export class AnimatedText extends DisplayObject {
         context.fillText(
           letter.char,
           -this.width / 2 + letter.x,
-          Math.sin(this.time * this.frequency + letter.phase) * this.amplitude,
+          sin(this.time * this.frequency + letter.phase) * this.amplitude,
         );
       }
     });

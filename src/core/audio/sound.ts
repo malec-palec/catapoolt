@@ -1,3 +1,4 @@
+import { max, min } from "../../system.js";
 import { music, sfx } from "../../tunes.js";
 import "./player.min.js";
 
@@ -50,7 +51,7 @@ export const stopMusic = (): void => {
 };
 
 export const setGlobalVolume = (volume: number): void => {
-  globalVolume = Math.max(0, Math.min(1, volume));
+  globalVolume = max(0, min(1, volume));
   updateGainNodeVolume();
 };
 

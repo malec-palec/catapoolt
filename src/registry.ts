@@ -1,3 +1,5 @@
+import { floor } from "./system";
+
 export const GAME_WIDTH = 800;
 export const GAME_HEIGHT = 600;
 
@@ -20,5 +22,5 @@ export const getAdaptiveFontSize = (originalSize: number, textLength: number, ma
   const estimatedWidth = textLength * originalSize * 0.6;
 
   // Approximate character width is about 0.6 * fontSize
-  return estimatedWidth > maxAllowedWidth ? Math.floor(maxAllowedWidth / textLength / 0.6) : originalSize;
+  return estimatedWidth > maxAllowedWidth ? floor(maxAllowedWidth / textLength / 0.6) : originalSize;
 };

@@ -40,3 +40,16 @@ export class DisplayObject implements IDisplayObject {
     this.height = height;
   }
 }
+
+export interface IRenderable {
+  render(context: CanvasRenderingContext2D): void;
+}
+
+export interface ITickable {
+  tick(dt: number): void;
+}
+
+export interface ICollidable {
+  position: Point2D;
+  size: number;
+}

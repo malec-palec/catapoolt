@@ -1,3 +1,4 @@
+import { hypot } from "../../system";
 import { BlobPoint, SoftBlob, Vector2D } from "./soft-blob";
 
 const DAMPING = 0.99;
@@ -79,7 +80,7 @@ export class Tail {
 
         const dx = nodeB.pos.x - nodeA.pos.x;
         const dy = nodeB.pos.y - nodeA.pos.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const distance = hypot(dx, dy);
 
         if (distance > 0) {
           const difference = segmentLength - distance;
@@ -136,7 +137,7 @@ export class Tail {
 
     // context.fillStyle = "#FF0000";
     // context.beginPath();
-    // context.arc(this.nodes[0].pos.x, this.nodes[0].pos.y, this.tailWidth / 2, 0, 2 * Math.PI);
+    // context.arc(this.nodes[0].pos.x, this.nodes[0].pos.y, this.tailWidth / 2, 0, 2 * PI);
     // context.fill();
   }
 }

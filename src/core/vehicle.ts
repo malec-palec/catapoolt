@@ -1,4 +1,9 @@
-import { Vector2D } from "./vector2d";
+import { IGameFieldSizeProvider } from "../screens/game/game-field";
+import { VehicleOptions as VehicleControls } from "../screens/game/game-scene";
+import { abs, atan2, cos, random, sin, sqrt, TWO_PI } from "../system";
+import { IRenderable, ITickable } from "./display";
+import { Point2D } from "./geom";
+import { vecAdd, vecDist, vecRandom, vecSub, Vector2D } from "./vector2d";
 
 export interface VehicleOptions {
   maxSpeed?: number;
@@ -16,7 +21,14 @@ export interface VehicleOptions {
   strokeWidth?: number;
 }
 
-export class Vehicle {
+// Check if a circular object is visible in the current camera viewport with margin
+const isInBounds = (worldPos: Point2D, cameraPos: Point2D, radius: number, margin: number = 50): boolean =>
+  worldPos.x + radius >= cameraPos.x - margin &&
+  worldPos.x - radius <= cameraPos.x + c.width + margin &&
+  worldPos.y + radius >= cameraPos.y - margin &&
+  worldPos.y - radius <= cameraPos.y + c.height + margin;
+
+export class Vehicle implements ITickable, IRenderable {
   public position: Vector2D;
   public velocity: Vector2D;
   public acceleration: Vector2D;
@@ -40,9 +52,21 @@ export class Vehicle {
   public tailNodes: number = 15; // Number of tail segments
   public tailHistory: Array<{ x: number; y: number }> = [];
 
-  constructor(x: number, y: number, options: VehicleOptions = {}) {
+  isVisible: boolean = true;
+  drawDebug: boolean = false;
+
+  constructor(
+    x: number,
+    y: number,
+    options: VehicleOptions,
+    private vehicles: Vehicle[],
+    private catPos: Vector2D,
+    private gameField: IGameFieldSizeProvider,
+    private controls: VehicleControls,
+    private cameraPos: Point2D,
+  ) {
     this.position = new Vector2D(x, y);
-    this.velocity = Vector2D.random();
+    this.velocity = vecRandom();
     this.acceleration = new Vector2D(0, 0);
 
     // Vehicle parameters
@@ -75,7 +99,27 @@ export class Vehicle {
     }
   }
 
-  tick(): void {
+  tick(dt: number): void {
+    // Apply wandering behavior
+    this.wander();
+
+    // Apply separation behavior
+    const separationForce = this.separate(this.vehicles);
+    this.applyForce(separationForce);
+
+    // Apply boundary avoidance
+    const boundaryForce = this.avoidBoundaries(
+      this.gameField.width,
+      this.gameField.height,
+      this.controls.boundaryAvoidance,
+    );
+    this.applyForce(boundaryForce);
+
+    // Apply flee behavior
+    const fleeForce = this.flee(this.catPos, this.fleeRadius);
+    fleeForce.mult(this.fleeWeight);
+    this.applyForce(fleeForce);
+
     // Update velocity
     this.velocity.add(this.acceleration);
     // Limit speed
@@ -109,14 +153,20 @@ export class Vehicle {
       const currentNode = this.tailHistory[i];
 
       // Calculate angle from current node to previous node
-      const nodeAngle = Math.atan2(currentNode.y - prevNode.y, currentNode.x - prevNode.x);
+      const nodeAngle = atan2(currentNode.y - prevNode.y, currentNode.x - prevNode.x);
 
       // Position current node at fixed distance from previous node
       this.tailHistory[i] = {
-        x: prevNode.x + this.tailLength * Math.cos(nodeAngle),
-        y: prevNode.y + this.tailLength * Math.sin(nodeAngle),
+        x: prevNode.x + this.tailLength * cos(nodeAngle),
+        y: prevNode.y + this.tailLength * sin(nodeAngle),
       };
     }
+
+    // Use game field borders for vehicle boundary constraints
+    this.borders(this.gameField);
+
+    this.isVisible = isInBounds(this.position, this.cameraPos, this.size * 2);
+    this.drawDebug = this.controls.showDebug;
   }
 
   applyForce(force: Vector2D): void {
@@ -126,7 +176,7 @@ export class Vehicle {
 
   wander(): void {
     // Randomly change wander angle
-    this.wanderTheta += (Math.random() - 0.5) * 2 * this.wanderChange;
+    this.wanderTheta += (random() - 0.5) * 2 * this.wanderChange;
 
     // Calculate the center of the wander circle
     const circlePos = this.velocity.copy();
@@ -139,12 +189,12 @@ export class Vehicle {
 
     // Calculate the offset on the wander circle
     const circleOffset = new Vector2D(
-      this.wanderRadius * Math.cos(this.wanderTheta + h),
-      this.wanderRadius * Math.sin(this.wanderTheta + h),
+      this.wanderRadius * cos(this.wanderTheta + h),
+      this.wanderRadius * sin(this.wanderTheta + h),
     );
 
     // Calculate target point
-    const target = Vector2D.add(circlePos, circleOffset);
+    const target = vecAdd(circlePos, circleOffset);
     this.seek(target);
   }
 
@@ -154,12 +204,12 @@ export class Vehicle {
 
     // For every vehicle in the system, check if it's too close
     for (const other of vehicles) {
-      const distance = Vector2D.dist(this.position, other.position);
+      const distance = vecDist(this.position, other.position);
 
       // If the distance is greater than 0 and less than separation radius (0 when you are yourself)
       if (distance > 0 && distance < this.separationRadius) {
         // Calculate vector pointing away from neighbor
-        const diff = Vector2D.sub(this.position, other.position);
+        const diff = vecSub(this.position, other.position);
         diff.normalize();
         diff.div(distance); // Weight by distance (closer = stronger repulsion)
         steer.add(diff);
@@ -183,20 +233,20 @@ export class Vehicle {
 
   seek(target: Vector2D): void {
     // A vector pointing from the location to the target
-    const desired = Vector2D.sub(target, this.position);
+    const desired = vecSub(target, this.position);
 
     // Scale to maximum speed
     desired.setMag(this.maxSpeed);
 
     // Steering = Desired minus velocity
-    const steer = Vector2D.sub(desired, this.velocity);
+    const steer = vecSub(desired, this.velocity);
     steer.limit(this.maxForce); // Limit to maximum steering force
 
     this.applyForce(steer);
   }
 
   flee(target: Vector2D, fleeRadius: number = 100): Vector2D {
-    const distance = Vector2D.dist(this.position, target);
+    const distance = vecDist(this.position, target);
 
     // Only flee if within flee radius
     if (distance > fleeRadius) {
@@ -204,10 +254,10 @@ export class Vehicle {
     }
 
     // Calculate flee force (opposite of seek)
-    const desired = Vector2D.sub(this.position, target); // Point away from target
+    const desired = vecSub(this.position, target); // Point away from target
     desired.setMag(this.maxSpeed);
 
-    const steer = Vector2D.sub(desired, this.velocity);
+    const steer = vecSub(desired, this.velocity);
     steer.limit(this.maxForce);
 
     // Scale force based on distance (closer = stronger flee)
@@ -217,23 +267,24 @@ export class Vehicle {
     return steer;
   }
 
-  borders(width: number, height: number): void {
+  borders(gameField: IGameFieldSizeProvider): void {
+    const { width, height } = gameField;
     // Keep vehicles within bounds (no wrapping)
     if (this.position.x < this.size) {
       this.position.x = this.size;
-      this.velocity.x = Math.abs(this.velocity.x); // Bounce away from left edge
+      this.velocity.x = abs(this.velocity.x); // Bounce away from left edge
     }
     if (this.position.x > width - this.size) {
       this.position.x = width - this.size;
-      this.velocity.x = -Math.abs(this.velocity.x); // Bounce away from right edge
+      this.velocity.x = -abs(this.velocity.x); // Bounce away from right edge
     }
     if (this.position.y < this.size) {
       this.position.y = this.size;
-      this.velocity.y = Math.abs(this.velocity.y); // Bounce away from top edge
+      this.velocity.y = abs(this.velocity.y); // Bounce away from top edge
     }
     if (this.position.y > height - this.size) {
       this.position.y = height - this.size;
-      this.velocity.y = -Math.abs(this.velocity.y); // Bounce away from bottom edge
+      this.velocity.y = -abs(this.velocity.y); // Bounce away from bottom edge
     }
   }
 
@@ -278,6 +329,8 @@ export class Vehicle {
   }
 
   render(context: CanvasRenderingContext2D): void {
+    if (!this.isVisible) return;
+
     const { tailHistory, position, velocity, size, strokeWidth, strokeColor, color } = this;
 
     // Calculate shadow position (slightly below the mouse)
@@ -307,7 +360,7 @@ export class Vehicle {
 
     context.fillStyle = gradient;
     context.beginPath();
-    context.arc(0, 0, shadowRadius, 0, Math.PI * 2);
+    context.arc(0, 0, shadowRadius, 0, TWO_PI);
     context.fill();
     context.restore();
 
@@ -344,7 +397,7 @@ export class Vehicle {
     // Draw line from right base to top point, but stop before the rounded corner
     const rightToTopDx = topPoint - rightBase;
     const rightToTopDy = topY - baseY;
-    const rightToTopLength = Math.sqrt(rightToTopDx * rightToTopDx + rightToTopDy * rightToTopDy);
+    const rightToTopLength = sqrt(rightToTopDx * rightToTopDx + rightToTopDy * rightToTopDy);
     const rightToTopUnitX = rightToTopDx / rightToTopLength;
     const rightToTopUnitY = rightToTopDy / rightToTopLength;
 
@@ -357,7 +410,7 @@ export class Vehicle {
     // Draw rounded corner at top point
     const leftToTopDx = topPoint - leftBase;
     const leftToTopDy = topY - baseY;
-    const leftToTopLength = Math.sqrt(leftToTopDx * leftToTopDx + leftToTopDy * leftToTopDy);
+    const leftToTopLength = sqrt(leftToTopDx * leftToTopDx + leftToTopDy * leftToTopDy);
     const leftToTopUnitX = leftToTopDx / leftToTopLength;
     const leftToTopUnitY = leftToTopDy / leftToTopLength;
 
@@ -377,7 +430,7 @@ export class Vehicle {
     // Draw nose (gray dot at the top point)
     context.fillStyle = "#999999";
     context.beginPath();
-    context.arc(isMovingLeft ? leftBase + 2 : rightBase - 2, baseY - 2, this.size * 0.2, 0, Math.PI * 2);
+    context.arc(isMovingLeft ? leftBase + 2 : rightBase - 2, baseY - 2, this.size * 0.2, 0, TWO_PI);
     context.fill();
 
     context.restore();
@@ -395,6 +448,11 @@ export class Vehicle {
       context.lineTo(tailHistory[i].x, tailHistory[i].y);
     }
     context.stroke();
+
+    if (this.drawDebug) {
+      this.drawWanderDebug(context);
+      this.drawFleeDebug(context, this.catPos!);
+    }
   }
 
   drawWanderDebug(context: CanvasRenderingContext2D): void {
@@ -410,12 +468,12 @@ export class Vehicle {
 
     // Calculate the offset on the wander circle
     const circleOffset = new Vector2D(
-      this.wanderRadius * Math.cos(this.wanderTheta + h),
-      this.wanderRadius * Math.sin(this.wanderTheta + h),
+      this.wanderRadius * cos(this.wanderTheta + h),
+      this.wanderRadius * sin(this.wanderTheta + h),
     );
 
     // Calculate target point
-    const target = Vector2D.add(circlePos, circleOffset);
+    const target = vecAdd(circlePos, circleOffset);
 
     // Draw debug visualization
     context.strokeStyle = "#ff0000";
@@ -424,12 +482,12 @@ export class Vehicle {
 
     // Draw wander circle
     context.beginPath();
-    context.arc(circlePos.x, circlePos.y, this.wanderRadius, 0, Math.PI * 2);
+    context.arc(circlePos.x, circlePos.y, this.wanderRadius, 0, TWO_PI);
     context.stroke();
 
     // Draw target point
     context.beginPath();
-    context.arc(target.x, target.y, 2, 0, Math.PI * 2);
+    context.arc(target.x, target.y, 2, 0, TWO_PI);
     context.fill();
 
     // Draw line from vehicle to circle center
@@ -449,7 +507,7 @@ export class Vehicle {
     if (import.meta.env.PROD) return;
     if (!mousePosition) return;
 
-    const distance = Vector2D.dist(this.position, mousePosition);
+    const distance = vecDist(this.position, mousePosition);
 
     // Draw flee radius circle
     context.strokeStyle = "#0066ff";
@@ -457,7 +515,7 @@ export class Vehicle {
     context.setLineDash([5, 5]); // Dashed line
 
     context.beginPath();
-    context.arc(this.position.x, this.position.y, this.fleeRadius, 0, Math.PI * 2);
+    context.arc(this.position.x, this.position.y, this.fleeRadius, 0, TWO_PI);
     context.stroke();
 
     // If mouse is within flee radius, draw connection line
@@ -474,33 +532,5 @@ export class Vehicle {
 
     // Reset line dash
     context.setLineDash([]);
-  }
-
-  applyBehaviors(
-    vehicles: Vehicle[],
-    mousePosition?: Vector2D,
-    fieldWidth?: number,
-    fieldHeight?: number,
-    boundaryAvoidanceDistance?: number,
-  ): void {
-    // Apply wandering behavior
-    this.wander();
-
-    // Apply separation behavior
-    const separationForce = this.separate(vehicles);
-    this.applyForce(separationForce);
-
-    // Apply boundary avoidance if field dimensions are provided
-    if (fieldWidth && fieldHeight && boundaryAvoidanceDistance !== undefined) {
-      const boundaryForce = this.avoidBoundaries(fieldWidth, fieldHeight, boundaryAvoidanceDistance);
-      this.applyForce(boundaryForce);
-    }
-
-    // Apply flee behavior if mouse position is provided
-    if (mousePosition) {
-      const fleeForce = this.flee(mousePosition, this.fleeRadius);
-      fleeForce.mult(this.fleeWeight);
-      this.applyForce(fleeForce);
-    }
   }
 }

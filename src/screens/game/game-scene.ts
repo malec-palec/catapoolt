@@ -1,18 +1,22 @@
 import * as dat from "dat.gui";
 import { playSound, Sounds } from "../../core/audio/sound";
-import { DisplayObject } from "../../core/display";
+import { DisplayObject, IRenderable, ITickable } from "../../core/display";
 import { Event, MouseEvent, MouseEventType } from "../../core/event";
-import { Point2D } from "../../core/geom";
-import { Vector2D } from "../../core/vector2d";
-import { Vehicle, VehicleOptions } from "../../core/vehicle";
-import { COLOR_BLACK } from "../../registry";
+import { Vehicle } from "../../core/vehicle";
+import { random } from "../../system";
+import { Camera } from "./camera";
 import { Cat } from "./cat";
 import { Clover } from "./clover";
+import { GameField } from "./game-field";
+import { HUD } from "./hud";
 import { Poop } from "./poop";
-import { drawSlingshotPreview } from "./slingshot-preview";
 
-interface VehicleControls {
-  vehicleCount: number;
+export interface IGameController {
+  currentWave: number;
+}
+
+export interface VehicleOptions {
+  enemyCount: number;
   maxSpeed: number;
   maxForce: number;
   wanderRadius: number;
@@ -22,697 +26,170 @@ interface VehicleControls {
   separationWeight: number;
   fleeRadius: number;
   fleeWeight: number;
-  catRadius: number;
-  gameFieldWidth: number;
-  gameFieldHeight: number;
-  bufferZone: number;
   boundaryAvoidance: number;
   showDebug: boolean;
-  resetVehicles: () => void;
 }
-export class GameScene extends DisplayObject {
-  onGameOverCallback?: (miceEaten: number) => void;
-  onNextWaveCallback?: (waveNumber: number, onContinue: () => void) => void;
-
-  private vehicles: Vehicle[] = [];
-  private controls: VehicleControls;
-
-  private cat: Cat;
-  private poops: Poop[] = [];
-  private clover: Clover | null = null;
-  private cloverCollectedThisWave = false;
-  private lastCloverPosition: { x: number; y: number } | null = null;
-
-  // Camera system
-  private camera = { x: 0, y: 0 };
-  private gameFieldSize = { width: 1600, height: 1200 }; // 2x screen size
-
-  private curMousePos = { x: 0, y: 0 };
-  private isMouseDown = false;
-
-  // Game state
-  private miceEaten = 0;
-  private isGameOver = false;
+export class GameScene extends DisplayObject implements IGameController {
+  onGameOverCallback!: (miceEaten: number) => void;
+  onNextWaveCallback!: (waveNumber: number, onContinue: () => void) => void;
 
   // Wave system
-  private currentWave = 1;
+  currentWave = 1;
+  // Game state
+  private miceEaten = 0;
+  private isGameOver = false; // TODO: remove if not needed
 
-  // Blinking message animation
-  private blinkTime = 0;
+  enemyOptions: VehicleOptions = {
+    enemyCount: 20,
+    maxSpeed: 2,
+    maxForce: 0.05,
+    wanderRadius: 25,
+    wanderDistance: 80,
+    wanderChange: 0.3,
+    separationRadius: 25,
+    separationWeight: 1.5,
+    fleeRadius: 150,
+    fleeWeight: 4.0,
+    boundaryAvoidance: 50,
+    showDebug: false,
+  };
+
+  private gameField: GameField;
+  cat: Cat;
+  private clover: Clover | null = null;
+  private poops: Poop[] = [];
+  enemies: Vehicle[] = [];
+  private hud: HUD;
+
+  private camera: Camera;
+  private isMouseDown = false;
 
   constructor(width: number, height: number) {
     super(width, height);
 
-    // Initialize controls
-    this.controls = {
-      vehicleCount: 20,
-      maxSpeed: 2,
-      maxForce: 0.05,
-      wanderRadius: 25,
-      wanderDistance: 80,
-      wanderChange: 0.3,
-      separationRadius: 25,
-      separationWeight: 1.5,
-      fleeRadius: 150,
-      fleeWeight: 4.0,
-      catRadius: 30,
-      gameFieldWidth: 1600,
-      gameFieldHeight: 1200,
-      bufferZone: 160,
-      boundaryAvoidance: 50,
-      showDebug: false,
-      resetVehicles: () => this.createVehicles(this.controls),
-    };
-    // Create cat at center of game field
-    this.cat = new Cat(
-      this.controls.gameFieldWidth / 2,
-      this.controls.gameFieldHeight / 2 - 1,
-      this.controls.catRadius,
-      () => {
-        this.isGameOver = true;
-        if (this.onGameOverCallback) {
-          this.onGameOverCallback(this.miceEaten);
-        }
-      },
-    );
-    this.cat.setScreenBounds(this.controls.gameFieldWidth, this.controls.gameFieldHeight);
-
-    // Update game field size
-    this.gameFieldSize.width = this.controls.gameFieldWidth;
-    this.gameFieldSize.height = this.controls.gameFieldHeight;
-
-    // Create initial vehicles
-    this.createVehicles(this.controls);
-
-    // Create initial clover
-    this.createClover();
-  }
-
-  private createVehicles({
-    vehicleCount,
-    maxSpeed,
-    maxForce,
-    wanderRadius,
-    wanderDistance,
-    wanderChange,
-    separationRadius,
-    separationWeight,
-    fleeRadius,
-    fleeWeight,
-  }: VehicleControls): void {
-    this.vehicles = [];
-
-    for (let i = 0; i < vehicleCount; i++) {
-      const x = Math.random() * this.gameFieldSize.width;
-      const y = Math.random() * this.gameFieldSize.height;
-
-      const options: VehicleOptions = {
-        maxSpeed,
-        maxForce,
-        size: 8,
-        wanderRadius,
-        wanderDistance,
-        wanderChange,
-        separationRadius,
-        separationWeight,
-        fleeRadius,
-        fleeWeight,
-        strokeColor: COLOR_BLACK,
-        strokeWidth: 3,
-      };
-
-      this.vehicles.push(new Vehicle(x, y, options));
-    }
-  }
-
-  private updateVehicleProperties(): void {
-    this.vehicles.forEach((vehicle) => {
-      vehicle.maxSpeed = this.controls.maxSpeed;
-      vehicle.maxForce = this.controls.maxForce;
-      vehicle.wanderRadius = this.controls.wanderRadius;
-      vehicle.wanderDistance = this.controls.wanderDistance;
-      vehicle.wanderChange = this.controls.wanderChange;
-      vehicle.separationRadius = this.controls.separationRadius;
-      vehicle.separationWeight = this.controls.separationWeight;
-      vehicle.fleeRadius = this.controls.fleeRadius;
-      vehicle.fleeWeight = this.controls.fleeWeight;
+    this.gameField = new GameField(1600, 1200, 160);
+    this.cat = new Cat(30, this.gameField.width, this.gameField.height, () => {
+      this.isGameOver = true;
+      this.onGameOverCallback(this.miceEaten);
     });
+    this.camera = new Camera(this.cat.position, this.gameField);
+
+    this.spawnNewWaveMice();
+
+    this.hud = new HUD(this.cat, this.enemies, this, this.camera.position);
   }
 
-  private updateCatProperties(): void {
-    this.cat.radius = this.controls.catRadius;
-  }
-
-  private updateGameField(): void {
-    this.gameFieldSize.width = this.controls.gameFieldWidth;
-    this.gameFieldSize.height = this.controls.gameFieldHeight;
-    this.cat.setScreenBounds(this.controls.gameFieldWidth, this.controls.gameFieldHeight);
-  }
-
-  private createClover(): void {
-    const position = this.getRandomCloverPosition();
-    this.clover = new Clover(position.x, position.y);
-    this.lastCloverPosition = { x: position.x, y: position.y };
-  }
-
-  private repositionClover(): void {
-    if (this.clover) {
-      const position = this.getRandomCloverPosition();
-      this.clover.reposition(position.x, position.y);
-      this.lastCloverPosition = { x: position.x, y: position.y };
-    }
-  }
-
-  private getRandomCloverPosition(): { x: number; y: number } {
-    const minDistance = 300; // Minimum distance from previous position
-    const maxAttempts = 20; // Maximum attempts to find a good position
-    let attempts = 0;
-
-    while (attempts < maxAttempts) {
-      const x = Math.random() * this.gameFieldSize.width;
-      const y = Math.random() * this.gameFieldSize.height;
-
-      // If no previous position, any position is fine
-      if (!this.lastCloverPosition) {
-        return { x, y };
-      }
-
-      // Calculate distance from last position
-      const dx = x - this.lastCloverPosition.x;
-      const dy = y - this.lastCloverPosition.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      // If far enough from previous position, use this position
-      if (distance >= minDistance) {
-        return { x, y };
-      }
-
-      attempts++;
-    }
-
-    // If we couldn't find a good position after max attempts,
-    // just use a position on the opposite side of the field
-    if (this.lastCloverPosition) {
-      const oppositeX =
-        this.lastCloverPosition.x > this.gameFieldSize.width / 2
-          ? Math.random() * (this.gameFieldSize.width / 2)
-          : this.gameFieldSize.width / 2 + Math.random() * (this.gameFieldSize.width / 2);
-      const oppositeY =
-        this.lastCloverPosition.y > this.gameFieldSize.height / 2
-          ? Math.random() * (this.gameFieldSize.height / 2)
-          : this.gameFieldSize.height / 2 + Math.random() * (this.gameFieldSize.height / 2);
-      return { x: oppositeX, y: oppositeY };
-    }
-
-    // Fallback to random position
-    return {
-      x: Math.random() * this.gameFieldSize.width,
-      y: Math.random() * this.gameFieldSize.height,
-    };
-  }
-
-  private updateCamera(): void {
-    this.camera.x = this.cat.position.x - c.width / 2;
-    this.camera.y = this.cat.position.y - c.height / 2;
-
-    // Calculate camera bounds including buffer zone
-    const minCameraX = -this.controls.bufferZone;
-    const maxCameraX = this.gameFieldSize.width + this.controls.bufferZone - c.width;
-    const minCameraY = -this.controls.bufferZone;
-    const maxCameraY = this.gameFieldSize.height + this.controls.bufferZone - c.height;
-
-    // Clamp camera to extended bounds (game field + buffer zone)
-    this.camera.x = Math.max(minCameraX, Math.min(maxCameraX, this.camera.x));
-    this.camera.y = Math.max(minCameraY, Math.min(maxCameraY, this.camera.y));
-  }
-
-  private worldPos: Vector2D = new Vector2D(0, 0);
-
-  private screenToWorld(x: number, y: number) {
-    return this.worldPos.set(x + this.camera.x, y + this.camera.y);
-  }
-
-  // Check if a world position is visible in the current camera viewport
-  private isPositionVisible(worldPos: Point2D): boolean {
-    return (
-      worldPos.x >= this.camera.x &&
-      worldPos.x <= this.camera.x + c.width &&
-      worldPos.y >= this.camera.y &&
-      worldPos.y <= this.camera.y + c.height
-    );
-  }
-
-  // Check if a circular object is visible in the current camera viewport with margin
-  private isCircleVisible(worldPos: Point2D, radius: number, margin: number = 50): boolean {
-    const { x, y } = this.camera;
-    return (
-      worldPos.x + radius >= x - margin &&
-      worldPos.x - radius <= x + c.width + margin &&
-      worldPos.y + radius >= y - margin &&
-      worldPos.y - radius <= y + c.height + margin
-    );
-  }
-
-  // Calculate screen edge position for off-screen indicator
-  private getScreenEdgePosition(worldX: number, worldY: number): { x: number; y: number } {
-    const screenCenterX = c.width / 2;
-    const screenCenterY = c.height / 2;
-
-    // Convert world position to relative screen position
-    const relativeX = worldX - (this.camera.x + screenCenterX);
-    const relativeY = worldY - (this.camera.y + screenCenterY);
-
-    // Calculate angle from screen center to target
-    const angle = Math.atan2(relativeY, relativeX);
-
-    // Calculate intersection with screen edges
-    const margin = 20; // Distance from screen edge
-    let edgeX: number, edgeY: number;
-
-    // Determine which edge to use based on angle
-    const absAngle = Math.abs(angle);
-    const halfWidth = c.width / 2 - margin;
-    const halfHeight = c.height / 2 - margin;
-
-    if (absAngle <= Math.atan2(halfHeight, halfWidth)) {
-      // Right or left edge
-      if (relativeX > 0) {
-        // Right edge
-        edgeX = c.width - margin;
-        edgeY = screenCenterY + halfWidth * Math.tan(angle);
-      } else {
-        // Left edge
-        edgeX = margin;
-        edgeY = screenCenterY - halfWidth * Math.tan(angle);
-      }
-    } else {
-      // Top or bottom edge
-      if (relativeY > 0) {
-        // Bottom edge
-        edgeX = screenCenterX + halfHeight / Math.tan(angle);
-        edgeY = c.height - margin;
-      } else {
-        // Top edge
-        edgeX = screenCenterX - halfHeight / Math.tan(angle);
-        edgeY = margin;
-      }
-    }
-
-    return { x: edgeX, y: edgeY };
-  }
-
-  setupGUI(folder: dat.GUI): void {
-    if (import.meta.env.PROD) return;
-
-    const miceFolder = folder.addFolder("Mice");
-
-    const vehicleFolder = miceFolder.addFolder("Vehicles");
-    vehicleFolder.add(this.controls, "vehicleCount", 1, 100, 1).onChange(() => this.createVehicles(this.controls));
-    vehicleFolder.add(this.controls, "maxSpeed", 0.1, 10, 0.1).onChange(() => this.updateVehicleProperties());
-    vehicleFolder.add(this.controls, "maxForce", 0.01, 1, 0.01).onChange(() => this.updateVehicleProperties());
-
-    const wanderFolder = miceFolder.addFolder("Wandering");
-    wanderFolder.add(this.controls, "wanderRadius", 5, 100, 1).onChange(() => this.updateVehicleProperties());
-    wanderFolder.add(this.controls, "wanderDistance", 10, 200, 1).onChange(() => this.updateVehicleProperties());
-    wanderFolder.add(this.controls, "wanderChange", 0.01, 1, 0.01).onChange(() => this.updateVehicleProperties());
-
-    const separationFolder = miceFolder.addFolder("Separation");
-    separationFolder.add(this.controls, "separationRadius", 10, 100, 1).onChange(() => this.updateVehicleProperties());
-    separationFolder.add(this.controls, "separationWeight", 0, 5, 0.1).onChange(() => this.updateVehicleProperties());
-
-    const fleeFolder = miceFolder.addFolder("Flee from Cat");
-    fleeFolder.add(this.controls, "fleeRadius", 50, 300, 10).onChange(() => this.updateVehicleProperties());
-    fleeFolder.add(this.controls, "fleeWeight", 0, 10, 0.1).onChange(() => this.updateVehicleProperties());
-
-    const boundaryFolder = miceFolder.addFolder("Boundary Avoidance");
-    boundaryFolder.add(this.controls, "boundaryAvoidance", 0, 150, 5);
-
-    const catFolder = folder.addFolder("Cat");
-    catFolder.add(this.controls, "catRadius", 10, 100, 1).onChange(() => this.updateCatProperties());
-    catFolder.add(this.cat, "catHeight", 10, 200, 1);
-    catFolder.add(this.cat, "debugDraw");
-
-    const physicsFolder = catFolder.addFolder("Physics");
-    physicsFolder.add(this.cat, "mass", 0.1, 5.0, 0.1);
-    physicsFolder.add(this.cat, "gravity", 0.1, 2.0, 0.1);
-    physicsFolder.add(this.cat, "launchPower", 0.01, 0.2, 0.005);
-    physicsFolder.add(this.cat, "maxLaunchPower", 0.05, 0.5, 0.005);
-    physicsFolder.add(this.cat, "maxDragDistance", 50, 400, 10);
-    physicsFolder.add(this.cat, "jumpHeightMultiplier", 0.1, 3.0, 0.1).name("Jump Height");
-    physicsFolder.add(this.cat, "bounceDamping", 0.1, 1.0, 0.1);
-    physicsFolder.add(this.cat, "maxBounces", 0, 10, 1);
-
-    const staminaFolder = catFolder.addFolder("Stamina");
-    staminaFolder.add(this.cat, "maxStamina", 50, 200, 10);
-    staminaFolder.add(this.cat, "currentStamina", 0, 200, 1);
-    staminaFolder.add(this.cat, "staminaCostMultiplier", 0.1, 1.0, 0.05).name("Cost Multiplier");
-    staminaFolder.add(this.cat, "staminaRestoreAmount", 5, 50, 5).name("Restore Amount");
-
-    const inflationFolder = catFolder.addFolder("Inflation");
-    inflationFolder.add(this.cat, "inflationLevel", 0, 20, 0.1).name("Inflation Level").listen();
-    inflationFolder.add(this.cat, "maxInflationLevel", 5, 20, 1).name("Max Inflation");
-    inflationFolder.add(this.cat, "inflationPerMouse", 0.5, 3, 0.1).name("Inflation Per Mouse");
-    inflationFolder.add(this.cat, "inflationMultiplier", 1.1, 3.0, 0.1).name("Size Multiplier");
-    inflationFolder.add(this.cat, "inflationStaminaPenalty", 0.0, 0.5, 0.01).name("Stamina Penalty");
-    inflationFolder.add(this.cat, "inflationJumpPenalty", 0.0, 0.2, 0.01).name("Jump Penalty");
-
-    // Test buttons for inflation
-    const inflationTestControls = {
-      inflateCat: () => this.cat.inflateFromEatingMouse(),
-      resetInflation: () => {
-        this.cat.setInflationLevel(0);
-      },
-      maxInflation: () => {
-        this.cat.setInflationLevel(this.cat.maxInflationLevel);
-      },
-    };
-    inflationFolder.add(inflationTestControls, "inflateCat").name("🐭 Inflate Cat");
-    inflationFolder.add(inflationTestControls, "resetInflation").name("🔄 Reset Inflation");
-    inflationFolder.add(inflationTestControls, "maxInflation").name("🎈 Max Inflation");
-    inflationFolder.open();
-
-    const gameFieldFolder = folder.addFolder("Game Field");
-    gameFieldFolder.add(this.controls, "gameFieldWidth", 800, 3200, 100).onChange(() => this.updateGameField());
-    gameFieldFolder.add(this.controls, "gameFieldHeight", 600, 2400, 100).onChange(() => this.updateGameField());
-
-    const debugFolder = folder.addFolder("Debug");
-    debugFolder.add(this.controls, "showDebug");
-    debugFolder.add(this.cat, "debugTrajectory").name("Show Cat Trajectory");
-    debugFolder.add(this.cat, "predictiveSteps", 50, 300, 10).name("Prediction Steps");
-    debugFolder.add(this.cat, "predictiveStepSize", 0.1, 2.0, 0.1).name("Prediction Accuracy");
-    debugFolder.add(this.controls, "resetVehicles");
-
-    const poopControls = {
-      poopCount: () => this.poops.length,
-      clearAllPoops: () => {
-        this.poops = [];
-      },
-      createTestPoop: () => this.createPoop(),
-    };
-    debugFolder.add(poopControls, "poopCount").name("Poop Count").listen();
-    debugFolder.add(poopControls, "clearAllPoops").name("Clear All Poops");
-    debugFolder.add(poopControls, "createTestPoop").name("Create Test Poop");
-
-    // vehicleFolder.open();
-    // wanderFolder.open();
-    // separationFolder.open();
-    // fleeFolder.open();
-    // boundaryFolder.open();
-    catFolder.open();
-    // physicsFolder.open();
-    // gameFieldFolder.open();
-    // debugFolder.open();
+  *allTickables(): IterableIterator<ITickable> {
+    yield this.cat;
+    yield this.camera;
+    if (this.clover) yield this.clover;
+    yield* this.poops;
+    yield* this.enemies;
+    yield this.hud;
   }
 
   tick(dt: number): void {
-    // Skip game logic if game is over
-    if (this.isGameOver) {
-      return;
+    if (this.isGameOver) return;
+
+    for (const tickable of this.allTickables()) {
+      tickable.tick(dt);
     }
 
-    // Update blinking animation
-    this.blinkTime += dt;
+    if (this.cat.z > 5) return;
 
-    // Update cat physics
-    this.cat.tick(dt);
+    if (this.clover) {
+      if (this.clover.isActive && !this.clover.collectedThisWave && this.cat.collidesWith(this.clover)) {
+        this.clover.collect();
+        this.cat.restoreFullStamina();
+        playSound(Sounds.ReleaseWobble);
+      }
+    }
 
-    // Update camera to follow cat
-    this.updateCamera();
-
-    // Update only visible poops for performance
-    for (let i = 0; i < this.poops.length; i++) {
+    for (let i = this.poops.length - 1; i >= 0; i--) {
       const poop = this.poops[i];
-      if (poop.isVisible(this.camera.x, this.camera.y, c.width, c.height)) {
-        poop.tick(dt);
+      if (!this.cat.isProtectedFromPoop && this.cat.collidesWith(poop)) {
+        this.poops.splice(i, 1);
+        this.cat.reduceStamina();
+        playSound(Sounds.Poop);
       }
     }
 
-    // Update clover - only if it hasn't been collected this wave
-    if (this.clover && this.clover.active && !this.cloverCollectedThisWave) {
-      this.clover.tick(dt);
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const enemy = this.enemies[i];
+      if (!this.cat.isFullyInflated && this.cat.collidesWith(enemy)) {
+        this.enemies.splice(i, 1);
+        this.cat.restoreStaminaAndInflateFromEatingMouse();
+        playSound(Sounds.Smacking);
 
-      // Check if clover should be repositioned after 3 seconds
-      if (this.clover.shouldReposition()) {
-        this.repositionClover();
-      }
-    }
-
-    // Check for poop collisions - only when cat is on ground and not protected
-    if (this.cat.z <= 5) {
-      for (let i = this.poops.length - 1; i >= 0; i--) {
-        const poop = this.poops[i];
-        if (this.cat.checkPoopCollision(poop.position.x, poop.position.y, poop.size)) {
-          // Remove the poop that was collided with
-          this.poops.splice(i, 1);
-          playSound(Sounds.Poop);
-        }
-      }
-
-      // Check for clover collision - only when cat is on ground and clover hasn't been collected this wave
-      if (this.clover && this.clover.active && !this.cloverCollectedThisWave) {
-        if (this.clover.checkCollision(this.cat.position.x, this.cat.position.y, this.cat.radius)) {
-          // Collect the clover and restore full stamina
-          this.clover.collect();
-          this.cloverCollectedThisWave = true;
-          this.cat.fullRestoreStamina();
-          playSound(Sounds.ReleaseWobble); // Use existing sound for now
-
-          // No new clover will be created until next wave
+        this.miceEaten++;
+        if (this.enemies.length === 0) {
+          setTimeout(() => {
+            this.advanceToNextWave();
+          }, 100);
         }
       }
     }
+  }
 
-    // Update vehicles with separation and flee behaviors (fleeing from cat)
-    this.vehicles.forEach((vehicle) => {
-      vehicle.applyBehaviors(
-        this.vehicles,
-        this.cat.position,
-        this.gameFieldSize.width,
-        this.gameFieldSize.height,
-        this.controls.boundaryAvoidance,
-      );
-      vehicle.tick();
-      // Use game field borders for vehicle boundary constraints
-      vehicle.borders(this.gameFieldSize.width, this.gameFieldSize.height);
-    });
-
-    // Check for collisions between cat and mice - only when cat is on ground
-    if (this.cat.z <= 5) {
-      // Iterate backwards through mice array
-      for (let i = this.vehicles.length - 1; i >= 0; i--) {
-        const mouse = this.vehicles[i];
-        if (this.cat.checkCollisionWithPoint(mouse.position.x, mouse.position.y, mouse.size)) {
-          // Only eat mouse if not at maximum inflation
-          if (this.cat.inflationLevel < this.cat.maxInflationLevel) {
-            playSound(Sounds.Smacking);
-            this.vehicles.splice(i, 1);
-            this.miceEaten++;
-            this.cat.restoreStamina();
-
-            // Inflate the cat when eating a mouse
-            this.cat.inflateFromEatingMouse();
-
-            // Check if all mice are eaten to advance to next wave
-            if (this.vehicles.length === 0) {
-              // Use setTimeout to avoid potential race conditions
-              setTimeout(() => {
-                this.advanceToNextWave();
-              }, 100);
-            }
-          }
-          // If at max inflation, mouse just bounces off (no eating)
-        }
-      }
-    }
+  *allRenderables(): IterableIterator<IRenderable> {
+    yield this.gameField;
+    if (this.clover) yield this.clover;
+    yield* this.poops;
+    yield* this.enemies;
+    yield this.cat;
   }
 
   render(context: CanvasRenderingContext2D): void {
-    // Apply camera transform
     context.save();
-    context.translate(-this.camera.x, -this.camera.y);
-
-    // Draw buffer zone background (darker to show it's outside the play area)
-    const bufferSize = this.controls.bufferZone;
-    context.fillStyle = "#e0e0e0";
-    context.fillRect(
-      -bufferSize,
-      -bufferSize,
-      this.gameFieldSize.width + bufferSize * 2,
-      this.gameFieldSize.height + bufferSize * 2,
-    );
-
-    // Draw game field background
-    context.fillStyle = "#f0f0f0";
-    context.fillRect(0, 0, this.gameFieldSize.width, this.gameFieldSize.height);
-
-    // Draw game field borders (main play area)
-    context.strokeStyle = "#333333";
-    context.lineWidth = 4;
-    context.strokeRect(0, 0, this.gameFieldSize.width, this.gameFieldSize.height);
-
-    this.cat.drawShadow(context);
-
-    if (this.cat.isDragging) drawSlingshotPreview(context, this.cat, this.curMousePos);
-
-    // Draw all vehicles (only render visible ones)
-    this.vehicles.forEach((vehicle) => {
-      if (this.isCircleVisible(vehicle.position, vehicle.size * 2)) {
-        vehicle.render(context);
-
-        if (this.controls.showDebug) {
-          vehicle.drawWanderDebug(context);
-          vehicle.drawFleeDebug(context, this.cat.position);
-        }
-      }
-    });
-
-    // Draw only visible poops for performance
-    for (let i = 0; i < this.poops.length; i++) {
-      const poop = this.poops[i];
-      if (poop.isVisible(this.camera.x, this.camera.y, c.width, c.height)) {
-        poop.render(context);
-      }
+    context.translate(-this.camera.position.x, -this.camera.position.y);
+    for (const renderable of this.allRenderables()) {
+      renderable.render(context);
     }
-
-    // Draw clover if visible and not collected this wave
-    if (
-      this.clover &&
-      this.clover.active &&
-      !this.cloverCollectedThisWave &&
-      this.clover.isVisible(this.camera.x, this.camera.y, c.width, c.height)
-    ) {
-      this.clover.render(context);
-    }
-
-    this.cat.render(context);
-
-    // Draw slingshot trajectory preview if dragging
-    if (this.cat.isDragging) {
-      // Draw predictive trajectory first (behind slingshot line)
-      this.cat.drawPredictiveTrajectory(context, this.curMousePos.x, this.curMousePos.y);
-    }
-
-    // Restore camera transform
     context.restore();
-
-    // Draw off-screen vehicle indicators
-    this.drawOffScreenIndicators(context);
-
-    // Draw mice counter (always visible)
-    context.fillStyle = "#333333";
-    context.font = "bold 24px Arial";
-    context.textAlign = "center";
-    const miceText = `Mice ${this.vehicles.length}`;
-    context.fillText(miceText, c.width / 2 - 80, 35);
-
-    const waveText = `Wave ${this.currentWave}`;
-    context.fillText(waveText, c.width / 2 + 80, 35);
-
-    // Draw blinking warning message if cat is at max inflation
-    if (this.cat.inflationLevel >= this.cat.maxInflationLevel) {
-      // Calculate blinking opacity (blink every 600ms)
-      const blinkCycle = Math.sin(this.blinkTime * 0.005 * Math.PI); // 5 cycles per second
-      const opacity = (blinkCycle + 1) / 2; // Convert from [-1,1] to [0,1]
-
-      context.fillStyle = `rgba(204, 0, 0, ${opacity})`;
-      context.font = "16px Arial";
-      context.fillText("Can't eat more. Need to purge: double-tap on the cat.", c.width / 2, 65);
-    }
-
-    context.textAlign = "left"; // Reset text alignment
-
-    // Draw stamina bar
-    const barWidth = c.width - 40; // 20px margin on each side
-    const barHeight = 30;
-    const barX = 20;
-    const barY = c.height - barHeight - 20; // 20px from bottom
-
-    // Calculate stamina percentage using display stamina for smooth animation
-    const staminaPercentage = this.cat.displayStamina / this.cat.maxStamina;
-
-    // Draw background (empty bar)
-    context.fillStyle = "#333333";
-    context.fillRect(barX, barY, barWidth, barHeight);
-
-    // Draw filled portion with smooth color interpolation
-    if (staminaPercentage > 0) {
-      const fillWidth = barWidth * staminaPercentage;
-
-      // Interpolate color from green to red based on stamina percentage
-      const red = Math.round(255 * (1 - staminaPercentage));
-      const green = Math.round(255 * staminaPercentage);
-      const blue = 0;
-
-      const fillColor = `rgb(${red}, ${green}, ${blue})`;
-
-      context.fillStyle = fillColor;
-      context.fillRect(barX, barY, fillWidth, barHeight);
-    }
-
-    // Draw label (aligned to left edge of bar)
-    context.fillStyle = "#000000";
-    context.font = "bold 16px Arial";
-    context.textAlign = "left";
-    context.fillText("Stamina", barX, barY - 5);
+    this.hud.render(context);
   }
 
-  private isAnyVehicleVisible(): boolean {
-    for (const vehicle of this.vehicles) {
-      if (this.isPositionVisible(vehicle.position)) {
-        return true;
-      }
-    }
-    return false;
-  }
+  private advanceToNextWave(): void {
+    this.currentWave++;
 
-  private drawOffScreenIndicators(context: CanvasRenderingContext2D): void {
-    if (this.isAnyVehicleVisible()) return;
+    // Increase mice strength
+    this.enemyOptions.fleeRadius += 50;
+    this.enemyOptions.fleeWeight += 1;
 
-    // Get all off-screen vehicles with their distances to cat
-    const offScreenVehicles = this.vehicles
-      .filter((vehicle) => !this.isPositionVisible(vehicle.position))
-      .map((vehicle) => ({
-        vehicle,
-        distance: Vector2D.dist(vehicle.position, this.cat.position),
-      }))
-      .sort((a, b) => a.distance - b.distance) // Sort by distance (nearest first)
-      .slice(0, 5); // Show only the 5 nearest off-screen mice
+    // Restore all stamina for the new wave
+    this.cat.restoreFullStamina();
 
-    // Draw indicators for nearest off-screen vehicles
-    offScreenVehicles.forEach(({ vehicle }) => {
-      const edgePos = this.getScreenEdgePosition(vehicle.position.x, vehicle.position.y);
-
-      // Calculate direction angle for triangle orientation
-      const screenCenterX = c.width / 2;
-      const screenCenterY = c.height / 2;
-      const relativeX = vehicle.position.x - (this.camera.x + screenCenterX);
-      const relativeY = vehicle.position.y - (this.camera.y + screenCenterY);
-      const angle = Math.atan2(relativeY, relativeX);
-
-      // Draw simple red filled triangle
-      const triangleSize = 8;
-
-      context.fillStyle = "#ff0000";
-      context.save();
-      context.translate(edgePos.x, edgePos.y);
-      context.rotate(angle);
-
-      context.beginPath();
-      context.moveTo(triangleSize, 0);
-      context.lineTo(-triangleSize, -triangleSize);
-      context.lineTo(-triangleSize, triangleSize);
-      context.closePath();
-      context.fill();
-
-      context.restore();
+    // Trigger wave popup through callback
+    this.onNextWaveCallback(this.currentWave, () => {
+      this.spawnNewWaveMice();
     });
+  }
+
+  spawnNewWaveMice(): void {
+    // Clear existing vehicles
+    this.enemies = [];
+
+    // Spawn new mice with updated strength
+    for (let i = 0; i < this.enemyOptions.enemyCount; i++) {
+      this.enemies.push(
+        new Vehicle(
+          random() * this.gameField.width,
+          random() * this.gameField.height,
+          { ...this.enemyOptions },
+          this.enemies,
+          this.cat.position,
+          this.gameField,
+          this.enemyOptions,
+          this.camera.position,
+        ),
+      );
+    }
+
+    this.clover = new Clover(this.gameField, this.camera.position);
   }
 
   protected handleEvent(event: Event): void {
-    // Skip handling events if game is over
-    if (this.isGameOver) {
-      return;
-    }
+    if (this.isGameOver) return;
 
     if (event instanceof MouseEvent) {
       switch (event.type) {
@@ -733,104 +210,154 @@ export class GameScene extends DisplayObject {
   }
 
   private onMouseDown(x: number, y: number): void {
-    const worldPos = this.screenToWorld(x, y);
-    if (this.cat.isPressed(worldPos)) {
-      // Check for double-tap and create poop if purge happened
-      const purgeHappened = this.cat.handleTap();
-      if (purgeHappened) {
-        this.createPoop();
+    const worldPos = this.camera.screenToWorld(x, y);
+    const { cat } = this;
+    if (cat.isPressed(worldPos)) {
+      if (cat.isFullyInflated && cat.captureDoubleClick()) {
+        cat.startDeflation();
+        this.poops.push(new Poop(cat.position.x, cat.getFloorLevel(), 15 + random() * 10, this.camera.position));
       }
-
-      // Start dragging if not deflating
-      if (!this.cat.isDeflating) {
+      if (!cat.isDeflating) {
         this.isMouseDown = true;
-        this.cat.startDrag(worldPos.x, worldPos.y);
+        cat.startDrag(worldPos.x, worldPos.y);
       }
     }
-  }
-
-  private createPoop(): void {
-    // Create poop at cat's current position
-    const poopSize = 15 + Math.random() * 10; // Random size between 15-25
-    const poop = new Poop(this.cat.position.x, this.cat.getFloorLevel(), poopSize);
-    this.poops.push(poop);
-  }
-
-  private advanceToNextWave(): void {
-    this.currentWave++;
-
-    // Increase mice strength
-    this.controls.fleeRadius += 50;
-    this.controls.fleeWeight += 1;
-
-    // Restore all stamina for the new wave
-    this.cat.fullRestoreStamina();
-
-    // Trigger wave popup through callback
-    if (this.onNextWaveCallback) {
-      this.onNextWaveCallback(this.currentWave, () => {
-        this.spawnNewWaveMice();
-      });
-    } else {
-      this.spawnNewWaveMice();
-    }
-  }
-
-  private spawnNewWaveMice(): void {
-    // Clear existing vehicles
-    this.vehicles = [];
-
-    // Spawn new mice with updated strength
-    for (let i = 0; i < this.controls.vehicleCount; i++) {
-      const options: VehicleOptions = {
-        maxSpeed: this.controls.maxSpeed,
-        maxForce: this.controls.maxForce,
-        wanderRadius: this.controls.wanderRadius,
-        wanderDistance: this.controls.wanderDistance,
-        wanderChange: this.controls.wanderChange,
-        separationRadius: this.controls.separationRadius,
-        separationWeight: this.controls.separationWeight,
-        fleeRadius: this.controls.fleeRadius,
-        fleeWeight: this.controls.fleeWeight,
-      };
-
-      const vehicle = new Vehicle(
-        Math.random() * this.gameFieldSize.width,
-        Math.random() * this.gameFieldSize.height,
-        options,
-      );
-
-      // Boundary avoidance is handled through applyBehaviors method
-      this.vehicles.push(vehicle);
-    }
-
-    // Reset clover collection flag and position tracking, then create a new clover for the new wave
-    this.cloverCollectedThisWave = false;
-    this.lastCloverPosition = null; // Reset position tracking for new wave
-    this.createClover();
   }
 
   private onMouseUp(x: number, y: number): void {
     if (this.isMouseDown) {
       this.isMouseDown = false;
       if (this.cat.isDragging) {
-        playSound(Sounds.ReleaseWobble);
-        const worldPos = this.screenToWorld(x, y);
+        const worldPos = this.camera.screenToWorld(x, y);
         this.cat.launch(worldPos.x, worldPos.y);
+        playSound(Sounds.ReleaseWobble);
       }
     }
   }
 
   private onMouseMove(x: number, y: number): void {
-    const worldPos = this.screenToWorld(x, y);
+    const worldPos = this.camera.screenToWorld(x, y);
 
-    // Update current mouse position for slingshot preview (in world coordinates)
-    this.curMousePos.x = worldPos.x;
-    this.curMousePos.y = worldPos.y;
+    this.cat.setCurMousePos(worldPos);
 
     // Update drag if dragging
     if (this.isMouseDown && this.cat.isDragging) {
       this.cat.updateDrag(worldPos.x, worldPos.y);
     }
+  }
+}
+
+export function setupGUI(folder: dat.GUI, scene: GameScene): void {
+  const miceFolder = folder.addFolder("Enemies");
+
+  const vehicleFolder = miceFolder.addFolder("Vehicles");
+  vehicleFolder.add(scene.enemyOptions, "enemyCount", 1, 100, 1).onChange(() => scene.spawnNewWaveMice());
+  vehicleFolder
+    .add(scene.enemyOptions, "maxSpeed", 0.1, 10, 0.1)
+    .onChange(() => updateVehicleProperties(scene.enemies, scene.enemyOptions));
+  vehicleFolder
+    .add(scene.enemyOptions, "maxForce", 0.01, 1, 0.01)
+    .onChange(() => updateVehicleProperties(scene.enemies, scene.enemyOptions));
+
+  const wanderFolder = miceFolder.addFolder("Wandering");
+  wanderFolder
+    .add(scene.enemyOptions, "wanderRadius", 5, 100, 1)
+    .onChange(() => updateVehicleProperties(scene.enemies, scene.enemyOptions));
+  wanderFolder
+    .add(scene.enemyOptions, "wanderDistance", 10, 200, 1)
+    .onChange(() => updateVehicleProperties(scene.enemies, scene.enemyOptions));
+  wanderFolder
+    .add(scene.enemyOptions, "wanderChange", 0.01, 1, 0.01)
+    .onChange(() => updateVehicleProperties(scene.enemies, scene.enemyOptions));
+
+  const separationFolder = miceFolder.addFolder("Separation");
+  separationFolder
+    .add(scene.enemyOptions, "separationRadius", 10, 100, 1)
+    .onChange(() => updateVehicleProperties(scene.enemies, scene.enemyOptions));
+  separationFolder
+    .add(scene.enemyOptions, "separationWeight", 0, 5, 0.1)
+    .onChange(() => updateVehicleProperties(scene.enemies, scene.enemyOptions));
+
+  const fleeFolder = miceFolder.addFolder("Flee from Cat");
+  fleeFolder
+    .add(scene.enemyOptions, "fleeRadius", 50, 300, 10)
+    .onChange(() => updateVehicleProperties(scene.enemies, scene.enemyOptions));
+  fleeFolder
+    .add(scene.enemyOptions, "fleeWeight", 0, 10, 0.1)
+    .onChange(() => updateVehicleProperties(scene.enemies, scene.enemyOptions));
+
+  const boundaryFolder = miceFolder.addFolder("Boundary Avoidance");
+  boundaryFolder.add(scene.enemyOptions, "boundaryAvoidance", 0, 150, 5);
+
+  const catFolder = folder.addFolder("Cat");
+  catFolder.add(scene.cat, "radius", 10, 100, 1);
+  catFolder.add(scene.cat, "catHeight", 10, 200, 1);
+  catFolder.add(scene.cat, "debugDraw");
+
+  const physicsFolder = catFolder.addFolder("Physics");
+  physicsFolder.add(scene.cat, "mass", 0.1, 5.0, 0.1);
+  physicsFolder.add(scene.cat, "gravity", 0.1, 2.0, 0.1);
+  physicsFolder.add(scene.cat, "launchPower", 0.01, 0.2, 0.005);
+  physicsFolder.add(scene.cat, "maxLaunchPower", 0.05, 0.5, 0.005);
+  physicsFolder.add(scene.cat, "maxDragDistance", 50, 400, 10);
+  physicsFolder.add(scene.cat, "jumpHeightMultiplier", 0.1, 3.0, 0.1).name("Jump Height");
+  physicsFolder.add(scene.cat, "bounceDamping", 0.1, 1.0, 0.1);
+  physicsFolder.add(scene.cat, "maxBounces", 0, 10, 1);
+
+  const staminaFolder = catFolder.addFolder("Stamina");
+  staminaFolder.add(scene.cat, "maxStamina", 50, 200, 10);
+  staminaFolder.add(scene.cat, "currentStamina", 0, 200, 1);
+  staminaFolder.add(scene.cat, "staminaCostMultiplier", 0.1, 1.0, 0.05).name("Cost Multiplier");
+  staminaFolder.add(scene.cat, "staminaRestoreAmount", 5, 50, 5).name("Restore Amount");
+
+  const inflationFolder = catFolder.addFolder("Inflation");
+  inflationFolder.add(scene.cat, "inflationLevel", 0, 20, 0.1).name("Inflation Level").listen();
+  inflationFolder.add(scene.cat, "maxInflationLevel", 5, 20, 1).name("Max Inflation");
+  inflationFolder.add(scene.cat, "inflationPerMouse", 0.5, 3, 0.1).name("Inflation Per Mouse");
+  inflationFolder.add(scene.cat, "inflationMultiplier", 1.1, 3.0, 0.1).name("Size Multiplier");
+  inflationFolder.add(scene.cat, "inflationStaminaPenalty", 0.0, 0.5, 0.01).name("Stamina Penalty");
+  inflationFolder.add(scene.cat, "inflationJumpPenalty", 0.0, 0.2, 0.01).name("Jump Penalty");
+
+  // Test buttons for inflation
+  const inflationTestControls = {
+    resetInflation: () => {
+      scene.cat.setInflationLevel(0);
+    },
+    maxInflation: () => {
+      scene.cat.setInflationLevel(scene.cat.maxInflationLevel);
+    },
+  };
+  inflationFolder.add(inflationTestControls, "resetInflation").name("🔄 Reset Inflation");
+  inflationFolder.add(inflationTestControls, "maxInflation").name("🎈 Max Inflation");
+  inflationFolder.open();
+
+  const debugFolder = folder.addFolder("Debug");
+  debugFolder.add(scene.enemyOptions, "showDebug");
+  // debugFolder.add(scene.cat, "predictiveSteps", 50, 300, 10).name("Prediction Steps");
+  // debugFolder.add(scene.cat, "predictiveStepSize", 0.1, 2.0, 0.1).name("Prediction Accuracy");
+  debugFolder.add(scene, "spawnNewWaveMice").name("Reset");
+
+  // vehicleFolder.open();
+  // wanderFolder.open();
+  // separationFolder.open();
+  // fleeFolder.open();
+  // boundaryFolder.open();
+  // catFolder.open();
+  // physicsFolder.open();
+  // gameFieldFolder.open();
+  debugFolder.open();
+}
+
+function updateVehicleProperties(enemies: Vehicle[], enemyOptions: VehicleOptions): void {
+  for (const enemy of enemies) {
+    enemy.maxSpeed = enemyOptions.maxSpeed;
+    enemy.maxForce = enemyOptions.maxForce;
+    enemy.wanderRadius = enemyOptions.wanderRadius;
+    enemy.wanderDistance = enemyOptions.wanderDistance;
+    enemy.wanderChange = enemyOptions.wanderChange;
+    enemy.separationRadius = enemyOptions.separationRadius;
+    enemy.separationWeight = enemyOptions.separationWeight;
+    enemy.fleeRadius = enemyOptions.fleeRadius;
+    enemy.fleeWeight = enemyOptions.fleeWeight;
   }
 }

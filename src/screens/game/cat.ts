@@ -1,17 +1,14 @@
 import { playSound, Sounds } from "../../core/audio/sound";
+import { ICollidable, IRenderable, ITickable } from "../../core/display";
+import { Point2D } from "../../core/geom";
 import { easeInOut } from "../../core/tween";
-import { Vector2D } from "../../core/vector2d";
-import { isProd } from "../../system";
+import { vecDist, vecMult, vecSub, Vector2D } from "../../core/vector2d";
+import { abs, cos, max, min, random, sin, TWO_PI } from "../../system";
 import { drawHead, EarData, EyeData } from "./cat-head";
+import { CatShadow } from "./cat-shadow";
 import { SoftBlob } from "./soft-blob";
 import { Tail } from "./tail";
-
-// Interface for objects that can provide shadow width
-interface IShadowProvider {
-  getLeftmostPoint(): { point: { pos: { x: number; y: number } }; index: number };
-  getRightmostPoint(): { point: { pos: { x: number; y: number } }; index: number };
-}
-export class Cat {
+export class Cat implements ITickable, IRenderable {
   position: Vector2D;
   strokeWidth: number = 3;
   speed: number = 3;
@@ -46,13 +43,6 @@ export class Cat {
   public bounceCount = 0; // Current bounce count
   public isFlying = false; // Whether cat is in flight
   public groundLevel = 0; // Ground level for physics
-  public screenWidth = 800; // Screen width for edge bouncing
-  public screenHeight = 600; // Screen height for edge bouncing
-
-  // Debug trajectory visualization
-  public debugTrajectory = false; // import.meta.env.DEV;
-  public trajectoryPoints: Array<{ x: number; y: number; z: number; type: "normal" | "bounce" | "ground" }> = [];
-  public maxTrajectoryPoints = 100;
 
   // Predictive trajectory
   public predictiveSteps = 150; // Number of simulation steps
@@ -67,7 +57,7 @@ export class Cat {
   public jumpHeightMultiplier = 1.2; // Multiplier for vertical velocity (higher = higher jumps)
 
   // Double tap for purge
-  private lastTapTime = 0;
+  private lastClickTime = 0;
   private doubleTapDelay = 300; // ms
 
   // Inflation deflation animation
@@ -113,32 +103,47 @@ export class Cat {
   private staminaTargetValue = 100;
   private isAnimatingStamina = false;
 
-  private body: SoftBlob;
+  readonly shadow: CatShadow;
+  readonly body: SoftBlob;
   private tail: Tail;
 
-  constructor(
-    x: number,
-    y: number,
-    public radius: number = 30,
-    private onStaminaEmpty?: () => void,
-  ) {
-    this.position = new Vector2D(x, y);
-    this.velocity = new Vector2D(0, 0);
-    this.dragStartPos = new Vector2D(x, y);
-    this.groundLevel = y;
+  curMousePos: Point2D = {
+    x: 0,
+    y: 0,
+  };
 
-    this.body = new SoftBlob(x, y, 20, 36, 1.5, 12);
+  constructor(
+    public radius: number,
+    public screenWidth: number,
+    public screenHeight: number,
+    private onStaminaEmpty?: () => void,
+    posX: number = screenWidth / 2,
+    posY: number = screenHeight / 2 - 1,
+  ) {
+    this.position = new Vector2D(posX, posY);
+    this.velocity = new Vector2D(0, 0);
+    this.dragStartPos = new Vector2D(posX, posY);
+    this.groundLevel = posY;
+
+    this.body = new SoftBlob(posX, posY, 20, 36, 1.5, 12);
     this.baseBodyArea = this.body.getBaseArea();
 
-    const anchor = Math.random() < 0.5 ? this.body.getRightmostPoint() : this.body.getLeftmostPoint();
+    const anchor = random() < 0.5 ? this.body.getRightmostPoint() : this.body.getLeftmostPoint();
     this.tail = new Tail(anchor.point, 8, 15, 12);
+
+    this.shadow = new CatShadow(this);
   }
 
   getFloorLevel(): number {
     return this.position.y + this.catHeight + this.z;
   }
 
+  setCurMousePos(curMousePos: Point2D): void {
+    this.curMousePos = curMousePos;
+  }
+
   render(context: CanvasRenderingContext2D): void {
+    this.shadow.render(context);
     this.body.render(context);
     this.tail.render(context);
 
@@ -153,20 +158,43 @@ export class Cat {
       this.debugDraw,
     );
 
-    if (isProd) return;
+    if (this.isDragging) {
+      const predictedPoints = this.calculatePredictiveTrajectory(this.curMousePos);
+      if (predictedPoints.length > 2) {
+        // Draw predicted trajectory line
+        context.strokeStyle = "rgba(0, 150, 255, 0.6)";
+        context.lineWidth = 3;
+        context.setLineDash([8, 8]);
+        context.beginPath();
 
-    // Render collision debug visualization
-    if (!this.debugDraw || this.z > 5) return;
+        for (let i = 0; i < predictedPoints.length; i++) {
+          const point = predictedPoints[i];
+          if (point.type !== "bounce" && point.type !== "ground") {
+            if (i === 0) {
+              context.moveTo(point.x, point.y);
+            } else {
+              context.lineTo(point.x, point.y);
+            }
+          }
+        }
+        context.stroke();
+        context.setLineDash([]);
 
-    const collisionData = this.getCollisionData();
-
-    context.strokeStyle = "#ff0000";
-    context.lineWidth = 2;
-    context.setLineDash([4, 4]);
-    context.beginPath();
-    context.arc(collisionData.centerX, collisionData.centerY, collisionData.radius, 0, Math.PI * 2);
-    context.stroke();
-    context.setLineDash([]);
+        for (const point of predictedPoints) {
+          if (point.type === "ground") {
+            context.fillStyle = "rgba(0, 150, 255, 0.6)";
+            context.save();
+            context.translate(point.x, point.y);
+            context.scale(1, 0.5); // Flatten vertically by 2
+            context.beginPath();
+            context.arc(0, 0, 6, 0, TWO_PI);
+            context.fill();
+            context.restore();
+            break;
+          }
+        }
+      }
+    }
   }
 
   startDrag(x: number, y: number): void {
@@ -183,16 +211,16 @@ export class Cat {
   updateDrag(x: number, y: number): void {
     if (this.isDragging && !this.isFlying) {
       // Calculate drag distance for head lowering
-      const dragVector = Vector2D.sub(new Vector2D(x, y), this.dragStartPos);
+      const dragVector = vecSub(new Vector2D(x, y), this.dragStartPos);
       const dragDistance = dragVector.mag();
 
       // Calculate maximum head offset (distance from head bottom to shadow top)
       const shadowY = this.position.y + this.catHeight + this.z;
       const headBottomY = this.position.y + this.radius - this.z;
-      this.maxHeadOffset = Math.max(0, shadowY - headBottomY);
+      this.maxHeadOffset = max(0, shadowY - headBottomY);
 
       // Calculate head offset based on drag distance (normalized to maxDragDistance)
-      const dragRatio = Math.min(dragDistance / this.maxDragDistance, 1);
+      const dragRatio = min(dragDistance / this.maxDragDistance, 1);
       this.headOffsetY = dragRatio * this.maxHeadOffset;
     }
   }
@@ -205,14 +233,14 @@ export class Cat {
       this.oscillationTime = 0; // Reset oscillation timer
 
       // Calculate launch vector (opposite direction of drag)
-      const rawDragVector = Vector2D.sub(this.dragStartPos, new Vector2D(x, y));
+      const rawDragVector = vecSub(this.dragStartPos, new Vector2D(x, y));
       const dragMagnitude = rawDragVector.mag();
 
       // Calculate stamina cost based on jump distance and inflation penalty
       const baseStaminaCost = dragMagnitude * this.staminaCostMultiplier;
       const inflationStaminaMultiplier = this.getInflationStaminaMultiplier();
-      const staminaCost = Math.min(baseStaminaCost * inflationStaminaMultiplier, this.currentStamina);
-      const newStamina = Math.max(0, this.currentStamina - staminaCost);
+      const staminaCost = min(baseStaminaCost * inflationStaminaMultiplier, this.currentStamina);
+      const newStamina = max(0, this.currentStamina - staminaCost);
 
       // Start stamina animation
       this.animateStaminaTo(newStamina);
@@ -224,24 +252,19 @@ export class Cat {
       }
 
       // Apply magnitude limit and power constraints in one step
-      const effectiveMagnitude = Math.min(dragMagnitude, this.maxDragDistance);
-      const effectivePower = Math.min(this.launchPower, this.maxLaunchPower);
-      const powerScale = (effectivePower / this.mass) * (effectiveMagnitude / Math.max(dragMagnitude, 1));
+      const effectiveMagnitude = min(dragMagnitude, this.maxDragDistance);
+      const effectivePower = min(this.launchPower, this.maxLaunchPower);
+      const powerScale = (effectivePower / this.mass) * (effectiveMagnitude / max(dragMagnitude, 1));
 
       // Apply inflation penalty to jump distance
       const inflationJumpMultiplier = this.getInflationJumpMultiplier();
 
       // Set velocity directly without creating intermediate vectors
-      this.velocity = Vector2D.mult(rawDragVector, powerScale * inflationJumpMultiplier);
+      this.velocity = vecMult(rawDragVector, powerScale * inflationJumpMultiplier);
       this.velocityZ = effectiveMagnitude * effectivePower * this.jumpHeightMultiplier * inflationJumpMultiplier;
 
       this.isFlying = true;
       this.bounceCount = 0;
-
-      // Clear previous trajectory when launching
-      if (this.debugTrajectory) {
-        this.trajectoryPoints = [];
-      }
     }
   }
 
@@ -249,7 +272,7 @@ export class Cat {
     // Update stamina animation
     if (this.isAnimatingStamina) {
       this.staminaAnimationTime += dt;
-      const progress = Math.min(this.staminaAnimationTime / this.staminaAnimationDuration, 1);
+      const progress = min(this.staminaAnimationTime / this.staminaAnimationDuration, 1);
       const easedProgress = easeInOut(progress);
 
       this.displayStamina = this.staminaStartValue + (this.staminaTargetValue - this.staminaStartValue) * easedProgress;
@@ -263,7 +286,7 @@ export class Cat {
     // Update deflation animation
     if (this._isDeflating) {
       this.deflationStartTime += dt;
-      const progress = Math.min(this.deflationStartTime / this.deflationDuration, 1);
+      const progress = min(this.deflationStartTime / this.deflationDuration, 1);
       const easedProgress = easeInOut(progress);
 
       this.inflationLevel =
@@ -289,11 +312,11 @@ export class Cat {
       this.oscillationTime += dt;
 
       // Calculate oscillation intensity based on how lowered the head is
-      const oscillationIntensity = this.headOffsetY / Math.max(this.maxHeadOffset, 1);
+      const oscillationIntensity = this.headOffsetY / max(this.maxHeadOffset, 1);
 
       // Calculate horizontal oscillation using sine wave
       this.headOscillationX =
-        Math.sin(this.oscillationTime * this.oscillationFrequency * 0.001 * Math.PI * 2) *
+        sin(this.oscillationTime * this.oscillationFrequency * 0.001 * TWO_PI) *
         this.oscillationAmplitude *
         oscillationIntensity;
     }
@@ -302,11 +325,6 @@ export class Cat {
       // Apply physics
       this.position.add(this.velocity);
       this.z += this.velocityZ;
-
-      // Record trajectory point for debug visualization
-      if (this.debugTrajectory) {
-        this.addTrajectoryPoint("normal");
-      }
 
       // Apply gravity to Z velocity
       this.velocityZ -= this.gravity;
@@ -318,27 +336,17 @@ export class Cat {
       if (this.z <= 0) {
         this.z = 0;
 
-        if (this.bounceCount < this.maxBounces && Math.abs(this.velocityZ) > 0.5) {
+        if (this.bounceCount < this.maxBounces && abs(this.velocityZ) > 0.5) {
           playSound(Sounds.Landing);
           // Bounce
           this.velocityZ = -this.velocityZ * this.bounceDamping;
           this.velocity.mult(this.bounceDamping); // Reduce horizontal velocity on bounce
           this.bounceCount++;
-
-          // Record bounce point for debug visualization
-          if (this.debugTrajectory) {
-            this.addTrajectoryPoint("bounce");
-          }
         } else {
           // Stop flying
           this.isFlying = false;
           this.velocity.mult(0);
           this.velocityZ = 0;
-
-          // Record final ground point for debug visualization
-          if (this.debugTrajectory) {
-            this.addTrajectoryPoint("ground");
-          }
 
           // Check if game should end after landing
           if (this.shouldTriggerGameOverAfterLanding) {
@@ -351,7 +359,7 @@ export class Cat {
       }
     }
 
-    const groundLevel = Math.min(this.position.y + this.catHeight, this.screenHeight);
+    const groundLevel = min(this.position.y + this.catHeight, this.screenHeight);
 
     // Update soft body area based on cat's inflation level
     const targetArea = this.getTargetBodyArea();
@@ -393,37 +401,6 @@ export class Cat {
     this.tail.tick();
   }
 
-  // Method to update screen dimensions
-  setScreenBounds(width: number, height: number): void {
-    this.screenWidth = width;
-    this.screenHeight = height;
-  }
-
-  // Calculate collision detection parameters
-  getCollisionData(): { centerX: number; centerY: number; radius: number } {
-    const headTopY = this.position.y - this.radius;
-    const shadowCenterY = (this.position.y + this.catHeight + this.z) * 1.02;
-
-    return {
-      centerX: this.position.x,
-      centerY: (headTopY + shadowCenterY) / 2,
-      radius: Math.abs(shadowCenterY - headTopY) / 2,
-    };
-  }
-
-  // Check collision with a point (like mouse position)
-  checkCollisionWithPoint(x: number, y: number, objectRadius: number = 0): boolean {
-    if (this.z > 5) return false; // Only check collisions when on ground
-
-    const collisionData = this.getCollisionData();
-    const dx = x - collisionData.centerX;
-    const dy = y - collisionData.centerY;
-    const distanceSquared = dx * dx + dy * dy;
-    const radiusSum = collisionData.radius + objectRadius;
-
-    return distanceSquared <= radiusSum * radiusSum;
-  }
-
   private applySmoothBoundaryDamping(): void {
     const dampingZone = 100;
     const dampingStrength = 0.95;
@@ -460,13 +437,13 @@ export class Cat {
     dampingRange: number,
   ): [number, number] {
     const distance = position - minBound;
-    if (distance <= 0) return [minBound, Math.max(0, velocity)];
+    if (distance <= 0) return [minBound, max(0, velocity)];
     if (distance <= dampingZone && velocity < 0) {
       return [position, velocity * (dampingStrength + dampingRange * (distance / dampingZone))];
     }
 
     const distanceFromMax = maxBound - position;
-    if (distanceFromMax <= 0) return [maxBound, Math.min(0, velocity)];
+    if (distanceFromMax <= 0) return [maxBound, min(0, velocity)];
     if (distanceFromMax <= dampingZone && velocity > 0) {
       return [position, velocity * (dampingStrength + dampingRange * (distanceFromMax / dampingZone))];
     }
@@ -475,33 +452,18 @@ export class Cat {
   }
 
   isPressed(v: Vector2D): boolean {
-    return Vector2D.dist(this.position, v) <= this.radius * 2;
-  }
-
-  private addTrajectoryPoint(type: "normal" | "bounce" | "ground"): void {
-    this.trajectoryPoints.push({
-      x: this.position.x,
-      y: this.position.y - this.z + this.catHeight, // Visual position accounting for height
-      z: this.z,
-      type,
-    });
-
-    // Limit trajectory points to prevent memory issues
-    if (this.trajectoryPoints.length > this.maxTrajectoryPoints) {
-      this.trajectoryPoints.shift();
-    }
+    return vecDist(this.position, v) <= this.radius * 2;
   }
 
   calculatePredictiveTrajectory(
-    launchX: number,
-    launchY: number,
+    launchPos: Point2D,
   ): Array<{ x: number; y: number; z: number; type: "normal" | "bounce" | "ground" }> {
     // Calculate initial velocity based on launch parameters
-    const rawDragVector = Vector2D.sub(this.dragStartPos, new Vector2D(launchX, launchY));
+    const rawDragVector = vecSub(this.dragStartPos, new Vector2D(launchPos.x, launchPos.y));
     const dragMagnitude = rawDragVector.mag();
-    const effectiveMagnitude = Math.min(dragMagnitude, this.maxDragDistance);
-    const effectivePower = Math.min(this.launchPower, this.maxLaunchPower);
-    const powerScale = (effectivePower / this.mass) * (effectiveMagnitude / Math.max(dragMagnitude, 1));
+    const effectiveMagnitude = min(dragMagnitude, this.maxDragDistance);
+    const effectivePower = min(this.launchPower, this.maxLaunchPower);
+    const powerScale = (effectivePower / this.mass) * (effectiveMagnitude / max(dragMagnitude, 1));
 
     // Apply inflation penalty to predicted trajectory
     const inflationJumpMultiplier = this.getInflationJumpMultiplier();
@@ -559,100 +521,17 @@ export class Cat {
     return points;
   }
 
-  drawPredictiveTrajectory(context: CanvasRenderingContext2D, launchX: number, launchY: number): void {
-    if (!this.isDragging) return;
-
-    const predictedPoints = this.calculatePredictiveTrajectory(launchX, launchY);
-    if (predictedPoints.length < 2) return;
-
-    // Draw predicted trajectory line
-    context.strokeStyle = "rgba(0, 150, 255, 0.6)";
-    context.lineWidth = 3;
-    context.setLineDash([8, 8]);
-    context.beginPath();
-
-    for (let i = 0; i < predictedPoints.length; i++) {
-      const point = predictedPoints[i];
-      if (point.type !== "bounce" && point.type !== "ground") {
-        if (i === 0) {
-          context.moveTo(point.x, point.y);
-        } else {
-          context.lineTo(point.x, point.y);
-        }
-      }
-    }
-    context.stroke();
-    context.setLineDash([]);
-
-    for (const point of predictedPoints) {
-      if (point.type === "ground") {
-        context.fillStyle = "rgba(0, 150, 255, 0.6)";
-        context.save();
-        context.translate(point.x, point.y);
-        context.scale(1, 0.5); // Flatten vertically by 2
-        context.beginPath();
-        context.arc(0, 0, 6, 0, Math.PI * 2);
-        context.fill();
-        context.restore();
-        break;
-      }
-    }
-  }
-
-  drawShadow(context: CanvasRenderingContext2D, shadowProvider: IShadowProvider = this.body): void {
-    let shadowX = this.position.x;
-
-    // Get the leftmost and rightmost points of the shadow provider (e.g., soft body)
-    const leftPoint = shadowProvider.getLeftmostPoint();
-    const rightPoint = shadowProvider.getRightmostPoint();
-
-    // Calculate shadow diameter (distance between edge points)
-    const shadowDiameter = Math.abs(rightPoint.point.pos.x - leftPoint.point.pos.x);
-    const shadowRadius = shadowDiameter / 2;
-
-    // Position shadow between the edge points
-    shadowX = (leftPoint.point.pos.x + rightPoint.point.pos.x) / 2;
-
-    // Calculate shadow position (catHeight + z distance below cat)
-    const shadowY = this.position.y + this.catHeight + this.z;
-
-    // Scale shadow based on height (higher = smaller shadow)
-    const heightScale = Math.max(0.1, 1 - this.z / 200); // Shadow gets smaller as cat goes higher
-
-    const finalShadowRadius = shadowRadius * heightScale;
-
-    // Draw ellipse (flattened vertically by 2)
-    context.save();
-    context.translate(shadowX, shadowY);
-    context.scale(1, 0.5); // Flatten vertically by 2
-
-    // Create radial gradient in the transformed coordinate system
-    const gradient = context.createRadialGradient(
-      0,
-      0,
-      0, // Inner circle (center at origin after transform)
-      0,
-      0,
-      finalShadowRadius, // Outer circle (edge)
-    );
-    gradient.addColorStop(0, "rgba(0, 0, 0, 1)"); // Solid black center
-    gradient.addColorStop(0.6, "rgba(0, 0, 0, 0.9)"); // Solid black center
-    gradient.addColorStop(1, "rgba(0, 0, 0, 0)"); // Transparent edge
-
-    context.fillStyle = gradient;
-    context.beginPath();
-    context.arc(0, 0, finalShadowRadius, 0, Math.PI * 2);
-    context.fill();
-    context.restore();
-  }
-
-  restoreStamina(): void {
-    const newStamina = Math.min(this.maxStamina, this.currentStamina + this.staminaRestoreAmount);
+  restoreStaminaAndInflateFromEatingMouse(): void {
+    const newStamina = min(this.maxStamina, this.currentStamina + this.staminaRestoreAmount);
     this.animateStaminaTo(newStamina);
     this.currentStamina = newStamina;
+
+    if (this.inflationLevel < this.maxInflationLevel) {
+      this.inflationLevel = min(this.maxInflationLevel, this.inflationLevel + this.inflationPerMouse);
+    }
   }
 
-  fullRestoreStamina(): void {
+  restoreFullStamina(): void {
     this.currentStamina = this.maxStamina;
     this.animateStaminaTo(this.maxStamina);
   }
@@ -664,35 +543,25 @@ export class Cat {
     this.isAnimatingStamina = true;
   }
 
-  // Inflation methods
-  inflateFromEatingMouse(): void {
-    if (this.inflationLevel < this.maxInflationLevel) {
-      this.inflationLevel = Math.min(this.maxInflationLevel, this.inflationLevel + this.inflationPerMouse);
-    }
-  }
-
   setInflationLevel(level: number): void {
-    this.inflationLevel = Math.max(0, Math.min(this.maxInflationLevel, level));
+    this.inflationLevel = max(0, min(this.maxInflationLevel, level));
   }
 
-  // Handle tap for potential purge (double-tap)
-  handleTap(): boolean {
+  captureDoubleClick(): boolean {
     const currentTime = Date.now();
-    const timeSinceLastTap = currentTime - this.lastTapTime;
-
-    if (timeSinceLastTap < this.doubleTapDelay) {
-      // Double tap detected - purge if at max inflation
-      if (this.inflationLevel >= this.maxInflationLevel && !this._isDeflating) {
-        this.startDeflation();
-        return true; // Purge started
-      }
+    const timeSinceLastClick = currentTime - this.lastClickTime;
+    if (timeSinceLastClick < this.doubleTapDelay) {
+      return true;
     }
-
-    this.lastTapTime = currentTime;
-    return false; // No purge
+    this.lastClickTime = currentTime;
+    return false;
   }
 
-  private startDeflation(): void {
+  get isFullyInflated(): boolean {
+    return this.inflationLevel >= this.maxInflationLevel && !this._isDeflating;
+  }
+
+  startDeflation(): void {
     this._isDeflating = true;
     this.deflationStartTime = 0;
     this.deflationStartValue = this.inflationLevel;
@@ -703,22 +572,17 @@ export class Cat {
 
     // Launch cat in random direction with minimal force (purge effect)
     // Generate random direction
-    const randomAngle = Math.random() * Math.PI * 2;
+    const randomAngle = random() * TWO_PI;
     const purgeForce = 0.05; // Minimal force, much less than normal launch
     const purgeDistance = 80; // Small distance for the purge effect
 
     // Set velocity without stamina cost
-    this.velocity.x = Math.cos(randomAngle) * purgeForce * purgeDistance;
-    this.velocity.y = Math.sin(randomAngle) * purgeForce * purgeDistance;
+    this.velocity.x = cos(randomAngle) * purgeForce * purgeDistance;
+    this.velocity.y = sin(randomAngle) * purgeForce * purgeDistance;
     this.velocityZ = purgeDistance * purgeForce * this.jumpHeightMultiplier * 0.5; // Lower jump
 
     this.isFlying = true;
     this.bounceCount = 0;
-
-    // Clear trajectory when launching from purge
-    if (this.debugTrajectory) {
-      this.trajectoryPoints = [];
-    }
   }
 
   getCurrentInflationMultiplier(): number {
@@ -734,37 +598,31 @@ export class Cat {
     return this.purgeProtectionTime > 0;
   }
 
-  checkPoopCollision(poopX: number, poopY: number, poopSize: number): boolean {
-    // Skip collision if protected
-    if (this.isProtectedFromPoop) {
-      return false;
+  collidesWith(collidable: ICollidable): boolean {
+    const catHeadTopY = this.position.y - this.radius;
+    const catShadowCenterY = (this.position.y + this.catHeight + this.z) * 1.02;
+
+    const catCenterX = this.position.x;
+    const catCenterY = (catHeadTopY + catShadowCenterY) / 2;
+    const catRadius = abs(catShadowCenterY - catHeadTopY) / 2;
+
+    const dx = collidable.position.x - catCenterX;
+    const dy = collidable.position.y - catCenterY;
+    const distanceSquared = dx * dx + dy * dy;
+    const radiusSum = catRadius + collidable.size;
+
+    return distanceSquared <= radiusSum * radiusSum;
+  }
+
+  reduceStamina(): void {
+    const newStamina = max(0, this.currentStamina - 15);
+    this.animateStaminaTo(newStamina);
+    this.currentStamina = newStamina;
+
+    // Check if game should end after stamina loss
+    if (this.currentStamina <= 0) {
+      this.shouldTriggerGameOverAfterLanding = true;
     }
-
-    // Calculate collision distance
-    const dx = this.position.x - poopX;
-    const dy = this.getFloorLevel() - poopY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    // Check if collision occurred (cat radius + poop radius)
-    const catRadius = 15; // Approximate cat collision radius
-    const poopRadius = poopSize * 0.6; // Same as poop visual radius
-
-    if (distance < catRadius + poopRadius) {
-      // Collision detected - reduce stamina
-      const staminaLoss = 15;
-      const newStamina = Math.max(0, this.currentStamina - staminaLoss);
-      this.animateStaminaTo(newStamina);
-      this.currentStamina = newStamina;
-
-      // Check if game should end after stamina loss
-      if (this.currentStamina <= 0) {
-        this.shouldTriggerGameOverAfterLanding = true;
-      }
-
-      return true;
-    }
-
-    return false;
   }
 
   getInflationStaminaMultiplier(): number {
@@ -774,7 +632,7 @@ export class Cat {
 
   getInflationJumpMultiplier(): number {
     // Calculate jump distance multiplier based on inflation (1.0 = normal, lower = shorter jumps)
-    return Math.max(0.2, 1 - this.inflationLevel * this.inflationJumpPenalty);
+    return max(0.2, 1 - this.inflationLevel * this.inflationJumpPenalty);
   }
 
   getTargetBodyArea(): number {

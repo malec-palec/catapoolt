@@ -3,6 +3,7 @@ import { Event, MouseEvent, MouseEventType } from "./core/event";
 import { easeInOut } from "./core/tween";
 import { IGame } from "./game";
 import { COLOR_WHITE, GAME_HEIGHT, GAME_WIDTH } from "./registry";
+import { floor, max, min } from "./system";
 
 export interface ScreenConstructor {
   new (game: IGame, ...rest: any[]): BaseScreen;
@@ -91,19 +92,19 @@ export class BaseScreen implements IScreen {
     const maxW = minW * 1.5;
     const maxH = minH * 1.5;
 
-    let w = Math.floor(optimalW);
-    let h = Math.floor(optimalH);
+    let w = floor(optimalW);
+    let h = floor(optimalH);
 
     if (w < minW || h < minH) {
-      const scale = Math.max(minW / w, minH / h);
-      w = Math.floor(w * scale);
-      h = Math.floor(h * scale);
+      const scale = max(minW / w, minH / h);
+      w = floor(w * scale);
+      h = floor(h * scale);
     }
 
     if (w > maxW || h > maxH) {
-      const scale = Math.min(maxW / w, maxH / h);
-      w = Math.floor(w * scale);
-      h = Math.floor(h * scale);
+      const scale = min(maxW / w, maxH / h);
+      w = floor(w * scale);
+      h = floor(h * scale);
     }
 
     c.width = w;

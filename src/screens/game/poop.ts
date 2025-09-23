@@ -1,8 +1,11 @@
+import { IRenderable, ITickable } from "../../core/display";
+import { Point2D } from "../../core/geom";
 import { Vector2D } from "../../core/vector2d";
+import { cos, floor, PI, random, sin, TWO_PI } from "../../system";
 
 class Fly {
   public position: Vector2D;
-  public angle: number = Math.random() * Math.PI * 2; // Current angle on ellipse
+  public angle: number = random() * TWO_PI; // Current angle on ellipse
   public speed: number; // Angular speed (radians per ms) - will be set in constructor
   public radius: number = 0.8; // Smaller fly size
   public ellipseRadiusX: number; // Ellipse width - will be set in constructor
@@ -14,11 +17,11 @@ class Fly {
     this.position = new Vector2D(centerX, centerY);
 
     // Much more varied parameters for each fly
-    this.speed = 0.002 + Math.random() * 0.006; // Faster speeds: 0.002-0.008 rad/ms
-    this.ellipseRadiusX = 10 + Math.random() * 20; // Wider variety: 10-30px
-    this.ellipseRadiusY = 5 + Math.random() * 15; // More height variety: 5-20px
-    this.centerOffsetX = (Math.random() - 0.5) * 15; // Larger offset: ±7.5px
-    this.centerOffsetY = -10 - Math.random() * 15; // More height variation: -10 to -25px
+    this.speed = 0.002 + random() * 0.006; // Faster speeds: 0.002-0.008 rad/ms
+    this.ellipseRadiusX = 10 + random() * 20; // Wider variety: 10-30px
+    this.ellipseRadiusY = 5 + random() * 15; // More height variety: 5-20px
+    this.centerOffsetX = (random() - 0.5) * 15; // Larger offset: ±7.5px
+    this.centerOffsetY = -10 - random() * 15; // More height variation: -10 to -25px
   }
 
   tick(dt: number, poopX: number, poopY: number): void {
@@ -27,7 +30,7 @@ class Fly {
 
     // Keep angle in 0-2π range (avoid expensive modulo)
     if (this.angle > 6.283185307179586) {
-      // 2 * Math.PI as constant
+      // 2 * PI as constant
       this.angle -= 6.283185307179586;
     }
 
@@ -35,40 +38,45 @@ class Fly {
     const ellipseCenterX = poopX + this.centerOffsetX;
     const ellipseCenterY = poopY + this.centerOffsetY;
 
-    this.position.x = ellipseCenterX + Math.cos(this.angle) * this.ellipseRadiusX;
-    this.position.y = ellipseCenterY + Math.sin(this.angle) * this.ellipseRadiusY;
+    this.position.x = ellipseCenterX + cos(this.angle) * this.ellipseRadiusX;
+    this.position.y = ellipseCenterY + sin(this.angle) * this.ellipseRadiusY;
   }
 
   render(context: CanvasRenderingContext2D): void {
     context.fillStyle = "#000000";
     context.beginPath();
-    context.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
+    context.arc(this.position.x, this.position.y, this.radius, 0, TWO_PI);
     context.fill();
   }
 }
 
-export class Poop {
+export class Poop implements ITickable, IRenderable {
   position: Vector2D;
-  size: number;
   wobbleTime: number = 0;
   wobbleSpeed: number = 0.003; // Speed of wobble animation
   wobbleAmplitude: number = 2; // How much the lines wobble
 
+  isVisible: boolean = true;
+
   private flies: Fly[] = [];
 
-  constructor(x: number, y: number, size: number = 20) {
+  constructor(
+    x: number,
+    y: number,
+    public size: number,
+    private cameraPos: Point2D,
+  ) {
     this.position = new Vector2D(x, y);
-    this.size = size;
 
     // Create random number of flies (2-3)
-    const flyCount = 2 + Math.floor(Math.random() * 2); // 2 or 3 flies
+    const flyCount = 2 + floor(random() * 2); // 2 or 3 flies
     for (let i = 0; i < flyCount; i++) {
       this.flies.push(new Fly(x, y));
     }
   }
 
   // Check if poop is visible on screen (to be called from GameField)
-  isVisible(cameraX: number, cameraY: number, screenWidth: number, screenHeight: number): boolean {
+  inBounds(cameraX: number, cameraY: number, screenWidth: number, screenHeight: number): boolean {
     const margin = 50; // Extra margin for flies
     const poopRadius = this.size * 0.6; // Approximate visual radius
 
@@ -81,6 +89,8 @@ export class Poop {
   }
 
   tick(dt: number): void {
+    this.isVisible = this.inBounds(this.cameraPos.x, this.cameraPos.y, c.width, c.height);
+
     this.wobbleTime += dt;
 
     // Update flies (no forEach to avoid function call overhead)
@@ -90,6 +100,8 @@ export class Poop {
   }
 
   render(context: CanvasRenderingContext2D): void {
+    if (!this.isVisible) return;
+
     const x = this.position.x;
     const y = this.position.y;
 
@@ -110,7 +122,7 @@ export class Poop {
 
     context.fillStyle = gradient;
     context.beginPath();
-    context.arc(0, 0, shadowRadius, 0, 2 * Math.PI);
+    context.arc(0, 0, shadowRadius, 0, 2 * PI);
     context.fill();
     context.restore();
 
@@ -169,7 +181,7 @@ export class Poop {
       const perpX = -deltaY / segments; // Perpendicular X
       const perpY = deltaX / segments; // Perpendicular Y
 
-      const wobble = Math.sin(this.wobbleTime * this.wobbleSpeed + t * Math.PI * 4) * this.wobbleAmplitude;
+      const wobble = sin(this.wobbleTime * this.wobbleSpeed + t * PI * 4) * this.wobbleAmplitude;
 
       const wobbleX = baseX + perpX * wobble;
       const wobbleY = baseY + perpY * wobble;

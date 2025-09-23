@@ -8,7 +8,7 @@ import { Text } from "../core/text";
 import { IGame } from "../game";
 import { HIGH_SCORE_KEY } from "../registry";
 import { isDev } from "../system";
-import { GameScene } from "./game/game-scene";
+import { GameScene, setupGUI } from "./game/game-scene";
 import { HighScoresScreen } from "./high-scores-screen";
 import { StartScreen } from "./start-screen";
 export class GameScreen extends BaseScreen {
@@ -157,7 +157,7 @@ export class GameScreen extends BaseScreen {
       import("dat.gui").then((dat) => {
         const gui = new dat.GUI();
         const sceneFolder = gui.addFolder("GameScene");
-        this.gameScene.setupGUI(sceneFolder);
+        setupGUI(sceneFolder, this.gameScene);
         sceneFolder.open();
       });
     } else {

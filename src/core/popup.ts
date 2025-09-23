@@ -1,3 +1,4 @@
+import { min } from "../system";
 import { Button } from "./button";
 import { DisplayObject } from "./display";
 import { Event, MouseEvent, MouseEventType } from "./event";
@@ -184,7 +185,7 @@ export class Popup extends DisplayObject {
     // Update animation
     if (this.animationState) {
       this.animationTime += dt;
-      const progress = Math.min(this.animationTime / this.ANIMATION_DURATION, 1);
+      const progress = min(this.animationTime / this.ANIMATION_DURATION, 1);
       const easedProgress = easeInOut(progress);
 
       if (this.animationState === 1) {
