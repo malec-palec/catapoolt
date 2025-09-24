@@ -1,3 +1,4 @@
+import { Color } from "../../registry";
 import { cos, isDev, PI, sin, TWO_PI } from "../../system";
 
 export type EarData = {
@@ -25,7 +26,7 @@ export const drawHead = (
   eyeData: EyeData,
   debugDraw = false,
 ): void => {
-  context.fillStyle = context.strokeStyle = "#000";
+  context.fillStyle = context.strokeStyle = Color.Black;
   context.lineWidth = strokeWidth;
 
   context.beginPath();
@@ -49,13 +50,13 @@ export const drawHead = (
     const eyeX = posX - radius * eyeData.offsetX;
     const eyeY = posY - radius * eyeData.offsetY;
 
-    context.fillStyle = "#228B22";
+    context.fillStyle = Color.ForestGreen;
     context.beginPath();
     context.arc(eyeX, eyeY, eyeRadius, 0, TWO_PI);
     context.fill();
 
     // Draw pupil
-    context.fillStyle = "#000";
+    context.fillStyle = Color.Black;
     context.fillRect(eyeX - pupilHalfWidth, eyeY - pupilHalfHeight, pupilHalfWidth * 2, pupilHalfHeight * 2);
 
     // Draw ear
@@ -80,7 +81,7 @@ export const drawHead = (
   context.restore();
 
   if (isDev && debugDraw) {
-    context.strokeStyle = context.fillStyle = "#4444ff";
+    context.strokeStyle = context.fillStyle = Color.Blue;
     context.lineWidth = 3;
     context.beginPath();
     context.arc(posX, posY, radius, 0, TWO_PI);

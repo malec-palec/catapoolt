@@ -1,3 +1,4 @@
+import { Color, rgba } from "../registry";
 import { min } from "../system";
 import { Button } from "./button";
 import { DisplayObject } from "./display";
@@ -23,25 +24,25 @@ class RoundCloseButton extends DisplayObject {
     this.handler = handler;
   }
 
-  render(ctx: CanvasRenderingContext2D): void {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(16, 16, 16, 0, 6.28);
-    ctx.fillStyle = this.hovered ? "#ff6b6b" : "#ff4757";
-    ctx.fill();
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+  render(context: CanvasRenderingContext2D): void {
+    context.save();
+    context.beginPath();
+    context.arc(16, 16, 16, 0, 6.28);
+    context.fillStyle = this.hovered ? Color.LightCoral : Color.Tomato;
+    context.fill();
+    context.strokeStyle = Color.White;
+    context.lineWidth = 2;
+    context.stroke();
 
-    ctx.lineWidth = 3;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(8, 8);
-    ctx.lineTo(24, 24);
-    ctx.moveTo(24, 8);
-    ctx.lineTo(8, 24);
-    ctx.stroke();
-    ctx.restore();
+    context.lineWidth = 3;
+    context.lineCap = "round";
+    context.beginPath();
+    context.moveTo(8, 8);
+    context.lineTo(24, 24);
+    context.moveTo(24, 8);
+    context.lineTo(8, 24);
+    context.stroke();
+    context.restore();
   }
 
   protected handleEvent(e: Event): void {
@@ -49,11 +50,11 @@ class RoundCloseButton extends DisplayObject {
 
     const over = this.isOver(e.mouseX, e.mouseY);
 
-    if (e.type === MouseEventType.MOUSE_MOVE) {
+    if (e.type === MouseEventType.MouseMove) {
       this.hovered = over;
       c.style.cursor = over ? "pointer" : "default";
     } else if (over) {
-      if (e.type === MouseEventType.CLICK) this.handler();
+      if (e.type === MouseEventType.Click) this.handler();
       e.acknowledge();
     }
   }
@@ -145,7 +146,7 @@ export class Popup extends DisplayObject {
       if (event.isAcknowledged) return;
     }
 
-    if (event instanceof MouseEvent && event.type === MouseEventType.CLICK) {
+    if (event instanceof MouseEvent && event.type === MouseEventType.Click) {
       if (!isCoordsInRect(event.mouseX, event.mouseY, this.body)) {
         this.hidePopup();
         event.acknowledge();
@@ -222,67 +223,67 @@ export class Popup extends DisplayObject {
     }
   }
 
-  render(ctx: CanvasRenderingContext2D): void {
+  render(context: CanvasRenderingContext2D): void {
     if (!this.isVisible) return;
 
     // Apply alpha to overlay
-    ctx.fillStyle = `rgba(0,0,0,${this.currentAlpha * 0.7})`;
-    ctx.fillRect(0, 0, c.width, c.height);
+    context.fillStyle = rgba(Color.BlackRGB, this.currentAlpha * 0.7);
+    context.fillRect(0, 0, c.width, c.height);
 
     // Apply scale and alpha transforms for the popup body
     const { x, y, width: w, height: h } = this.body;
     const centerX = x + w * 0.5;
     const centerY = y + h * 0.5;
 
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.scale(this.currentScale, this.currentScale);
-    ctx.globalAlpha = this.currentAlpha;
-    ctx.translate(-centerX, -centerY);
+    context.save();
+    context.translate(centerX, centerY);
+    context.scale(this.currentScale, this.currentScale);
+    context.globalAlpha = this.currentAlpha;
+    context.translate(-centerX, -centerY);
 
     // Body
     const r = 8;
-    ctx.fillStyle = "#fff";
-    this.roundRect(ctx, x, y, w, h, r);
-    ctx.fill();
+    context.fillStyle = Color.White;
+    this.roundRect(context, x, y, w, h, r);
+    context.fill();
 
-    ctx.strokeStyle = "#333";
-    ctx.lineWidth = 2;
-    this.roundRect(ctx, x, y, w, h, r);
-    ctx.stroke();
+    context.strokeStyle = Color.DarkGray;
+    context.lineWidth = 2;
+    this.roundRect(context, x, y, w, h, r);
+    context.stroke();
 
     // Elements
-    this.renderTranslated(ctx, this.title);
+    this.renderTranslated(context, this.title);
     if (this.bodyText) {
-      this.renderTranslated(ctx, this.bodyText);
+      this.renderTranslated(context, this.bodyText);
     }
-    this.renderTranslated(ctx, this.close);
-    this.buttons.forEach((btn) => this.renderTranslated(ctx, btn));
+    this.renderTranslated(context, this.close);
+    this.buttons.forEach((btn) => this.renderTranslated(context, btn));
 
-    ctx.restore(); // Restore scale and alpha transforms
+    context.restore(); // Restore scale and alpha transforms
   }
 
   private renderTranslated(
-    ctx: CanvasRenderingContext2D,
-    obj: { pos: { x: number; y: number }; render: (ctx: CanvasRenderingContext2D) => void },
+    context: CanvasRenderingContext2D,
+    obj: { pos: { x: number; y: number }; render: (context: CanvasRenderingContext2D) => void },
   ): void {
-    ctx.save();
-    ctx.translate(obj.pos.x, obj.pos.y);
-    obj.render(ctx);
-    ctx.restore();
+    context.save();
+    context.translate(obj.pos.x, obj.pos.y);
+    obj.render(context);
+    context.restore();
   }
 
-  private roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
+  private roundRect(context: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
+    context.beginPath();
+    context.moveTo(x + r, y);
+    context.lineTo(x + w - r, y);
+    context.quadraticCurveTo(x + w, y, x + w, y + r);
+    context.lineTo(x + w, y + h - r);
+    context.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    context.lineTo(x + r, y + h);
+    context.quadraticCurveTo(x, y + h, x, y + h - r);
+    context.lineTo(x, y + r);
+    context.quadraticCurveTo(x, y, x + r, y);
+    context.closePath();
   }
 }

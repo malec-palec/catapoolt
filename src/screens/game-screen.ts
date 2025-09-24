@@ -17,10 +17,11 @@ export class GameScreen extends BaseScreen {
   private pausePopup: Popup;
   private gameOverPopup: Popup;
   private nextWavePopup: Popup;
-  private currentWaveCallback: (() => void) | null = null;
 
   private gameScene: GameScene;
   private originalGameSceneTick: (dt: number) => void;
+
+  private signalSubscriptions: Array<() => void>;
 
   constructor(game: IGame) {
     super(game);
@@ -71,27 +72,24 @@ export class GameScreen extends BaseScreen {
       ],
     });
 
+    const currentWaveCallback = () => {
+      this.gameScene.spawnNewWaveMice();
+    };
+
     // Initialize with placeholder - will be updated when wave advances
     this.nextWavePopup = new Popup({
       title: "Next Wave",
       width: 400,
       height: 200,
       onClose: () => {
-        // Same behavior as Continue button when closed by X or area click
-        if (this.currentWaveCallback) {
-          this.currentWaveCallback();
-          this.currentWaveCallback = null;
-        }
+        currentWaveCallback();
       },
       buttons: [
         {
           text: "Continue",
           onClick: () => {
             this.nextWavePopup.hidePopup();
-            if (this.currentWaveCallback) {
-              this.currentWaveCallback();
-              this.currentWaveCallback = null;
-            }
+            currentWaveCallback();
           },
         },
       ],
@@ -116,24 +114,24 @@ export class GameScreen extends BaseScreen {
 
     this.gameScene = new GameScene(c.width, c.height);
 
-    this.gameScene.onGameOverCallback = (miceEaten: number) => {
-      const currentHighScore = localStorage.getItem(HIGH_SCORE_KEY);
-      const currentHighScoreNum = currentHighScore ? parseInt(currentHighScore, 10) : 0;
+    this.signalSubscriptions = [
+      this.gameScene.gameOverSignal.subscribe((miceEaten: number) => {
+        const currentHighScore = localStorage.getItem(HIGH_SCORE_KEY);
+        const currentHighScoreNum = currentHighScore ? parseInt(currentHighScore, 10) : 0;
 
-      if (miceEaten > currentHighScoreNum) {
-        localStorage.setItem(HIGH_SCORE_KEY, miceEaten.toString());
-      }
+        if (miceEaten > currentHighScoreNum) {
+          localStorage.setItem(HIGH_SCORE_KEY, miceEaten.toString());
+        }
 
-      this.gameOverPopup.updateTitle("Game Over");
-      this.gameOverPopup.setBodyText(`Your score: ${miceEaten} mice eaten`);
-      this.gameOverPopup.showPopup();
-    };
-
-    this.gameScene.onNextWaveCallback = (waveNumber: number, onContinue: () => void) => {
-      this.nextWavePopup.updateTitle(`Next Wave ${waveNumber}`);
-      this.currentWaveCallback = onContinue;
-      this.nextWavePopup.showPopup();
-    };
+        this.gameOverPopup.updateTitle("Game Over");
+        this.gameOverPopup.setBodyText(`Your score: ${miceEaten} mice eaten`);
+        this.gameOverPopup.showPopup();
+      }),
+      this.gameScene.nextWaveSignal.subscribe((waveNumber: number) => {
+        this.nextWavePopup.updateTitle(`Next Wave ${waveNumber}`);
+        this.nextWavePopup.showPopup();
+      }),
+    ];
 
     // Store the original tick method and override it for pause functionality
     this.originalGameSceneTick = this.gameScene.tick.bind(this.gameScene);
@@ -196,5 +194,11 @@ export class GameScreen extends BaseScreen {
     this.pausePopup.onResize();
     this.gameOverPopup.onResize();
     this.nextWavePopup.onResize();
+  }
+
+  override destroy(): void {
+    for (const unsubscribe of this.signalSubscriptions) {
+      unsubscribe();
+    }
   }
 }

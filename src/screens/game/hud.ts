@@ -2,6 +2,7 @@ import { IRenderable, ITickable } from "../../core/display";
 import { Point2D } from "../../core/geom";
 import { vecDist } from "../../core/vector2d";
 import { Vehicle } from "../../core/vehicle";
+import { Color, rgba } from "../../registry";
 import { abs, atan2, PI, round, sin, tan } from "../../system";
 import { Cat } from "./cat";
 import { IGameController } from "./game-scene";
@@ -21,7 +22,7 @@ export class HUD implements ITickable, IRenderable {
 
   render(context: CanvasRenderingContext2D): void {
     // Draw mice counter and next wave number
-    context.fillStyle = "#333333";
+    context.fillStyle = Color.DarkGray;
     context.font = "bold 24px Arial";
     context.textAlign = "center";
     const miceText = `Mice ${this.enemies.length}`;
@@ -36,7 +37,7 @@ export class HUD implements ITickable, IRenderable {
       const blinkCycle = sin(this.blinkTime * 0.005 * PI); // 5 cycles per second
       const opacity = (blinkCycle + 1) / 2; // Convert from [-1,1] to [0,1]
 
-      context.fillStyle = `rgba(204, 0, 0, ${opacity})`;
+      context.fillStyle = rgba(Color.DarkRed, opacity);
       context.font = "16px Arial";
       context.fillText("Can't eat more. Need to purge: double-tap on the cat.", c.width / 2, 65);
     }
@@ -53,7 +54,7 @@ export class HUD implements ITickable, IRenderable {
     const staminaPercentage = this.cat.displayStamina / this.cat.maxStamina;
 
     // Draw background (empty bar)
-    context.fillStyle = "#333333";
+    context.fillStyle = Color.DarkGray;
     context.fillRect(barX, barY, barWidth, barHeight);
 
     // Draw filled portion with smooth color interpolation
@@ -72,7 +73,7 @@ export class HUD implements ITickable, IRenderable {
     }
 
     // Draw label (aligned to left edge of bar)
-    context.fillStyle = "#000000";
+    context.fillStyle = Color.Black;
     context.font = "bold 16px Arial";
     context.textAlign = "left";
     context.fillText("Stamina", barX, barY - 5);
@@ -128,7 +129,7 @@ export class HUD implements ITickable, IRenderable {
       // Draw simple red filled triangle
       const triangleSize = 8;
 
-      context.fillStyle = "#ff0000";
+      context.fillStyle = Color.Red;
       context.save();
       context.translate(edgePos.x, edgePos.y);
       context.rotate(angle);

@@ -1,4 +1,5 @@
 import { DisplayObject } from "../core/display";
+import { Color } from "../registry";
 
 export class Text extends DisplayObject {
   constructor(
@@ -19,7 +20,7 @@ export class Text extends DisplayObject {
   }
 
   render(context: CanvasRenderingContext2D): void {
-    context.fillStyle = "#000";
+    context.fillStyle = Color.Black;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.font = `${this.fontWeight} ${this.fontSize}px ${this.fontFamily}`;

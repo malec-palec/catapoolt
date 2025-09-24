@@ -7,7 +7,7 @@
     "prepare": "node scripts/generate-tunes.js && husky",
     "generate-tunes": "node scripts/generate-tunes.js",
     "increment-version": "node scripts/increment-version.js",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview --open --host",
     "dev": "vite --open --host",
     "lint": "eslint .",

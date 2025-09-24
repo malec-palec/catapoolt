@@ -1,7 +1,8 @@
 import * as dat from "dat.gui";
-import { playSound, Sounds } from "../../core/audio/sound";
+import { playSound, Sound } from "../../core/audio/sound";
 import { DisplayObject, IRenderable, ITickable } from "../../core/display";
 import { Event, MouseEvent, MouseEventType } from "../../core/event";
+import { signal } from "../../core/signal";
 import { Vehicle } from "../../core/vehicle";
 import { random } from "../../system";
 import { Camera } from "./camera";
@@ -30,8 +31,8 @@ export interface VehicleOptions {
   showDebug: boolean;
 }
 export class GameScene extends DisplayObject implements IGameController {
-  onGameOverCallback!: (miceEaten: number) => void;
-  onNextWaveCallback!: (waveNumber: number, onContinue: () => void) => void;
+  readonly gameOverSignal = signal<number>(0);
+  readonly nextWaveSignal = signal<number>(0);
 
   // Wave system
   currentWave = 1;
@@ -40,7 +41,7 @@ export class GameScene extends DisplayObject implements IGameController {
   private isGameOver = false; // TODO: remove if not needed
 
   enemyOptions: VehicleOptions = {
-    enemyCount: 20,
+    enemyCount: 1,
     maxSpeed: 2,
     maxForce: 0.05,
     wanderRadius: 25,
@@ -68,9 +69,10 @@ export class GameScene extends DisplayObject implements IGameController {
     super(width, height);
 
     this.gameField = new GameField(1600, 1200, 160);
-    this.cat = new Cat(30, this.gameField.width, this.gameField.height, () => {
+    this.cat = new Cat(30, this.gameField.width, this.gameField.height);
+    this.cat.staminaEmptySignal.subscribeOnce(() => {
       this.isGameOver = true;
-      this.onGameOverCallback(this.miceEaten);
+      this.gameOverSignal.set(this.miceEaten);
     });
     this.camera = new Camera(this.cat.position, this.gameField);
 
@@ -101,7 +103,7 @@ export class GameScene extends DisplayObject implements IGameController {
       if (this.clover.isActive && !this.clover.collectedThisWave && this.cat.collidesWith(this.clover)) {
         this.clover.collect();
         this.cat.restoreFullStamina();
-        playSound(Sounds.ReleaseWobble);
+        playSound(Sound.ReleaseWobble);
       }
     }
 
@@ -110,7 +112,7 @@ export class GameScene extends DisplayObject implements IGameController {
       if (!this.cat.isProtectedFromPoop && this.cat.collidesWith(poop)) {
         this.poops.splice(i, 1);
         this.cat.reduceStamina();
-        playSound(Sounds.Poop);
+        playSound(Sound.Poop);
       }
     }
 
@@ -119,12 +121,22 @@ export class GameScene extends DisplayObject implements IGameController {
       if (!this.cat.isFullyInflated && this.cat.collidesWith(enemy)) {
         this.enemies.splice(i, 1);
         this.cat.restoreStaminaAndInflateFromEatingMouse();
-        playSound(Sounds.Smacking);
+        playSound(Sound.Smacking);
 
         this.miceEaten++;
         if (this.enemies.length === 0) {
+          // TODO: get rid of hack
           setTimeout(() => {
-            this.advanceToNextWave();
+            this.currentWave++;
+
+            // Increase mice strength
+            this.enemyOptions.fleeRadius += 50;
+            this.enemyOptions.fleeWeight += 1;
+
+            // Restore all stamina for the new wave
+            this.cat.restoreFullStamina();
+
+            this.nextWaveSignal.set(this.currentWave);
           }, 100);
         }
       }
@@ -149,25 +161,9 @@ export class GameScene extends DisplayObject implements IGameController {
     this.hud.render(context);
   }
 
-  private advanceToNextWave(): void {
-    this.currentWave++;
-
-    // Increase mice strength
-    this.enemyOptions.fleeRadius += 50;
-    this.enemyOptions.fleeWeight += 1;
-
-    // Restore all stamina for the new wave
-    this.cat.restoreFullStamina();
-
-    // Trigger wave popup through callback
-    this.onNextWaveCallback(this.currentWave, () => {
-      this.spawnNewWaveMice();
-    });
-  }
-
   spawnNewWaveMice(): void {
     // Clear existing vehicles
-    this.enemies = [];
+    this.enemies.length = 0;
 
     // Spawn new mice with updated strength
     for (let i = 0; i < this.enemyOptions.enemyCount; i++) {
@@ -193,16 +189,16 @@ export class GameScene extends DisplayObject implements IGameController {
 
     if (event instanceof MouseEvent) {
       switch (event.type) {
-        case MouseEventType.MOUSE_MOVE:
+        case MouseEventType.MouseMove:
           this.onMouseMove(event.mouseX, event.mouseY);
           break;
 
-        case MouseEventType.MOUSE_DOWN:
+        case MouseEventType.MouseDown:
           this.onMouseDown(event.mouseX, event.mouseY);
           break;
 
-        case MouseEventType.MOUSE_UP:
-        case MouseEventType.MOUSE_LEAVE:
+        case MouseEventType.MouseUp:
+        case MouseEventType.MouseLeave:
           this.onMouseUp(event.mouseX, event.mouseY);
           break;
       }
@@ -230,7 +226,7 @@ export class GameScene extends DisplayObject implements IGameController {
       if (this.cat.isDragging) {
         const worldPos = this.camera.screenToWorld(x, y);
         this.cat.launch(worldPos.x, worldPos.y);
-        playSound(Sounds.ReleaseWobble);
+        playSound(Sound.ReleaseWobble);
       }
     }
   }
@@ -238,7 +234,7 @@ export class GameScene extends DisplayObject implements IGameController {
   private onMouseMove(x: number, y: number): void {
     const worldPos = this.camera.screenToWorld(x, y);
 
-    this.cat.setCurMousePos(worldPos);
+    this.cat.curMousePos = worldPos;
 
     // Update drag if dragging
     if (this.isMouseDown && this.cat.isDragging) {

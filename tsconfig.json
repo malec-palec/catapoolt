@@ -5,13 +5,12 @@
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "types": ["vite/client"],
-    "noEmit": true,
     "allowJs": true,
     "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
     "lib": ["DOM", "DOM.Iterable", "ES2020"],
     "target": "ES2020",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "outDir": "./build/"
   },
   "include": ["./src/**/*"]
 }

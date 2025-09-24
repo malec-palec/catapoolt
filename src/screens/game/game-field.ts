@@ -1,4 +1,5 @@
 import { IRenderable } from "../../core/display";
+import { Color } from "../../registry";
 
 export interface IGameFieldSizeProvider {
   width: number;
@@ -15,15 +16,15 @@ export class GameField implements IRenderable, IGameFieldSizeProvider {
     const { width, height, bufferZone } = this;
 
     // Draw buffer zone background (darker to show it's outside the play area);
-    context.fillStyle = "#e0e0e0";
+    context.fillStyle = Color.LightGray;
     context.fillRect(-bufferZone, -bufferZone, width + bufferZone * 2, height + bufferZone * 2);
 
     // Draw game field background
-    context.fillStyle = "#f0f0f0";
+    context.fillStyle = Color.VeryLightGray;
     context.fillRect(0, 0, width, height);
 
     // Draw game field borders (main play area)
-    context.strokeStyle = "#333333";
+    context.strokeStyle = Color.DarkGray;
     context.lineWidth = 4;
     context.strokeRect(0, 0, width, height);
   }

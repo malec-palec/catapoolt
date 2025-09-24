@@ -13,11 +13,11 @@ export class Event {
 }
 
 export const enum MouseEventType {
-  CLICK,
-  MOUSE_DOWN,
-  MOUSE_UP,
-  MOUSE_MOVE,
-  MOUSE_LEAVE,
+  Click,
+  MouseDown,
+  MouseUp,
+  MouseMove,
+  MouseLeave,
 }
 
 export class MouseEvent extends Event {

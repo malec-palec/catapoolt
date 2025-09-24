@@ -2,7 +2,7 @@ import { IDisplayObject } from "./core/display";
 import { Event, MouseEvent, MouseEventType } from "./core/event";
 import { easeInOut } from "./core/tween";
 import { IGame } from "./game";
-import { COLOR_WHITE, GAME_HEIGHT, GAME_WIDTH } from "./registry";
+import { Color, GAME_HEIGHT, GAME_WIDTH } from "./registry";
 import { floor, max, min } from "./system";
 
 export interface ScreenConstructor {
@@ -35,7 +35,7 @@ export class BaseScreen implements IScreen {
 
   private children: IDisplayObject[] = [];
 
-  protected bgColor = COLOR_WHITE;
+  protected bgColor = Color.White;
 
   constructor(protected game: IGame) {}
 
@@ -114,19 +114,19 @@ export class BaseScreen implements IScreen {
   protected doResize(): void {}
 
   onClick(mouseX: number, mouseY: number): void {
-    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.CLICK));
+    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.Click));
   }
   onMouseDown(mouseX: number, mouseY: number): void {
-    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_DOWN));
+    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MouseDown));
   }
   onMouseUp(mouseX: number, mouseY: number): void {
-    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_UP));
+    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MouseUp));
   }
   onMouseMove(mouseX: number, mouseY: number): void {
-    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_MOVE));
+    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MouseMove));
   }
   onMouseLeave(mouseX: number, mouseY: number): void {
-    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MOUSE_LEAVE));
+    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MouseLeave));
   }
 
   emitEvent(event: Event): void {

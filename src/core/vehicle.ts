@@ -1,6 +1,7 @@
+import { Color, rgba } from "../registry";
 import { IGameFieldSizeProvider } from "../screens/game/game-field";
 import { VehicleOptions as VehicleControls } from "../screens/game/game-scene";
-import { abs, atan2, cos, hypot, random, sin, TWO_PI } from "../system";
+import { abs, atan2, cos, hypot, isDev, random, sin, TWO_PI } from "../system";
 import { IRenderable, ITickable } from "./display";
 import { Point2D } from "./geom";
 import { vecAdd, vecDist, vecRandom, vecSub, Vector2D } from "./vector2d";
@@ -60,7 +61,7 @@ export class Vehicle implements ITickable, IRenderable {
     y: number,
     options: VehicleOptions,
     private vehicles: Vehicle[],
-    private catPos: Vector2D,
+    public catPos: Vector2D,
     private gameField: IGameFieldSizeProvider,
     private controls: VehicleControls,
     private cameraPos: Point2D,
@@ -89,8 +90,8 @@ export class Vehicle implements ITickable, IRenderable {
     this.fleeWeight = options.fleeWeight ?? 2.0;
 
     // Visual parameters
-    this.color = "#7f7f7f";
-    this.strokeColor = options.strokeColor ?? "#000000";
+    this.color = Color.Gray;
+    this.strokeColor = options.strokeColor ?? Color.Black;
     this.strokeWidth = options.strokeWidth ?? 1;
 
     // Initialize tail history
@@ -354,9 +355,9 @@ export class Vehicle implements ITickable, IRenderable {
       0,
       shadowRadius, // Outer circle (edge)
     );
-    gradient.addColorStop(0, "rgba(0, 0, 0, 0.15)"); // Much lighter center for mice
-    gradient.addColorStop(0.7, "rgba(0, 0, 0, 0.1)"); // Very light transparency
-    gradient.addColorStop(1, "rgba(0, 0, 0, 0)"); // Transparent edge
+    gradient.addColorStop(0, rgba(Color.BlackRGB, 0.15)); // Much lighter center for mice
+    gradient.addColorStop(0.7, rgba(Color.BlackRGB, 0.1)); // Very light transparency
+    gradient.addColorStop(1, rgba(Color.BlackRGB, 0)); // Transparent edge
 
     context.fillStyle = gradient;
     context.beginPath();
@@ -428,7 +429,7 @@ export class Vehicle implements ITickable, IRenderable {
     // context.stroke();
 
     // Draw nose (gray dot at the top point)
-    context.fillStyle = "#999999";
+    context.fillStyle = Color.MediumGray;
     context.beginPath();
     context.arc(isMovingLeft ? leftBase + 2 : rightBase - 2, baseY - 2, this.size * 0.2, 0, TWO_PI);
     context.fill();
@@ -438,7 +439,7 @@ export class Vehicle implements ITickable, IRenderable {
     // draw tail
     if (tailHistory.length < 2) return;
 
-    context.strokeStyle = "#666666";
+    context.strokeStyle = Color.DarkerGray;
     context.lineWidth = 1.5;
     context.lineCap = context.lineJoin = "round";
 
@@ -449,88 +450,88 @@ export class Vehicle implements ITickable, IRenderable {
     }
     context.stroke();
 
-    if (this.drawDebug) {
-      this.drawWanderDebug(context);
-      this.drawFleeDebug(context, this.catPos!);
+    if (isDev && this.drawDebug) {
+      drawWanderDebug(context, this);
+      drawFleeDebug(context, this);
     }
   }
+}
 
-  drawWanderDebug(context: CanvasRenderingContext2D): void {
-    if (import.meta.env.PROD) return;
-    // Calculate the center of the wander circle
-    const circlePos = this.velocity.copy();
-    circlePos.normalize();
-    circlePos.mult(this.wanderDistance);
-    circlePos.add(this.position);
+function drawWanderDebug(context: CanvasRenderingContext2D, vehicle: Vehicle): void {
+  // Calculate the center of the wander circle
+  const circlePos = vehicle.velocity.copy();
+  circlePos.normalize();
+  circlePos.mult(vehicle.wanderDistance);
+  circlePos.add(vehicle.position);
 
-    // Calculate the heading of velocity
-    const h = this.velocity.heading();
+  // Calculate the heading of velocity
+  const h = vehicle.velocity.heading();
 
-    // Calculate the offset on the wander circle
-    const circleOffset = new Vector2D(
-      this.wanderRadius * cos(this.wanderTheta + h),
-      this.wanderRadius * sin(this.wanderTheta + h),
-    );
+  // Calculate the offset on the wander circle
+  const circleOffset = new Vector2D(
+    vehicle.wanderRadius * cos(vehicle.wanderTheta + h),
+    vehicle.wanderRadius * sin(vehicle.wanderTheta + h),
+  );
 
-    // Calculate target point
-    const target = vecAdd(circlePos, circleOffset);
+  // Calculate target point
+  const target = vecAdd(circlePos, circleOffset);
 
-    // Draw debug visualization
-    context.strokeStyle = "#ff0000";
-    context.lineWidth = 1;
-    context.fillStyle = "rgba(255, 0, 0, 0.1)";
+  // Draw debug visualization
+  context.strokeStyle = Color.Red;
+  context.lineWidth = 1;
+  context.fillStyle = rgba(Color.RedRGB, 0.1);
 
-    // Draw wander circle
+  // Draw wander circle
+  context.beginPath();
+  context.arc(circlePos.x, circlePos.y, vehicle.wanderRadius, 0, TWO_PI);
+  context.stroke();
+
+  // Draw target point
+  context.beginPath();
+  context.arc(target.x, target.y, 2, 0, TWO_PI);
+  context.fill();
+
+  // Draw line from vehicle to circle center
+  context.beginPath();
+  context.moveTo(vehicle.position.x, vehicle.position.y);
+  context.lineTo(circlePos.x, circlePos.y);
+  context.stroke();
+
+  // Draw line from circle center to target
+  context.beginPath();
+  context.moveTo(circlePos.x, circlePos.y);
+  context.lineTo(target.x, target.y);
+  context.stroke();
+}
+
+function drawFleeDebug(
+  context: CanvasRenderingContext2D,
+  vehicle: Vehicle,
+  mousePosition: Vector2D = vehicle.catPos,
+): void {
+  const distance = vecDist(vehicle.position, mousePosition);
+
+  // Draw flee radius circle
+  context.strokeStyle = Color.LightBlue;
+  context.lineWidth = 1;
+  context.setLineDash([5, 5]); // Dashed line
+
+  context.beginPath();
+  context.arc(vehicle.position.x, vehicle.position.y, vehicle.fleeRadius, 0, TWO_PI);
+  context.stroke();
+
+  // If mouse is within flee radius, draw connection line
+  if (distance < vehicle.fleeRadius) {
+    context.strokeStyle = Color.Orange;
+    context.lineWidth = 2;
+    context.setLineDash([]); // Solid line
+
     context.beginPath();
-    context.arc(circlePos.x, circlePos.y, this.wanderRadius, 0, TWO_PI);
-    context.stroke();
-
-    // Draw target point
-    context.beginPath();
-    context.arc(target.x, target.y, 2, 0, TWO_PI);
-    context.fill();
-
-    // Draw line from vehicle to circle center
-    context.beginPath();
-    context.moveTo(this.position.x, this.position.y);
-    context.lineTo(circlePos.x, circlePos.y);
-    context.stroke();
-
-    // Draw line from circle center to target
-    context.beginPath();
-    context.moveTo(circlePos.x, circlePos.y);
-    context.lineTo(target.x, target.y);
+    context.moveTo(vehicle.position.x, vehicle.position.y);
+    context.lineTo(mousePosition.x, mousePosition.y);
     context.stroke();
   }
 
-  drawFleeDebug(context: CanvasRenderingContext2D, mousePosition?: Vector2D): void {
-    if (import.meta.env.PROD) return;
-    if (!mousePosition) return;
-
-    const distance = vecDist(this.position, mousePosition);
-
-    // Draw flee radius circle
-    context.strokeStyle = "#0066ff";
-    context.lineWidth = 1;
-    context.setLineDash([5, 5]); // Dashed line
-
-    context.beginPath();
-    context.arc(this.position.x, this.position.y, this.fleeRadius, 0, TWO_PI);
-    context.stroke();
-
-    // If mouse is within flee radius, draw connection line
-    if (distance < this.fleeRadius) {
-      context.strokeStyle = "#ff6600";
-      context.lineWidth = 2;
-      context.setLineDash([]); // Solid line
-
-      context.beginPath();
-      context.moveTo(this.position.x, this.position.y);
-      context.lineTo(mousePosition.x, mousePosition.y);
-      context.stroke();
-    }
-
-    // Reset line dash
-    context.setLineDash([]);
-  }
+  // Reset line dash
+  context.setLineDash([]);
 }

@@ -1,5 +1,6 @@
 import { Event, MouseEvent, MouseEventType } from "../core/event";
-import { playSound, Sounds } from "./audio/sound";
+import { Color } from "../registry";
+import { playSound, Sound } from "./audio/sound";
 import { DisplayObject } from "./display";
 
 export const enum ButtonState {
@@ -62,12 +63,12 @@ export class Button extends DisplayObject {
     // Button colors based on state
     const colors =
       this.currentState === ButtonState.Hover
-        ? { bg: "#e0e0e0", border: "#999", text: "#000" }
+        ? { bg: Color.LightGray, border: Color.MediumGray, text: Color.Black }
         : this.currentState === ButtonState.Pressed
-          ? { bg: "#d0d0d0", border: "#666", text: "#000" }
+          ? { bg: Color.LightSilver, border: Color.DarkerGray, text: Color.Black }
           : this.currentState === ButtonState.Disabled
-            ? { bg: "#f5f5f5", border: "#ccc", text: "#999" }
-            : { bg: "#f0f0f0", border: "#aaa", text: "#000" };
+            ? { bg: Color.WhiteSmoke, border: Color.Silver, text: Color.MediumGray }
+            : { bg: Color.VeryLightGray, border: Color.DarkGray2, text: Color.Black };
 
     // Draw button background
     context.fillStyle = colors.bg;
@@ -98,7 +99,7 @@ export class Button extends DisplayObject {
       const isOver = this.isMouseOver(event.mouseX, event.mouseY);
 
       switch (event.type) {
-        case MouseEventType.MOUSE_MOVE:
+        case MouseEventType.MouseMove:
           if (isOver) {
             if (this.currentState === ButtonState.Normal) {
               this.currentState = ButtonState.Hover;
@@ -112,22 +113,22 @@ export class Button extends DisplayObject {
           }
           break;
 
-        case MouseEventType.MOUSE_DOWN:
+        case MouseEventType.MouseDown:
           if (isOver) {
             this.currentState = ButtonState.Pressed;
             event.acknowledge();
           }
           break;
 
-        case MouseEventType.MOUSE_UP:
+        case MouseEventType.MouseUp:
           if (this.currentState === ButtonState.Pressed) {
             this.currentState = isOver ? ButtonState.Hover : ButtonState.Normal;
           }
           break;
 
-        case MouseEventType.CLICK:
+        case MouseEventType.Click:
           if (isOver) {
-            playSound(Sounds.Beep);
+            playSound(Sound.Beep);
             this.clickHandler();
             event.acknowledge();
           }

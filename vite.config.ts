@@ -1,4 +1,5 @@
 import { advzipPlugin, defaultAdvzipOptions, defaultEctOptions, ectPlugin } from "js13k-vite-plugins";
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import { createHtmlPlugin } from "vite-plugin-html";
 import { viteSingleFile } from "vite-plugin-singlefile";
@@ -6,10 +7,19 @@ import packageJson from "./package.json";
 import { manglePlugin } from "./tools/vite-plugin-mangle";
 import { pico8Plugin } from "./tools/vite-plugin-pico8";
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: "./",
   define: {
     "import.meta.env.PACKAGE_VERSION": JSON.stringify(packageJson.version),
+  },
+  resolve: {
+    alias: {
+      // dev → TS source
+      ...(command === "serve"
+        ? { "/entry/index": resolve(__dirname, "src/index.ts") }
+        : // build → tsc output with inlined enums
+          { "/entry/index": resolve(__dirname, "build/index.js") }),
+    },
   },
   plugins: [
     pico8Plugin(),
@@ -74,4 +84,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

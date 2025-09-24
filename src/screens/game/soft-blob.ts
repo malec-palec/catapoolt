@@ -1,3 +1,4 @@
+import { Color } from "../../registry";
 import { abs, cos, hypot, max, min, PI, random, sin, TWO_PI } from "../../system";
 
 export interface ICircleCollider {
@@ -216,7 +217,7 @@ export class SoftBlob {
   render(context: CanvasRenderingContext2D): void {
     const { points, outlineSize } = this;
 
-    context.strokeStyle = context.fillStyle = "#000000";
+    context.strokeStyle = context.fillStyle = Color.Black;
     context.lineWidth = outlineSize;
 
     context.beginPath();
@@ -249,7 +250,7 @@ export class SoftBlob {
     context.fill();
     context.stroke();
 
-    // context.fillStyle = "#2a2c35";
+    // context.fillStyle = Colors.DarkSlateGray;
     // for (const point of this.points) {
     //   context.beginPath();
     //   context.arc(point.pos.x, point.pos.y, 3, 0, 2 * PI);

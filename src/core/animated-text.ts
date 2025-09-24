@@ -1,3 +1,4 @@
+import { Color } from "../registry";
 import { sin } from "../system";
 import { DisplayObject } from "./display";
 
@@ -56,7 +57,7 @@ export class AnimatedText extends DisplayObject {
   }
 
   render(context: CanvasRenderingContext2D): void {
-    context.fillStyle = "#000";
+    context.fillStyle = Color.Black;
     context.font = `${this.fontWeight} ${this.fontSize}px ${this.fontFamily}`;
     this.letters.forEach((letter) => {
       if (letter.char !== " ") {

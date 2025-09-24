@@ -1,3 +1,4 @@
+import { Color } from "../../registry";
 import { hypot } from "../../system";
 import { BlobPoint, SoftBlob, Vector2D } from "./soft-blob";
 
@@ -115,7 +116,7 @@ export class Tail {
 
   render(context: CanvasRenderingContext2D): void {
     const { nodes, tailWidth } = this;
-    context.strokeStyle = "#000000";
+    context.strokeStyle = Color.Black;
     context.lineCap = "round";
     context.lineWidth = tailWidth;
 
@@ -135,7 +136,7 @@ export class Tail {
     context.lineTo(lastNode.pos.x, lastNode.pos.y);
     context.stroke();
 
-    // context.fillStyle = "#FF0000";
+    // context.fillStyle = Colors.RedComment;
     // context.beginPath();
     // context.arc(this.nodes[0].pos.x, this.nodes[0].pos.y, this.tailWidth / 2, 0, 2 * PI);
     // context.fill();

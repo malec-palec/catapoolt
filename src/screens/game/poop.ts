@@ -1,6 +1,7 @@
 import { IRenderable, ITickable } from "../../core/display";
 import { Point2D } from "../../core/geom";
 import { Vector2D } from "../../core/vector2d";
+import { Color, rgba } from "../../registry";
 import { cos, floor, PI, random, sin, TWO_PI } from "../../system";
 
 class Fly {
@@ -43,7 +44,7 @@ class Fly {
   }
 
   render(context: CanvasRenderingContext2D): void {
-    context.fillStyle = "#000000";
+    context.fillStyle = Color.Black;
     context.beginPath();
     context.arc(this.position.x, this.position.y, this.radius, 0, TWO_PI);
     context.fill();
@@ -117,8 +118,8 @@ export class Poop implements ITickable, IRenderable {
 
     // Create gradient for shadow (reuse if possible, but createRadialGradient is unavoidable)
     const gradient = context.createRadialGradient(0, 0, 0, 0, 0, shadowRadius);
-    gradient.addColorStop(0, "rgba(0, 0, 0, 0.3)"); // Darker center
-    gradient.addColorStop(1, "rgba(0, 0, 0, 0)"); // Transparent edge
+    gradient.addColorStop(0, rgba(Color.BlackRGB, 0.3)); // Darker center
+    gradient.addColorStop(1, rgba(Color.BlackRGB, 0)); // Transparent edge
 
     context.fillStyle = gradient;
     context.beginPath();
@@ -126,8 +127,8 @@ export class Poop implements ITickable, IRenderable {
     context.fill();
     context.restore();
 
-    context.strokeStyle = "#654321"; // Solid brown color
-    context.fillStyle = "#654321"; // Solid brown fill (same as stroke)
+    context.strokeStyle = Color.Brown; // Solid brown color
+    context.fillStyle = Color.Brown; // Solid brown fill (same as stroke)
     context.lineWidth = 3;
 
     // Pre-calculate triangle dimensions

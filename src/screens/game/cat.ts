@@ -1,14 +1,18 @@
-import { playSound, Sounds } from "../../core/audio/sound";
+import { playSound, Sound } from "../../core/audio/sound";
 import { ICollidable, IRenderable, ITickable } from "../../core/display";
 import { Point2D } from "../../core/geom";
+import { signal } from "../../core/signal";
 import { easeInOut } from "../../core/tween";
 import { vecDist, vecMult, vecSub, Vector2D } from "../../core/vector2d";
+import { Color, rgba } from "../../registry";
 import { abs, cos, max, min, random, sin, TWO_PI } from "../../system";
 import { drawHead, EarData, EyeData } from "./cat-head";
 import { CatShadow } from "./cat-shadow";
 import { SoftBlob } from "./soft-blob";
 import { Tail } from "./tail";
 export class Cat implements ITickable, IRenderable {
+  readonly staminaEmptySignal = signal<boolean>(false);
+
   position: Vector2D;
   strokeWidth: number = 3;
   speed: number = 3;
@@ -116,7 +120,6 @@ export class Cat implements ITickable, IRenderable {
     public radius: number,
     public screenWidth: number,
     public screenHeight: number,
-    private onStaminaEmpty?: () => void,
     posX: number = screenWidth / 2,
     posY: number = screenHeight / 2 - 1,
   ) {
@@ -136,10 +139,6 @@ export class Cat implements ITickable, IRenderable {
 
   getFloorLevel(): number {
     return this.position.y + this.catHeight + this.z;
-  }
-
-  setCurMousePos(curMousePos: Point2D): void {
-    this.curMousePos = curMousePos;
   }
 
   render(context: CanvasRenderingContext2D): void {
@@ -162,7 +161,7 @@ export class Cat implements ITickable, IRenderable {
       const predictedPoints = this.calculatePredictiveTrajectory(this.curMousePos);
       if (predictedPoints.length > 2) {
         // Draw predicted trajectory line
-        context.strokeStyle = "rgba(0, 150, 255, 0.6)";
+        context.strokeStyle = rgba(Color.SkyBlue, 0.6);
         context.lineWidth = 3;
         context.setLineDash([8, 8]);
         context.beginPath();
@@ -182,7 +181,7 @@ export class Cat implements ITickable, IRenderable {
 
         for (const point of predictedPoints) {
           if (point.type === "ground") {
-            context.fillStyle = "rgba(0, 150, 255, 0.6)";
+            context.fillStyle = rgba(Color.SkyBlue, 0.6);
             context.save();
             context.translate(point.x, point.y);
             context.scale(1, 0.5); // Flatten vertically by 2
@@ -199,7 +198,7 @@ export class Cat implements ITickable, IRenderable {
 
   startDrag(x: number, y: number): void {
     if (!this.isFlying) {
-      playSound(Sounds.Stretching);
+      playSound(Sound.Stretching);
       this.isDragging = true;
       this.dragStartPos.set(x, y);
       this.headOffsetY = 0; // Reset head position when starting drag
@@ -337,7 +336,7 @@ export class Cat implements ITickable, IRenderable {
         this.z = 0;
 
         if (this.bounceCount < this.maxBounces && abs(this.velocityZ) > 0.5) {
-          playSound(Sounds.Landing);
+          playSound(Sound.Landing);
           // Bounce
           this.velocityZ = -this.velocityZ * this.bounceDamping;
           this.velocity.mult(this.bounceDamping); // Reduce horizontal velocity on bounce
@@ -351,9 +350,7 @@ export class Cat implements ITickable, IRenderable {
           // Check if game should end after landing
           if (this.shouldTriggerGameOverAfterLanding) {
             this.shouldTriggerGameOverAfterLanding = false;
-            if (this.onStaminaEmpty) {
-              this.onStaminaEmpty();
-            }
+            this.staminaEmptySignal.set(true);
           }
         }
       }

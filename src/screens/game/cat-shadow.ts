@@ -1,4 +1,5 @@
 import { IRenderable } from "../../core/display";
+import { Color, rgba } from "../../registry";
 import { abs, max, TWO_PI } from "../../system";
 import { Cat } from "./cat";
 import { drawSlingshotPreview } from "./slingshot-preview";
@@ -45,9 +46,9 @@ export class CatShadow implements IRenderable {
       0,
       finalShadowRadius, // Outer circle (edge)
     );
-    gradient.addColorStop(0, "rgba(0, 0, 0, 1)"); // Solid black center
-    gradient.addColorStop(0.6, "rgba(0, 0, 0, 0.9)"); // Solid black center
-    gradient.addColorStop(1, "rgba(0, 0, 0, 0)"); // Transparent edge
+    gradient.addColorStop(0, rgba(Color.BlackRGB, 1)); // Solid black center
+    gradient.addColorStop(0.6, rgba(Color.BlackRGB, 0.9)); // Solid black center
+    gradient.addColorStop(1, rgba(Color.BlackRGB, 0)); // Transparent edge
 
     context.fillStyle = gradient;
     context.beginPath();

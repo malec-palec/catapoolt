@@ -2,7 +2,7 @@ import { max, min } from "../../system.js";
 import { music, sfx } from "../../tunes.js";
 import "./player.min.js";
 
-export const enum Sounds {
+export const enum Sound {
   Beep = 19,
   Stretching = 20,
   ReleaseWobble = 21,

@@ -1,4 +1,5 @@
 import { Point2D } from "../../core/geom";
+import { rgbaValues } from "../../registry";
 import { atan2, cos, hypot, min, PI, sin } from "../../system";
 import { Cat } from "./cat";
 
@@ -49,9 +50,9 @@ export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat
 
     // Start transparent, end with color based on power
     const alpha = powerRatio * 0.6; // Max alpha of 0.6
-    gradient.addColorStop(0, `rgba(${red}, ${green}, ${blue}, 0)`); // Transparent at cat
-    gradient.addColorStop(0.3, `rgba(${red}, ${green}, ${blue}, ${alpha * 0.3})`); // Mid color
-    gradient.addColorStop(1, `rgba(${red}, ${green}, ${blue}, ${alpha})`); // Full color at cursor
+    gradient.addColorStop(0, rgbaValues(red, green, blue, 0)); // Transparent at cat
+    gradient.addColorStop(0.3, rgbaValues(red, green, blue, alpha * 0.3)); // Mid color
+    gradient.addColorStop(1, rgbaValues(red, green, blue, alpha)); // Full color at cursor
 
     // Calculate cone vertices
     const perpX = cos(coneAngle + PI / 2);
@@ -85,7 +86,7 @@ export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat
     const blue = 255;
     const alpha = powerRatio * 0.6; // Same alpha as cone edge
 
-    context.fillStyle = `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+    context.fillStyle = rgbaValues(red, green, blue, alpha);
 
     // Calculate the angle perpendicular to cone direction (pointing away from cat)
     const outwardAngle = coneAngle;

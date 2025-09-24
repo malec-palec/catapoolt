@@ -1,5 +1,6 @@
 import { ICollidable, IRenderable, ITickable } from "../../core/display";
 import { clonePoint, Point2D } from "../../core/geom";
+import { Color } from "../../registry";
 import { hypot, max, random } from "../../system";
 import { IGameFieldSizeProvider } from "./game-field";
 
@@ -7,7 +8,7 @@ const MAX_LIFE_TIME = 3000; // 3 seconds in milliseconds
 const FADE_RANGE = 0.9; // Fade from 1.0 to 0.1
 const MIN_ALPHA = 0.1;
 const CLOVER_EMOJI = "☘︎";
-const GREEN_COLOR = "#00FF00";
+const GREEN_COLOR = Color.BrightGreen;
 export class Clover implements ITickable, IRenderable, ICollidable {
   position: Point2D;
   alpha: number = 1.0;

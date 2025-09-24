@@ -2,6 +2,7 @@
 .firebase/
 .playwright-mcp/
 .vscode/
+build/
 dist/
 external/
 node_modules/
