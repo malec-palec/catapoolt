@@ -2,7 +2,7 @@ import { IDisplayObject } from "./core/display";
 import { Event, MouseEvent, MouseEventType } from "./core/event";
 import { easeInOut } from "./core/tween";
 import { IGame } from "./game";
-import { Color, GAME_HEIGHT, GAME_WIDTH } from "./registry";
+import { Color, GAME_HEIGHT, GAME_WIDTH, wrapContext } from "./registry";
 import { floor, max, min } from "./system";
 
 export interface ScreenConstructor {
@@ -56,13 +56,13 @@ export class BaseScreen implements IScreen {
     context.fillRect(0, 0, c.width, c.height);
 
     this.children.forEach((child) => {
-      context.save();
-      context.translate(child.pos.x, child.pos.y);
-      // context.rotate(child.rotation);
-      // context.globalAlpha = child.alpha * this.alpha;
-      // context.scale(child.scale.x, child.scale.y);
-      child.render(context);
-      context.restore();
+      wrapContext(context, () => {
+        context.translate(child.pos.x, child.pos.y);
+        // context.rotate(child.rotation);
+        // context.globalAlpha = child.alpha * this.alpha;
+        // context.scale(child.scale.x, child.scale.y);
+        child.render(context);
+      });
     });
 
     if (this.alpha < 1) {

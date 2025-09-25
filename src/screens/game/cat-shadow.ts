@@ -1,5 +1,5 @@
 import { IRenderable } from "../../core/display";
-import { Color, rgba } from "../../registry";
+import { createRadialGradientWithStops, ShadowGradients, wrapContext } from "../../registry";
 import { abs, max, TWO_PI } from "../../system";
 import { Cat } from "./cat";
 import { drawSlingshotPreview } from "./slingshot-preview";
@@ -33,28 +33,18 @@ export class CatShadow implements IRenderable {
     const finalShadowRadius = shadowRadius * heightScale;
 
     // Draw ellipse (flattened vertically by 2)
-    context.save();
-    context.translate(shadowX, shadowY);
-    context.scale(1, 0.5); // Flatten vertically by 2
+    wrapContext(context, () => {
+      context.translate(shadowX, shadowY);
+      context.scale(1, 0.5); // Flatten vertically by 2
 
-    // Create radial gradient in the transformed coordinate system
-    const gradient = context.createRadialGradient(
-      0,
-      0,
-      0, // Inner circle (center at origin after transform)
-      0,
-      0,
-      finalShadowRadius, // Outer circle (edge)
-    );
-    gradient.addColorStop(0, rgba(Color.BlackRGB, 1)); // Solid black center
-    gradient.addColorStop(0.6, rgba(Color.BlackRGB, 0.9)); // Solid black center
-    gradient.addColorStop(1, rgba(Color.BlackRGB, 0)); // Transparent edge
+      // Create radial gradient in the transformed coordinate system using predefined cat shadow configuration
+      const gradient = createRadialGradientWithStops(context, 0, 0, 0, 0, 0, finalShadowRadius, ShadowGradients.cat());
 
-    context.fillStyle = gradient;
-    context.beginPath();
-    context.arc(0, 0, finalShadowRadius, 0, TWO_PI);
-    context.fill();
-    context.restore();
+      context.fillStyle = gradient;
+      context.beginPath();
+      context.arc(0, 0, finalShadowRadius, 0, TWO_PI);
+      context.fill();
+    });
 
     if (cat.isDragging) drawSlingshotPreview(context, cat, cat.curMousePos);
   }

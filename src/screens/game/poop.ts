@@ -1,7 +1,7 @@
 import { IRenderable, ITickable } from "../../core/display";
 import { Point2D } from "../../core/geom";
 import { Vector2D } from "../../core/vector2d";
-import { Color, rgba } from "../../registry";
+import { Color, createRadialGradientWithStops, ShadowGradients, wrapContext } from "../../registry";
 import { cos, floor, PI, random, sin, TWO_PI } from "../../system";
 
 class Fly {
@@ -112,20 +112,18 @@ export class Poop implements ITickable, IRenderable {
     const shadowCenterY = y + 3 + this.size * 0.5;
 
     // Draw shadow as flattened ellipse
-    context.save();
-    context.translate(shadowCenterX, shadowCenterY);
-    context.scale(1, 0.5); // Flatten vertically
+    wrapContext(context, () => {
+      context.translate(shadowCenterX, shadowCenterY);
+      context.scale(1, 0.5); // Flatten vertically
 
-    // Create gradient for shadow (reuse if possible, but createRadialGradient is unavoidable)
-    const gradient = context.createRadialGradient(0, 0, 0, 0, 0, shadowRadius);
-    gradient.addColorStop(0, rgba(Color.BlackRGB, 0.3)); // Darker center
-    gradient.addColorStop(1, rgba(Color.BlackRGB, 0)); // Transparent edge
+      // Create shadow gradient using predefined configuration
+      const gradient = createRadialGradientWithStops(context, 0, 0, 0, 0, 0, shadowRadius, ShadowGradients.poop(0.3));
 
-    context.fillStyle = gradient;
-    context.beginPath();
-    context.arc(0, 0, shadowRadius, 0, 2 * PI);
-    context.fill();
-    context.restore();
+      context.fillStyle = gradient;
+      context.beginPath();
+      context.arc(0, 0, shadowRadius, 0, 2 * PI);
+      context.fill();
+    });
 
     context.strokeStyle = Color.Brown; // Solid brown color
     context.fillStyle = Color.Brown; // Solid brown fill (same as stroke)

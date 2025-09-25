@@ -1,4 +1,4 @@
-import { Color, rgba } from "../registry";
+import { Color, rgba, wrapContext } from "../registry";
 import { min } from "../system";
 import { Button } from "./button";
 import { DisplayObject } from "./display";
@@ -25,24 +25,24 @@ class RoundCloseButton extends DisplayObject {
   }
 
   render(context: CanvasRenderingContext2D): void {
-    context.save();
-    context.beginPath();
-    context.arc(16, 16, 16, 0, 6.28);
-    context.fillStyle = this.hovered ? Color.LightCoral : Color.Tomato;
-    context.fill();
-    context.strokeStyle = Color.White;
-    context.lineWidth = 2;
-    context.stroke();
+    wrapContext(context, () => {
+      context.beginPath();
+      context.arc(16, 16, 16, 0, 6.28);
+      context.fillStyle = this.hovered ? Color.LightCoral : Color.Tomato;
+      context.fill();
+      context.strokeStyle = Color.White;
+      context.lineWidth = 2;
+      context.stroke();
 
-    context.lineWidth = 3;
-    context.lineCap = "round";
-    context.beginPath();
-    context.moveTo(8, 8);
-    context.lineTo(24, 24);
-    context.moveTo(24, 8);
-    context.lineTo(8, 24);
-    context.stroke();
-    context.restore();
+      context.lineWidth = 3;
+      context.lineCap = "round";
+      context.beginPath();
+      context.moveTo(8, 8);
+      context.lineTo(24, 24);
+      context.moveTo(24, 8);
+      context.lineTo(8, 24);
+      context.stroke();
+    });
   }
 
   protected handleEvent(e: Event): void {
@@ -235,42 +235,41 @@ export class Popup extends DisplayObject {
     const centerX = x + w * 0.5;
     const centerY = y + h * 0.5;
 
-    context.save();
-    context.translate(centerX, centerY);
-    context.scale(this.currentScale, this.currentScale);
-    context.globalAlpha = this.currentAlpha;
-    context.translate(-centerX, -centerY);
+    wrapContext(context, () => {
+      context.translate(centerX, centerY);
+      context.scale(this.currentScale, this.currentScale);
+      context.globalAlpha = this.currentAlpha;
+      context.translate(-centerX, -centerY);
 
-    // Body
-    const r = 8;
-    context.fillStyle = Color.White;
-    this.roundRect(context, x, y, w, h, r);
-    context.fill();
+      // Body
+      const r = 8;
+      context.fillStyle = Color.White;
+      this.roundRect(context, x, y, w, h, r);
+      context.fill();
 
-    context.strokeStyle = Color.DarkGray;
-    context.lineWidth = 2;
-    this.roundRect(context, x, y, w, h, r);
-    context.stroke();
+      context.strokeStyle = Color.DarkGray;
+      context.lineWidth = 2;
+      this.roundRect(context, x, y, w, h, r);
+      context.stroke();
 
-    // Elements
-    this.renderTranslated(context, this.title);
-    if (this.bodyText) {
-      this.renderTranslated(context, this.bodyText);
-    }
-    this.renderTranslated(context, this.close);
-    this.buttons.forEach((btn) => this.renderTranslated(context, btn));
-
-    context.restore(); // Restore scale and alpha transforms
+      // Elements
+      this.renderTranslated(context, this.title);
+      if (this.bodyText) {
+        this.renderTranslated(context, this.bodyText);
+      }
+      this.renderTranslated(context, this.close);
+      this.buttons.forEach((btn) => this.renderTranslated(context, btn));
+    });
   }
 
   private renderTranslated(
     context: CanvasRenderingContext2D,
     obj: { pos: { x: number; y: number }; render: (context: CanvasRenderingContext2D) => void },
   ): void {
-    context.save();
-    context.translate(obj.pos.x, obj.pos.y);
-    obj.render(context);
-    context.restore();
+    wrapContext(context, () => {
+      context.translate(obj.pos.x, obj.pos.y);
+      obj.render(context);
+    });
   }
 
   private roundRect(context: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {

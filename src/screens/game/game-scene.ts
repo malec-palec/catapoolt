@@ -4,6 +4,7 @@ import { DisplayObject, IRenderable, ITickable } from "../../core/display";
 import { Event, MouseEvent, MouseEventType } from "../../core/event";
 import { signal } from "../../core/signal";
 import { Vehicle } from "../../core/vehicle";
+import { wrapContext } from "../../registry";
 import { random } from "../../system";
 import { Camera } from "./camera";
 import { Cat } from "./cat";
@@ -41,7 +42,7 @@ export class GameScene extends DisplayObject implements IGameController {
   private isGameOver = false; // TODO: remove if not needed
 
   enemyOptions: VehicleOptions = {
-    enemyCount: 1,
+    enemyCount: 20,
     maxSpeed: 2,
     maxForce: 0.05,
     wanderRadius: 25,
@@ -152,12 +153,12 @@ export class GameScene extends DisplayObject implements IGameController {
   }
 
   render(context: CanvasRenderingContext2D): void {
-    context.save();
-    context.translate(-this.camera.position.x, -this.camera.position.y);
-    for (const renderable of this.allRenderables()) {
-      renderable.render(context);
-    }
-    context.restore();
+    wrapContext(context, () => {
+      context.translate(-this.camera.position.x, -this.camera.position.y);
+      for (const renderable of this.allRenderables()) {
+        renderable.render(context);
+      }
+    });
     this.hud.render(context);
   }
 

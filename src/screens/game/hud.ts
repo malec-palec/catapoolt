@@ -2,7 +2,7 @@ import { IRenderable, ITickable } from "../../core/display";
 import { Point2D } from "../../core/geom";
 import { vecDist } from "../../core/vector2d";
 import { Vehicle } from "../../core/vehicle";
-import { Color, rgba } from "../../registry";
+import { Color, rgba, wrapContext } from "../../registry";
 import { abs, atan2, PI, round, sin, tan } from "../../system";
 import { Cat } from "./cat";
 import { IGameController } from "./game-scene";
@@ -130,18 +130,17 @@ export class HUD implements ITickable, IRenderable {
       const triangleSize = 8;
 
       context.fillStyle = Color.Red;
-      context.save();
-      context.translate(edgePos.x, edgePos.y);
-      context.rotate(angle);
+      wrapContext(context, () => {
+        context.translate(edgePos.x, edgePos.y);
+        context.rotate(angle);
 
-      context.beginPath();
-      context.moveTo(triangleSize, 0);
-      context.lineTo(-triangleSize, -triangleSize);
-      context.lineTo(-triangleSize, triangleSize);
-      context.closePath();
-      context.fill();
-
-      context.restore();
+        context.beginPath();
+        context.moveTo(triangleSize, 0);
+        context.lineTo(-triangleSize, -triangleSize);
+        context.lineTo(-triangleSize, triangleSize);
+        context.closePath();
+        context.fill();
+      });
     });
   }
 

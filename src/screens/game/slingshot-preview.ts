@@ -1,5 +1,5 @@
 import { Point2D } from "../../core/geom";
-import { rgbaValues } from "../../registry";
+import { ColorStop, createLinearGradientWithStops, rgbaValues } from "../../registry";
 import { atan2, cos, hypot, min, PI, sin } from "../../system";
 import { Cat } from "./cat";
 
@@ -40,9 +40,6 @@ export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat
   // Draw cone with gradient
   if (coneLength > 10) {
     // Only draw if drag distance is meaningful
-    // Create gradient from transparent at center to blue at edge (same color as trajectory)
-    const gradient = context.createLinearGradient(centerX, centerY, visualDragX, visualDragY);
-
     // Use same color as predictive trajectory: blue (0, 150, 255)
     const red = 0;
     const green = 150;
@@ -50,9 +47,14 @@ export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat
 
     // Start transparent, end with color based on power
     const alpha = powerRatio * 0.6; // Max alpha of 0.6
-    gradient.addColorStop(0, rgbaValues(red, green, blue, 0)); // Transparent at cat
-    gradient.addColorStop(0.3, rgbaValues(red, green, blue, alpha * 0.3)); // Mid color
-    gradient.addColorStop(1, rgbaValues(red, green, blue, alpha)); // Full color at cursor
+
+    // Create gradient with all color stops in a single operation
+    const colorStops: ColorStop[] = [
+      [0, red, green, blue, 0], // Transparent at cat
+      [0.3, red, green, blue, alpha * 0.3], // Mid color
+      [1, red, green, blue, alpha], // Full color at cursor
+    ];
+    const gradient = createLinearGradientWithStops(context, centerX, centerY, visualDragX, visualDragY, colorStops);
 
     // Calculate cone vertices
     const perpX = cos(coneAngle + PI / 2);

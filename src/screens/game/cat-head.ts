@@ -1,4 +1,4 @@
-import { Color } from "../../registry";
+import { Color, wrapContext } from "../../registry";
 import { cos, isDev, PI, sin, TWO_PI } from "../../system";
 
 export type EarData = {
@@ -74,11 +74,11 @@ export const drawHead = (
   drawOneSide();
 
   // Draw right side by mirroring
-  context.save();
-  context.translate(posX * 2, 0);
-  context.scale(-1, 1);
-  drawOneSide();
-  context.restore();
+  wrapContext(context, () => {
+    context.translate(posX * 2, 0);
+    context.scale(-1, 1);
+    drawOneSide();
+  });
 
   if (isDev && debugDraw) {
     context.strokeStyle = context.fillStyle = Color.Blue;

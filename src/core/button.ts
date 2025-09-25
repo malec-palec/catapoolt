@@ -1,5 +1,5 @@
 import { Event, MouseEvent, MouseEventType } from "../core/event";
-import { Color } from "../registry";
+import { Color, wrapContext } from "../registry";
 import { playSound, Sound } from "./audio/sound";
 import { DisplayObject } from "./display";
 
@@ -80,13 +80,13 @@ export class Button extends DisplayObject {
     context.strokeRect(0, 0, this.width, this.height);
 
     // Draw text centered
-    context.save();
-    context.fillStyle = colors.text;
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.font = `${this.fontSize}px Arial`;
-    context.fillText(this.text, this.width / 2, this.height / 2);
-    context.restore();
+    wrapContext(context, () => {
+      context.fillStyle = colors.text;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.font = `${this.fontSize}px Arial`;
+      context.fillText(this.text, this.width / 2, this.height / 2);
+    });
   }
 
   protected handleEvent(event: Event): void {

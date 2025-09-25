@@ -4,7 +4,7 @@ import { Point2D } from "../../core/geom";
 import { signal } from "../../core/signal";
 import { easeInOut } from "../../core/tween";
 import { vecDist, vecMult, vecSub, Vector2D } from "../../core/vector2d";
-import { Color, rgba } from "../../registry";
+import { Color, rgba, wrapContext } from "../../registry";
 import { abs, cos, max, min, random, sin, TWO_PI } from "../../system";
 import { drawHead, EarData, EyeData } from "./cat-head";
 import { CatShadow } from "./cat-shadow";
@@ -182,13 +182,13 @@ export class Cat implements ITickable, IRenderable {
         for (const point of predictedPoints) {
           if (point.type === "ground") {
             context.fillStyle = rgba(Color.SkyBlue, 0.6);
-            context.save();
-            context.translate(point.x, point.y);
-            context.scale(1, 0.5); // Flatten vertically by 2
-            context.beginPath();
-            context.arc(0, 0, 6, 0, TWO_PI);
-            context.fill();
-            context.restore();
+            wrapContext(context, () => {
+              context.translate(point.x, point.y);
+              context.scale(1, 0.5); // Flatten vertically by 2
+              context.beginPath();
+              context.arc(0, 0, 6, 0, TWO_PI);
+              context.fill();
+            });
             break;
           }
         }

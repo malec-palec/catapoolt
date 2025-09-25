@@ -1,4 +1,4 @@
-import { Color, rgba } from "../registry";
+import { Color, createRadialGradientWithStops, rgba, ShadowGradients, wrapContext } from "../registry";
 import { IGameFieldSizeProvider } from "../screens/game/game-field";
 import { VehicleOptions as VehicleControls } from "../screens/game/game-scene";
 import { abs, atan2, cos, hypot, isDev, random, sin, TWO_PI } from "../system";
@@ -342,28 +342,18 @@ export class Vehicle implements ITickable, IRenderable {
     const shadowRadius = size * 2;
 
     // Draw ellipse (flattened vertically by 2)
-    context.save();
-    context.translate(shadowX, shadowY);
-    context.scale(1, 0.4); // Flatten vertically more than cat shadow
+    wrapContext(context, () => {
+      context.translate(shadowX, shadowY);
+      context.scale(1, 0.4); // Flatten vertically more than cat shadow
 
-    // Create radial gradient
-    const gradient = context.createRadialGradient(
-      0,
-      0,
-      0, // Inner circle (center at origin after transform)
-      0,
-      0,
-      shadowRadius, // Outer circle (edge)
-    );
-    gradient.addColorStop(0, rgba(Color.BlackRGB, 0.15)); // Much lighter center for mice
-    gradient.addColorStop(0.7, rgba(Color.BlackRGB, 0.1)); // Very light transparency
-    gradient.addColorStop(1, rgba(Color.BlackRGB, 0)); // Transparent edge
+      // Create radial gradient using predefined vehicle shadow configuration
+      const gradient = createRadialGradientWithStops(context, 0, 0, 0, 0, 0, shadowRadius, ShadowGradients.vehicle());
 
-    context.fillStyle = gradient;
-    context.beginPath();
-    context.arc(0, 0, shadowRadius, 0, TWO_PI);
-    context.fill();
-    context.restore();
+      context.fillStyle = gradient;
+      context.beginPath();
+      context.arc(0, 0, shadowRadius, 0, TWO_PI);
+      context.fill();
+    });
 
     const isMovingLeft = velocity.x < 0;
 
@@ -372,69 +362,68 @@ export class Vehicle implements ITickable, IRenderable {
     context.strokeStyle = strokeColor;
     context.lineWidth = strokeWidth;
 
-    context.save();
-    context.translate(position.x, position.y);
+    wrapContext(context, () => {
+      context.translate(position.x, position.y);
 
-    // Triangle dimensions
-    const baseWidth = size * 4;
-    const height = size * 1.5;
-    const roundedCornerRadius = size;
+      // Triangle dimensions
+      const baseWidth = size * 4;
+      const height = size * 1.5;
+      const roundedCornerRadius = size;
 
-    // Calculate triangle points
-    const leftBase = -baseWidth / 2;
-    const rightBase = baseWidth / 2;
-    const topPoint = baseWidth * 0.15 * (isMovingLeft ? 1 : -1); // Slightly right of center (15% to the right)
-    const baseY = height / 2;
-    const topY = -height / 2;
+      // Calculate triangle points
+      const leftBase = -baseWidth / 2;
+      const rightBase = baseWidth / 2;
+      const topPoint = baseWidth * 0.15 * (isMovingLeft ? 1 : -1); // Slightly right of center (15% to the right)
+      const baseY = height / 2;
+      const topY = -height / 2;
 
-    context.beginPath();
+      context.beginPath();
 
-    // Start from left base corner
-    context.moveTo(leftBase, baseY);
+      // Start from left base corner
+      context.moveTo(leftBase, baseY);
 
-    // Draw horizontal base line to right
-    context.lineTo(rightBase, baseY);
+      // Draw horizontal base line to right
+      context.lineTo(rightBase, baseY);
 
-    // Draw line from right base to top point, but stop before the rounded corner
-    const rightToTopDx = topPoint - rightBase;
-    const rightToTopDy = topY - baseY;
-    const rightToTopLength = hypot(rightToTopDx, rightToTopDy);
-    const rightToTopUnitX = rightToTopDx / rightToTopLength;
-    const rightToTopUnitY = rightToTopDy / rightToTopLength;
+      // Draw line from right base to top point, but stop before the rounded corner
+      const rightToTopDx = topPoint - rightBase;
+      const rightToTopDy = topY - baseY;
+      const rightToTopLength = hypot(rightToTopDx, rightToTopDy);
+      const rightToTopUnitX = rightToTopDx / rightToTopLength;
+      const rightToTopUnitY = rightToTopDy / rightToTopLength;
 
-    // Stop at rounded corner distance from top point
-    const rightCornerStartX = topPoint - rightToTopUnitX * roundedCornerRadius;
-    const rightCornerStartY = topY - rightToTopUnitY * roundedCornerRadius;
+      // Stop at rounded corner distance from top point
+      const rightCornerStartX = topPoint - rightToTopUnitX * roundedCornerRadius;
+      const rightCornerStartY = topY - rightToTopUnitY * roundedCornerRadius;
 
-    context.lineTo(rightCornerStartX, rightCornerStartY);
+      context.lineTo(rightCornerStartX, rightCornerStartY);
 
-    // Draw rounded corner at top point
-    const leftToTopDx = topPoint - leftBase;
-    const leftToTopDy = topY - baseY;
-    const leftToTopLength = hypot(leftToTopDx, leftToTopDy);
-    const leftToTopUnitX = leftToTopDx / leftToTopLength;
-    const leftToTopUnitY = leftToTopDy / leftToTopLength;
+      // Draw rounded corner at top point
+      const leftToTopDx = topPoint - leftBase;
+      const leftToTopDy = topY - baseY;
+      const leftToTopLength = hypot(leftToTopDx, leftToTopDy);
+      const leftToTopUnitX = leftToTopDx / leftToTopLength;
+      const leftToTopUnitY = leftToTopDy / leftToTopLength;
 
-    const leftCornerStartX = topPoint - leftToTopUnitX * roundedCornerRadius;
-    const leftCornerStartY = topY - leftToTopUnitY * roundedCornerRadius;
+      const leftCornerStartX = topPoint - leftToTopUnitX * roundedCornerRadius;
+      const leftCornerStartY = topY - leftToTopUnitY * roundedCornerRadius;
 
-    // Calculate control points for quadratic curve
-    context.quadraticCurveTo(topPoint, topY, leftCornerStartX, leftCornerStartY);
+      // Calculate control points for quadratic curve
+      context.quadraticCurveTo(topPoint, topY, leftCornerStartX, leftCornerStartY);
 
-    // Draw line from rounded corner back to left base
-    context.lineTo(leftBase, baseY);
+      // Draw line from rounded corner back to left base
+      context.lineTo(leftBase, baseY);
 
-    context.closePath();
-    context.fill();
-    // context.stroke();
+      context.closePath();
+      context.fill();
+      // context.stroke();
 
-    // Draw nose (gray dot at the top point)
-    context.fillStyle = Color.MediumGray;
-    context.beginPath();
-    context.arc(isMovingLeft ? leftBase + 2 : rightBase - 2, baseY - 2, this.size * 0.2, 0, TWO_PI);
-    context.fill();
-
-    context.restore();
+      // Draw nose (gray dot at the top point)
+      context.fillStyle = Color.MediumGray;
+      context.beginPath();
+      context.arc(isMovingLeft ? leftBase + 2 : rightBase - 2, baseY - 2, this.size * 0.2, 0, TWO_PI);
+      context.fill();
+    });
 
     // draw tail
     if (tailHistory.length < 2) return;

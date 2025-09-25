@@ -64,3 +64,86 @@ export const rgba = (color: string, alpha: number): string => `rgba(${color}, ${
  */
 export const rgbaValues = (red: number, green: number, blue: number, alpha: number): string =>
   `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+
+/**
+ * Color stop configuration for gradients as array: [offset, red, green, blue, alpha?]
+ * - offset: number (0-1)
+ * - red: number (0-255)
+ * - green: number (0-255)
+ * - blue: number (0-255)
+ * - alpha: number (0-1, optional, defaults to 1)
+ */
+export type ColorStop = [number, number, number, number, number?];
+
+/**
+ * Helper function to create and configure gradients with multiple color stops
+ * Reduces the number of addColorStop calls by batching them in a single loop
+ */
+export const createGradientWithStops = (gradient: CanvasGradient, colorStops: ColorStop[]): CanvasGradient => {
+  // Single loop to add all color stops, reducing redundant function calls
+  for (const [offset, r, g, b, a = 1] of colorStops) {
+    gradient.addColorStop(offset, `rgba(${r}, ${g}, ${b}, ${a})`);
+  }
+  return gradient;
+};
+
+/**
+ * Create a linear gradient with color stops
+ */
+export const createLinearGradientWithStops = (
+  context: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  colorStops: ColorStop[],
+): CanvasGradient => createGradientWithStops(context.createLinearGradient(x1, y1, x2, y2), colorStops);
+
+/**
+ * Create a radial gradient with color stops
+ */
+export const createRadialGradientWithStops = (
+  context: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  r1: number,
+  x2: number,
+  y2: number,
+  r2: number,
+  colorStops: ColorStop[],
+): CanvasGradient => createGradientWithStops(context.createRadialGradient(x1, y1, r1, x2, y2, r2), colorStops);
+
+/**
+ * Wrapper function for canvas save/restore operations
+ * Automatically calls save() before callback and restore() after
+ */
+export const wrapContext = (context: CanvasRenderingContext2D, callback: () => void): void => {
+  context.save();
+  callback();
+  context.restore();
+};
+
+/**
+ * Predefined shadow gradient configurations for reuse
+ */
+export const ShadowGradients = {
+  // Standard shadow for poop - 2 stops
+  poop: (alpha: number): ColorStop[] => [
+    [0, 0, 0, 0, alpha], // Black with custom alpha at center
+    [1, 0, 0, 0, 0], // Transparent black at edge
+  ],
+
+  // Cat shadow - 3 stops with solid center
+  cat: (): ColorStop[] => [
+    [0, 0, 0, 0, 1], // Solid black center
+    [0.6, 0, 0, 0, 0.9], // Almost solid black
+    [1, 0, 0, 0, 0], // Transparent edge
+  ],
+
+  // Vehicle/mouse shadow - 3 stops with lighter center
+  vehicle: (): ColorStop[] => [
+    [0, 0, 0, 0, 0.15], // Much lighter center for mice
+    [0.7, 0, 0, 0, 0.1], // Very light transparency
+    [1, 0, 0, 0, 0], // Transparent edge
+  ],
+};
