@@ -6,7 +6,7 @@ import { easeInOut } from "../../core/tween";
 import { vecDist, vecMult, vecSub, Vector2D } from "../../core/vector2d";
 import { Color, rgba, wrapContext } from "../../registry";
 import { abs, cos, max, min, random, sin, TWO_PI } from "../../system";
-import { drawHead, EarData, EyeData } from "./cat-head";
+import { drawHead } from "./cat-head";
 import { CatShadow } from "./cat-shadow";
 import { SoftBlob } from "./soft-blob";
 import { Tail } from "./tail";
@@ -30,21 +30,6 @@ export class Cat implements ITickable, IRenderable {
   position: Vector2D;
   speed: number = 3;
   debugDraw: boolean = false;
-
-  earData: EarData = {
-    angle: 60, // Angle between ears in degrees
-    width: 20, // Width of ear foundation
-    height: 30, // Height of ears
-    offsetY: 0, // Additional Y offset for ears relative to head
-  };
-
-  eyeData: EyeData = {
-    radius: 0.18, // Eye size relative to body radius
-    offsetX: 0.35, // Horizontal eye distance from center (relative to radius)
-    offsetY: 0.2, // Vertical eye offset (relative to radius)
-    pupilWidth: 0.3, // Pupil width relative to eye radius
-    pupilHeight: 1.2, // Pupil height relative to eye radius
-  };
 
   // Shadow properties
   public catHeight = 50; // Height of cat above ground for shadow calculation
@@ -135,8 +120,6 @@ export class Cat implements ITickable, IRenderable {
       this.position.x + this.headOscillationX,
       this.position.y - this.z + this.headOffsetY,
       this.radius,
-      this.earData,
-      this.eyeData,
       this.debugDraw,
     );
 

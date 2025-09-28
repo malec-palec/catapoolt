@@ -16,13 +16,26 @@ export type EyeData = {
   pupilHeight: number;
 };
 
+export const earData: EarData = {
+  angle: 60, // Angle between ears in degrees
+  width: 20, // Width of ear foundation
+  height: 30, // Height of ears
+  offsetY: 0, // Additional Y offset for ears relative to head
+};
+
+export const eyeData: EyeData = {
+  radius: 0.18, // Eye size relative to body radius
+  offsetX: 0.35, // Horizontal eye distance from center (relative to radius)
+  offsetY: 0.2, // Vertical eye offset (relative to radius)
+  pupilWidth: 0.3, // Pupil width relative to eye radius
+  pupilHeight: 1.2, // Pupil height relative to eye radius
+};
+
 export const drawHead = (
   context: CanvasRenderingContext2D,
   posX: number,
   posY: number,
   radius: number,
-  earData: EarData,
-  eyeData: EyeData,
   debugDraw = false,
 ): void => {
   context.fillStyle = context.strokeStyle = Color.Black;
