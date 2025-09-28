@@ -18,7 +18,6 @@ export type EyeData = {
 
 export const drawHead = (
   context: CanvasRenderingContext2D,
-  strokeWidth: number,
   posX: number,
   posY: number,
   radius: number,
@@ -27,7 +26,7 @@ export const drawHead = (
   debugDraw = false,
 ): void => {
   context.fillStyle = context.strokeStyle = Color.Black;
-  context.lineWidth = strokeWidth;
+  context.lineWidth = 3;
 
   context.beginPath();
   context.arc(posX, posY, radius, 0, TWO_PI);

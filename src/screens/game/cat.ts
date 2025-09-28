@@ -10,11 +10,23 @@ import { drawHead, EarData, EyeData } from "./cat-head";
 import { CatShadow } from "./cat-shadow";
 import { SoftBlob } from "./soft-blob";
 import { Tail } from "./tail";
+
+const MASS = 1; // Mass affects trajectory
+const GRAVITY = 0.5; // Gravity strength
+const BOUNCE_DAMPING = 0.7; // Energy loss on bounce (0-1)
+const MAX_BOUNCES = 3; // Maximum number of bounces
+const PREDICTIVE_STEPS = 150; // Number of simulation steps
+const PREDICTIVE_STEP_SIZE = 0.5; // Time step for simulation
+const LAUNCH_POWER = 0.05; // Launch power multiplier (reduced from 0.1)
+const MAX_LAUNCH_POWER = 0.15; // Maximum allowed launch power
+const JUMP_HEIGHT_MULT = 1.2; // Multiplier for vertical velocity (higher = higher jumps)
+export const MAX_STAMINA = 100;
+export const MAX_INFRACTION_LEVEL = 10; // Maximum inflation level
+
 export class Cat implements ITickable, IRenderable {
   readonly staminaEmptySignal = signal<boolean>(false);
 
   position: Vector2D;
-  strokeWidth: number = 3;
   speed: number = 3;
   debugDraw: boolean = false;
 
@@ -40,69 +52,49 @@ export class Cat implements ITickable, IRenderable {
   // Physics properties
   public velocity: Vector2D;
   public velocityZ = 0; // Vertical velocity
-  public mass = 1.0; // Mass affects trajectory
-  public gravity = 0.5; // Gravity strength
-  public bounceDamping = 0.7; // Energy loss on bounce (0-1)
-  public maxBounces = 3; // Maximum number of bounces
   public bounceCount = 0; // Current bounce count
   public isFlying = false; // Whether cat is in flight
   public groundLevel = 0; // Ground level for physics
 
-  // Predictive trajectory
-  public predictiveSteps = 150; // Number of simulation steps
-  public predictiveStepSize = 0.5; // Time step for simulation
-
   // Slingshot properties
   public isDragging = false;
   public dragStartPos: Vector2D;
-  public launchPower = 0.05; // Launch power multiplier (reduced from 0.1)
-  public maxLaunchPower = 0.15; // Maximum allowed launch power
+
   public maxDragDistance = 200; // Maximum drag distance in pixels
-  public jumpHeightMultiplier = 1.2; // Multiplier for vertical velocity (higher = higher jumps)
 
   // Double tap for purge
   private lastClickTime = 0;
-  private doubleTapDelay = 300; // ms
 
   // Inflation deflation animation
   private _isDeflating = false;
   private deflationStartTime = 0;
-  private deflationDuration = 800; // ms
   private deflationStartValue = 0;
   private deflationTargetValue = 0;
 
   // Vulnerability window after purge
   private purgeProtectionTime = 0;
-  private purgeProtectionDuration = 500; // 0.5 seconds in milliseconds
 
   // Head lowering during drag
   public headOffsetY = 0; // Current head vertical offset during drag
   public maxHeadOffset = 0; // Maximum head offset (calculated based on shadow position)
   public headOscillationX = 0; // Horizontal oscillation offset when head is lowered
   private oscillationTime = 0; // Time counter for oscillation
-  public oscillationFrequency = 3; // Oscillation frequency (cycles per second)
-  public oscillationAmplitude = 2; // Maximum horizontal oscillation distance
 
   // Stamina system
-  public maxStamina = 100;
   public currentStamina = 100;
   public displayStamina = 100; // Visual stamina for smooth animation
-  public staminaCostMultiplier = 0.025; // How much stamina is consumed per jump distance (max jump ~5%)
-  public staminaRestoreAmount = 10; // How much stamina is restored when eating a mouse
+
   private shouldTriggerGameOverAfterLanding = false;
 
   // Inflation system
   public inflationLevel = 0; // Current inflation level (0 = normal size)
-  public maxInflationLevel = 10; // Maximum inflation level
+
   public inflationPerMouse = 2; // How much inflation per mouse eaten
   public baseBodyArea: number = 0; // Original body area for reference
-  public inflationMultiplier = 1.5; // How much the body area increases per inflation level
-  public inflationStaminaPenalty = 0.1; // Additional stamina cost per inflation level (10% per level)
-  public inflationJumpPenalty = 0.05; // Jump distance reduction per inflation level (5% per level)
 
   // Stamina animation
   private staminaAnimationTime = 0;
-  private staminaAnimationDuration = 800; // ms
+
   private staminaStartValue = 100;
   private staminaTargetValue = 100;
   private isAnimatingStamina = false;
@@ -148,7 +140,6 @@ export class Cat implements ITickable, IRenderable {
 
     drawHead(
       context,
-      this.strokeWidth,
       this.position.x + this.headOscillationX,
       this.position.y - this.z + this.headOffsetY,
       this.radius,
@@ -236,7 +227,7 @@ export class Cat implements ITickable, IRenderable {
       const dragMagnitude = rawDragVector.mag();
 
       // Calculate stamina cost based on jump distance and inflation penalty
-      const baseStaminaCost = dragMagnitude * this.staminaCostMultiplier;
+      const baseStaminaCost = dragMagnitude * 0.025; // How much stamina is consumed per jump distance (max jump ~5%)
       const inflationStaminaMultiplier = this.getInflationStaminaMultiplier();
       const staminaCost = min(baseStaminaCost * inflationStaminaMultiplier, this.currentStamina);
       const newStamina = max(0, this.currentStamina - staminaCost);
@@ -252,15 +243,15 @@ export class Cat implements ITickable, IRenderable {
 
       // Apply magnitude limit and power constraints in one step
       const effectiveMagnitude = min(dragMagnitude, this.maxDragDistance);
-      const effectivePower = min(this.launchPower, this.maxLaunchPower);
-      const powerScale = (effectivePower / this.mass) * (effectiveMagnitude / max(dragMagnitude, 1));
+      const effectivePower = min(LAUNCH_POWER, MAX_LAUNCH_POWER);
+      const powerScale = (effectivePower / MASS) * (effectiveMagnitude / max(dragMagnitude, 1));
 
       // Apply inflation penalty to jump distance
       const inflationJumpMultiplier = this.getInflationJumpMultiplier();
 
       // Set velocity directly without creating intermediate vectors
       this.velocity = vecMult(rawDragVector, powerScale * inflationJumpMultiplier);
-      this.velocityZ = effectiveMagnitude * effectivePower * this.jumpHeightMultiplier * inflationJumpMultiplier;
+      this.velocityZ = effectiveMagnitude * effectivePower * JUMP_HEIGHT_MULT * inflationJumpMultiplier;
 
       this.isFlying = true;
       this.bounceCount = 0;
@@ -271,7 +262,7 @@ export class Cat implements ITickable, IRenderable {
     // Update stamina animation
     if (this.isAnimatingStamina) {
       this.staminaAnimationTime += dt;
-      const progress = min(this.staminaAnimationTime / this.staminaAnimationDuration, 1);
+      const progress = min(this.staminaAnimationTime / 800, 1); // Stamina animation duration in ms
       const easedProgress = easeInOut(progress);
 
       this.displayStamina = this.staminaStartValue + (this.staminaTargetValue - this.staminaStartValue) * easedProgress;
@@ -285,7 +276,7 @@ export class Cat implements ITickable, IRenderable {
     // Update deflation animation
     if (this._isDeflating) {
       this.deflationStartTime += dt;
-      const progress = min(this.deflationStartTime / this.deflationDuration, 1);
+      const progress = min(this.deflationStartTime / 800, 1); // Deflation animation duration in ms
       const easedProgress = easeInOut(progress);
 
       this.inflationLevel =
@@ -315,8 +306,8 @@ export class Cat implements ITickable, IRenderable {
 
       // Calculate horizontal oscillation using sine wave
       this.headOscillationX =
-        sin(this.oscillationTime * this.oscillationFrequency * 0.001 * TWO_PI) *
-        this.oscillationAmplitude *
+        sin(this.oscillationTime * 3 * 0.001 * TWO_PI) * // Oscillation frequency (cycles per second)
+        2 * // Maximum horizontal oscillation distance
         oscillationIntensity;
     }
 
@@ -326,7 +317,7 @@ export class Cat implements ITickable, IRenderable {
       this.z += this.velocityZ;
 
       // Apply gravity to Z velocity
-      this.velocityZ -= this.gravity;
+      this.velocityZ -= GRAVITY;
 
       // Apply smooth boundary damping instead of hard bounces
       this.applySmoothBoundaryDamping();
@@ -335,11 +326,11 @@ export class Cat implements ITickable, IRenderable {
       if (this.z <= 0) {
         this.z = 0;
 
-        if (this.bounceCount < this.maxBounces && abs(this.velocityZ) > 0.5) {
+        if (this.bounceCount < MAX_BOUNCES && abs(this.velocityZ) > 0.5) {
           playSound(Sound.Landing);
           // Bounce
-          this.velocityZ = -this.velocityZ * this.bounceDamping;
-          this.velocity.mult(this.bounceDamping); // Reduce horizontal velocity on bounce
+          this.velocityZ = -this.velocityZ * BOUNCE_DAMPING;
+          this.velocity.mult(BOUNCE_DAMPING); // Reduce horizontal velocity on bounce
           this.bounceCount++;
         } else {
           // Stop flying
@@ -459,8 +450,8 @@ export class Cat implements ITickable, IRenderable {
     const rawDragVector = vecSub(this.dragStartPos, new Vector2D(launchPos.x, launchPos.y));
     const dragMagnitude = rawDragVector.mag();
     const effectiveMagnitude = min(dragMagnitude, this.maxDragDistance);
-    const effectivePower = min(this.launchPower, this.maxLaunchPower);
-    const powerScale = (effectivePower / this.mass) * (effectiveMagnitude / max(dragMagnitude, 1));
+    const effectivePower = min(LAUNCH_POWER, MAX_LAUNCH_POWER);
+    const powerScale = (effectivePower / MASS) * (effectiveMagnitude / max(dragMagnitude, 1));
 
     // Apply inflation penalty to predicted trajectory
     const inflationJumpMultiplier = this.getInflationJumpMultiplier();
@@ -471,19 +462,19 @@ export class Cat implements ITickable, IRenderable {
     let simZ = this.z;
     let simVelX = rawDragVector.x * powerScale * inflationJumpMultiplier;
     let simVelY = rawDragVector.y * powerScale * inflationJumpMultiplier;
-    let simVelZ = effectiveMagnitude * effectivePower * this.jumpHeightMultiplier * inflationJumpMultiplier;
+    let simVelZ = effectiveMagnitude * effectivePower * JUMP_HEIGHT_MULT * inflationJumpMultiplier;
 
     const points: Array<{ x: number; y: number; z: number; type: "normal" | "bounce" | "ground" }> = [];
     const dampingZone = 100;
     const dampingStrength = 0.95;
     const dampingRange = 0.05; // 1 - dampingStrength
 
-    for (let step = 0; step < this.predictiveSteps; step++) {
+    for (let step = 0; step < PREDICTIVE_STEPS; step++) {
       // Apply physics simulation
-      simX += simVelX * this.predictiveStepSize;
-      simY += simVelY * this.predictiveStepSize;
-      simZ += simVelZ * this.predictiveStepSize;
-      simVelZ -= this.gravity * this.predictiveStepSize;
+      simX += simVelX * PREDICTIVE_STEP_SIZE;
+      simY += simVelY * PREDICTIVE_STEP_SIZE;
+      simZ += simVelZ * PREDICTIVE_STEP_SIZE;
+      simVelZ -= GRAVITY * PREDICTIVE_STEP_SIZE;
 
       // Simulate boundary damping using existing method
       [simX, simVelX] = this.applyEdgeDamping(
@@ -519,18 +510,18 @@ export class Cat implements ITickable, IRenderable {
   }
 
   restoreStaminaAndInflateFromEatingMouse(): void {
-    const newStamina = min(this.maxStamina, this.currentStamina + this.staminaRestoreAmount);
+    const newStamina = min(MAX_STAMINA, this.currentStamina + 10); // How much stamina is restored when eating a mouse
     this.animateStaminaTo(newStamina);
     this.currentStamina = newStamina;
 
-    if (this.inflationLevel < this.maxInflationLevel) {
-      this.inflationLevel = min(this.maxInflationLevel, this.inflationLevel + this.inflationPerMouse);
+    if (this.inflationLevel < MAX_INFRACTION_LEVEL) {
+      this.inflationLevel = min(MAX_INFRACTION_LEVEL, this.inflationLevel + this.inflationPerMouse);
     }
   }
 
   restoreFullStamina(): void {
-    this.currentStamina = this.maxStamina;
-    this.animateStaminaTo(this.maxStamina);
+    this.currentStamina = MAX_STAMINA;
+    this.animateStaminaTo(MAX_STAMINA);
   }
 
   private animateStaminaTo(targetValue: number): void {
@@ -541,13 +532,14 @@ export class Cat implements ITickable, IRenderable {
   }
 
   setInflationLevel(level: number): void {
-    this.inflationLevel = max(0, min(this.maxInflationLevel, level));
+    this.inflationLevel = max(0, min(MAX_INFRACTION_LEVEL, level));
   }
 
   captureDoubleClick(): boolean {
     const currentTime = Date.now();
     const timeSinceLastClick = currentTime - this.lastClickTime;
-    if (timeSinceLastClick < this.doubleTapDelay) {
+    if (timeSinceLastClick < 300) {
+      // Double tap delay in milliseconds
       return true;
     }
     this.lastClickTime = currentTime;
@@ -555,7 +547,7 @@ export class Cat implements ITickable, IRenderable {
   }
 
   get isFullyInflated(): boolean {
-    return this.inflationLevel >= this.maxInflationLevel && !this._isDeflating;
+    return this.inflationLevel >= MAX_INFRACTION_LEVEL && !this._isDeflating;
   }
 
   startDeflation(): void {
@@ -565,7 +557,7 @@ export class Cat implements ITickable, IRenderable {
     this.deflationTargetValue = 0;
 
     // Activate purge protection window
-    this.purgeProtectionTime = this.purgeProtectionDuration;
+    this.purgeProtectionTime = 500; // 0.5 seconds in milliseconds
 
     // Launch cat in random direction with minimal force (purge effect)
     // Generate random direction
@@ -576,7 +568,7 @@ export class Cat implements ITickable, IRenderable {
     // Set velocity without stamina cost
     this.velocity.x = cos(randomAngle) * purgeForce * purgeDistance;
     this.velocity.y = sin(randomAngle) * purgeForce * purgeDistance;
-    this.velocityZ = purgeDistance * purgeForce * this.jumpHeightMultiplier * 0.5; // Lower jump
+    this.velocityZ = purgeDistance * purgeForce * JUMP_HEIGHT_MULT * 0.5; // Lower jump
 
     this.isFlying = true;
     this.bounceCount = 0;
@@ -584,7 +576,7 @@ export class Cat implements ITickable, IRenderable {
 
   getCurrentInflationMultiplier(): number {
     // Calculate current inflation multiplier based on inflation level
-    return 1 + (this.inflationLevel / this.maxInflationLevel) * (this.inflationMultiplier - 1);
+    return 1 + (this.inflationLevel / MAX_INFRACTION_LEVEL) * (1.5 - 1); // How much the body area increases per inflation level
   }
 
   get isDeflating(): boolean {
@@ -624,12 +616,12 @@ export class Cat implements ITickable, IRenderable {
 
   getInflationStaminaMultiplier(): number {
     // Calculate stamina cost multiplier based on inflation (1.0 = normal, higher = more expensive)
-    return 1 + this.inflationLevel * this.inflationStaminaPenalty;
+    return 1 + this.inflationLevel * 0.1; // Additional stamina cost per inflation level (10% per level)
   }
 
   getInflationJumpMultiplier(): number {
     // Calculate jump distance multiplier based on inflation (1.0 = normal, lower = shorter jumps)
-    return max(0.2, 1 - this.inflationLevel * this.inflationJumpPenalty);
+    return max(0.2, 1 - this.inflationLevel * 0.05); // Jump distance reduction per inflation level (5% per level)
   }
 
   getTargetBodyArea(): number {

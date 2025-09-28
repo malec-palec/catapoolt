@@ -7,7 +7,7 @@ import { Vehicle } from "../../core/vehicle";
 import { wrapContext } from "../../registry";
 import { random } from "../../system";
 import { Camera } from "./camera";
-import { Cat } from "./cat";
+import { Cat, MAX_INFRACTION_LEVEL } from "./cat";
 import { Clover } from "./clover";
 import { GameField } from "./game-field";
 import { HUD } from "./hud";
@@ -291,29 +291,29 @@ export function setupGUI(folder: dat.GUI, scene: GameScene): void {
   catFolder.add(scene.cat, "catHeight", 10, 200, 1);
   catFolder.add(scene.cat, "debugDraw");
 
-  const physicsFolder = catFolder.addFolder("Physics");
-  physicsFolder.add(scene.cat, "mass", 0.1, 5.0, 0.1);
-  physicsFolder.add(scene.cat, "gravity", 0.1, 2.0, 0.1);
-  physicsFolder.add(scene.cat, "launchPower", 0.01, 0.2, 0.005);
-  physicsFolder.add(scene.cat, "maxLaunchPower", 0.05, 0.5, 0.005);
-  physicsFolder.add(scene.cat, "maxDragDistance", 50, 400, 10);
-  physicsFolder.add(scene.cat, "jumpHeightMultiplier", 0.1, 3.0, 0.1).name("Jump Height");
-  physicsFolder.add(scene.cat, "bounceDamping", 0.1, 1.0, 0.1);
-  physicsFolder.add(scene.cat, "maxBounces", 0, 10, 1);
+  // const physicsFolder = catFolder.addFolder("Physics");
+  // physicsFolder.add(scene.cat, "mass", 0.1, 5.0, 0.1);
+  // physicsFolder.add(scene.cat, "gravity", 0.1, 2.0, 0.1);
+  // physicsFolder.add(scene.cat, "launchPower", 0.01, 0.2, 0.005);
+  // physicsFolder.add(scene.cat, "maxLaunchPower", 0.05, 0.5, 0.005);
+  // physicsFolder.add(scene.cat, "maxDragDistance", 50, 400, 10);
+  // physicsFolder.add(scene.cat, "jumpHeightMultiplier", 0.1, 3.0, 0.1).name("Jump Height");
+  // physicsFolder.add(scene.cat, "bounceDamping", 0.1, 1.0, 0.1);
+  // physicsFolder.add(scene.cat, "maxBounces", 0, 10, 1);
 
   const staminaFolder = catFolder.addFolder("Stamina");
-  staminaFolder.add(scene.cat, "maxStamina", 50, 200, 10);
+  // staminaFolder.add(scene.cat, "maxStamina", 50, 200, 10);
   staminaFolder.add(scene.cat, "currentStamina", 0, 200, 1);
-  staminaFolder.add(scene.cat, "staminaCostMultiplier", 0.1, 1.0, 0.05).name("Cost Multiplier");
-  staminaFolder.add(scene.cat, "staminaRestoreAmount", 5, 50, 5).name("Restore Amount");
+  // staminaFolder.add(scene.cat, "staminaCostMultiplier", 0.1, 1.0, 0.05).name("Cost Multiplier");
+  // staminaFolder.add(scene.cat, "staminaRestoreAmount", 5, 50, 5).name("Restore Amount");
 
   const inflationFolder = catFolder.addFolder("Inflation");
   inflationFolder.add(scene.cat, "inflationLevel", 0, 20, 0.1).name("Inflation Level").listen();
-  inflationFolder.add(scene.cat, "maxInflationLevel", 5, 20, 1).name("Max Inflation");
+  // inflationFolder.add(scene.cat, "maxInflationLevel", 5, 20, 1).name("Max Inflation");
   inflationFolder.add(scene.cat, "inflationPerMouse", 0.5, 3, 0.1).name("Inflation Per Mouse");
-  inflationFolder.add(scene.cat, "inflationMultiplier", 1.1, 3.0, 0.1).name("Size Multiplier");
-  inflationFolder.add(scene.cat, "inflationStaminaPenalty", 0.0, 0.5, 0.01).name("Stamina Penalty");
-  inflationFolder.add(scene.cat, "inflationJumpPenalty", 0.0, 0.2, 0.01).name("Jump Penalty");
+  // inflationFolder.add(scene.cat, "inflationMultiplier", 1.1, 3.0, 0.1).name("Size Multiplier");
+  // inflationFolder.add(scene.cat, "inflationStaminaPenalty", 0.0, 0.5, 0.01).name("Stamina Penalty");
+  // inflationFolder.add(scene.cat, "inflationJumpPenalty", 0.0, 0.2, 0.01).name("Jump Penalty");
 
   // Test buttons for inflation
   const inflationTestControls = {
@@ -321,7 +321,7 @@ export function setupGUI(folder: dat.GUI, scene: GameScene): void {
       scene.cat.setInflationLevel(0);
     },
     maxInflation: () => {
-      scene.cat.setInflationLevel(scene.cat.maxInflationLevel);
+      scene.cat.setInflationLevel(MAX_INFRACTION_LEVEL);
     },
   };
   inflationFolder.add(inflationTestControls, "resetInflation").name("🔄 Reset Inflation");

@@ -4,7 +4,7 @@ import { vecDist } from "../../core/vector2d";
 import { Vehicle } from "../../core/vehicle";
 import { Color, rgba, wrapContext } from "../../registry";
 import { abs, atan2, PI, round, sin, tan } from "../../system";
-import { Cat } from "./cat";
+import { Cat, MAX_INFRACTION_LEVEL, MAX_STAMINA } from "./cat";
 import { IGameController } from "./game-scene";
 
 export class HUD implements ITickable, IRenderable {
@@ -32,7 +32,7 @@ export class HUD implements ITickable, IRenderable {
     context.fillText(waveText, c.width / 2 + 80, 35);
 
     // Draw blinking warning message if cat is at max inflation
-    if (this.cat.inflationLevel >= this.cat.maxInflationLevel) {
+    if (this.cat.inflationLevel >= MAX_INFRACTION_LEVEL) {
       // Calculate blinking opacity (blink every 600ms)
       const blinkCycle = sin(this.blinkTime * 0.005 * PI); // 5 cycles per second
       const opacity = (blinkCycle + 1) / 2; // Convert from [-1,1] to [0,1]
@@ -51,7 +51,7 @@ export class HUD implements ITickable, IRenderable {
     const barY = c.height - barHeight - 20; // 20px from bottom
 
     // Calculate stamina percentage using display stamina for smooth animation
-    const staminaPercentage = this.cat.displayStamina / this.cat.maxStamina;
+    const staminaPercentage = this.cat.displayStamina / MAX_STAMINA;
 
     // Draw background (empty bar)
     context.fillStyle = Color.DarkGray;
