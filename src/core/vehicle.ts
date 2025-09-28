@@ -102,24 +102,132 @@ export class Vehicle implements ITickable, IRenderable {
 
   tick(dt: number): void {
     // Apply wandering behavior
-    this.wander();
+    // Randomly change wander angle
+    this.wanderTheta += (random() - 0.5) * 2 * this.wanderChange;
+
+    // Calculate the center of the wander circle
+    const circlePos = this.velocity.copy();
+    circlePos.normalize();
+    circlePos.mult(this.wanderDistance);
+    circlePos.add(this.position);
+
+    // Calculate the heading of velocity
+    const h = this.velocity.heading();
+
+    // Calculate the offset on the wander circle
+    const circleOffset = new Vector2D(
+      this.wanderRadius * cos(this.wanderTheta + h),
+      this.wanderRadius * sin(this.wanderTheta + h),
+    );
+
+    // Calculate target point
+    const target = vecAdd(circlePos, circleOffset);
+
+    // Seek target (inline seek behavior)
+    // A vector pointing from the location to the target
+    const desired = vecSub(target, this.position);
+
+    // Scale to maximum speed
+    desired.setMag(this.maxSpeed);
+
+    // Steering = Desired minus velocity
+    const steer = vecSub(desired, this.velocity);
+    steer.limit(this.maxForce); // Limit to maximum steering force
+
+    this.applyForce(steer);
 
     // Apply separation behavior
-    const separationForce = this.separate(this.vehicles);
-    this.applyForce(separationForce);
+    const separationSteer = new Vector2D(0, 0);
+    let separationCount = 0;
+
+    // For every vehicle in the system, check if it's too close
+    for (const other of this.vehicles) {
+      const distance = vecDist(this.position, other.position);
+
+      // If the distance is greater than 0 and less than separation radius (0 when you are yourself)
+      if (distance > 0 && distance < this.separationRadius) {
+        // Calculate vector pointing away from neighbor
+        const diff = vecSub(this.position, other.position);
+        diff.normalize();
+        diff.div(distance); // Weight by distance (closer = stronger repulsion)
+        separationSteer.add(diff);
+        separationCount++; // Keep track of how many
+      }
+    }
+
+    // Average -- divide by how many
+    if (separationCount > 0) {
+      separationSteer.div(separationCount);
+
+      // Implement Reynolds: Steering = Desired - Velocity
+      separationSteer.normalize();
+      separationSteer.mult(this.maxSpeed);
+      separationSteer.sub(this.velocity);
+      separationSteer.limit(this.maxForce * this.separationWeight); // Apply separation weight
+    }
+
+    this.applyForce(separationSteer);
 
     // Apply boundary avoidance
-    const boundaryForce = this.avoidBoundaries(
-      this.gameField.width,
-      this.gameField.height,
-      this.controls.boundaryAvoidance,
-    );
-    this.applyForce(boundaryForce);
+    const boundarySteer = new Vector2D(0, 0);
+    const avoidanceForce = this.maxSpeed * 2; // Strength of avoidance
+    const avoidanceDistance = this.controls.boundaryAvoidance;
+    const fieldWidth = this.gameField.width;
+    const fieldHeight = this.gameField.height;
+
+    // Left boundary
+    if (this.position.x < avoidanceDistance) {
+      const force = (avoidanceDistance - this.position.x) / avoidanceDistance;
+      boundarySteer.x += avoidanceForce * force;
+    }
+
+    // Right boundary
+    if (this.position.x > fieldWidth - avoidanceDistance) {
+      const force = (this.position.x - (fieldWidth - avoidanceDistance)) / avoidanceDistance;
+      boundarySteer.x -= avoidanceForce * force;
+    }
+
+    // Top boundary
+    if (this.position.y < avoidanceDistance) {
+      const force = (avoidanceDistance - this.position.y) / avoidanceDistance;
+      boundarySteer.y += avoidanceForce * force;
+    }
+
+    // Bottom boundary
+    if (this.position.y > fieldHeight - avoidanceDistance) {
+      const force = (this.position.y - (fieldHeight - avoidanceDistance)) / avoidanceDistance;
+      boundarySteer.y -= avoidanceForce * force;
+    }
+
+    // Normalize and limit the steering force
+    if (boundarySteer.mag() > 0) {
+      boundarySteer.normalize();
+      boundarySteer.mult(this.maxSpeed);
+      boundarySteer.sub(this.velocity);
+      boundarySteer.limit(this.maxForce);
+    }
+
+    this.applyForce(boundarySteer);
 
     // Apply flee behavior
-    const fleeForce = this.flee(this.catPos, this.fleeRadius);
-    fleeForce.mult(this.fleeWeight);
-    this.applyForce(fleeForce);
+    const distance = vecDist(this.position, this.catPos);
+
+    // Only flee if within flee radius
+    if (distance <= this.fleeRadius) {
+      // Calculate flee force (opposite of seek)
+      const desired = vecSub(this.position, this.catPos); // Point away from target
+      desired.setMag(this.maxSpeed);
+
+      const fleeSteer = vecSub(desired, this.velocity);
+      fleeSteer.limit(this.maxForce);
+
+      // Scale force based on distance (closer = stronger flee)
+      const fleeStrength = (this.fleeRadius - distance) / this.fleeRadius;
+      fleeSteer.mult(fleeStrength);
+
+      fleeSteer.mult(this.fleeWeight);
+      this.applyForce(fleeSteer);
+    }
 
     // Update velocity
     this.velocity.add(this.acceleration);
@@ -164,169 +272,33 @@ export class Vehicle implements ITickable, IRenderable {
     }
 
     // Use game field borders for vehicle boundary constraints
-    this.borders(this.gameField);
-
-    this.isVisible = isInBounds(this.position, this.cameraPos, this.size * 2);
-    this.drawDebug = this.controls.showDebug;
-  }
-
-  applyForce(force: Vector2D): void {
-    // We could add mass here if we want A = F / M
-    this.acceleration.add(force);
-  }
-
-  wander(): void {
-    // Randomly change wander angle
-    this.wanderTheta += (random() - 0.5) * 2 * this.wanderChange;
-
-    // Calculate the center of the wander circle
-    const circlePos = this.velocity.copy();
-    circlePos.normalize();
-    circlePos.mult(this.wanderDistance);
-    circlePos.add(this.position);
-
-    // Calculate the heading of velocity
-    const h = this.velocity.heading();
-
-    // Calculate the offset on the wander circle
-    const circleOffset = new Vector2D(
-      this.wanderRadius * cos(this.wanderTheta + h),
-      this.wanderRadius * sin(this.wanderTheta + h),
-    );
-
-    // Calculate target point
-    const target = vecAdd(circlePos, circleOffset);
-    this.seek(target);
-  }
-
-  separate(vehicles: Vehicle[]): Vector2D {
-    const steer = new Vector2D(0, 0);
-    let count = 0;
-
-    // For every vehicle in the system, check if it's too close
-    for (const other of vehicles) {
-      const distance = vecDist(this.position, other.position);
-
-      // If the distance is greater than 0 and less than separation radius (0 when you are yourself)
-      if (distance > 0 && distance < this.separationRadius) {
-        // Calculate vector pointing away from neighbor
-        const diff = vecSub(this.position, other.position);
-        diff.normalize();
-        diff.div(distance); // Weight by distance (closer = stronger repulsion)
-        steer.add(diff);
-        count++; // Keep track of how many
-      }
-    }
-
-    // Average -- divide by how many
-    if (count > 0) {
-      steer.div(count);
-
-      // Implement Reynolds: Steering = Desired - Velocity
-      steer.normalize();
-      steer.mult(this.maxSpeed);
-      steer.sub(this.velocity);
-      steer.limit(this.maxForce * this.separationWeight); // Apply separation weight
-    }
-
-    return steer;
-  }
-
-  seek(target: Vector2D): void {
-    // A vector pointing from the location to the target
-    const desired = vecSub(target, this.position);
-
-    // Scale to maximum speed
-    desired.setMag(this.maxSpeed);
-
-    // Steering = Desired minus velocity
-    const steer = vecSub(desired, this.velocity);
-    steer.limit(this.maxForce); // Limit to maximum steering force
-
-    this.applyForce(steer);
-  }
-
-  flee(target: Vector2D, fleeRadius: number = 100): Vector2D {
-    const distance = vecDist(this.position, target);
-
-    // Only flee if within flee radius
-    if (distance > fleeRadius) {
-      return new Vector2D(0, 0);
-    }
-
-    // Calculate flee force (opposite of seek)
-    const desired = vecSub(this.position, target); // Point away from target
-    desired.setMag(this.maxSpeed);
-
-    const steer = vecSub(desired, this.velocity);
-    steer.limit(this.maxForce);
-
-    // Scale force based on distance (closer = stronger flee)
-    const fleeStrength = (fleeRadius - distance) / fleeRadius;
-    steer.mult(fleeStrength);
-
-    return steer;
-  }
-
-  borders(gameField: IGameFieldSizeProvider): void {
-    const { width, height } = gameField;
+    const gameFieldWidth = this.gameField.width;
+    const gameFieldHeight = this.gameField.height;
     // Keep vehicles within bounds (no wrapping)
     if (this.position.x < this.size) {
       this.position.x = this.size;
       this.velocity.x = abs(this.velocity.x); // Bounce away from left edge
     }
-    if (this.position.x > width - this.size) {
-      this.position.x = width - this.size;
+    if (this.position.x > gameFieldWidth - this.size) {
+      this.position.x = gameFieldWidth - this.size;
       this.velocity.x = -abs(this.velocity.x); // Bounce away from right edge
     }
     if (this.position.y < this.size) {
       this.position.y = this.size;
       this.velocity.y = abs(this.velocity.y); // Bounce away from top edge
     }
-    if (this.position.y > height - this.size) {
-      this.position.y = height - this.size;
+    if (this.position.y > gameFieldHeight - this.size) {
+      this.position.y = gameFieldHeight - this.size;
       this.velocity.y = -abs(this.velocity.y); // Bounce away from bottom edge
     }
+
+    this.isVisible = isInBounds(this.position, this.cameraPos, this.size * 2);
+    this.drawDebug = this.controls.showDebug;
   }
 
-  // Add boundary avoidance behavior
-  avoidBoundaries(width: number, height: number, avoidanceDistance: number = 50): Vector2D {
-    const steer = new Vector2D(0, 0);
-    const avoidanceForce = this.maxSpeed * 2; // Strength of avoidance
-
-    // Left boundary
-    if (this.position.x < avoidanceDistance) {
-      const force = (avoidanceDistance - this.position.x) / avoidanceDistance;
-      steer.x += avoidanceForce * force;
-    }
-
-    // Right boundary
-    if (this.position.x > width - avoidanceDistance) {
-      const force = (this.position.x - (width - avoidanceDistance)) / avoidanceDistance;
-      steer.x -= avoidanceForce * force;
-    }
-
-    // Top boundary
-    if (this.position.y < avoidanceDistance) {
-      const force = (avoidanceDistance - this.position.y) / avoidanceDistance;
-      steer.y += avoidanceForce * force;
-    }
-
-    // Bottom boundary
-    if (this.position.y > height - avoidanceDistance) {
-      const force = (this.position.y - (height - avoidanceDistance)) / avoidanceDistance;
-      steer.y -= avoidanceForce * force;
-    }
-
-    // Normalize and limit the steering force
-    if (steer.mag() > 0) {
-      steer.normalize();
-      steer.mult(this.maxSpeed);
-      steer.sub(this.velocity);
-      steer.limit(this.maxForce);
-    }
-
-    return steer;
+  private applyForce(force: Vector2D): void {
+    // We could add mass here if we want A = F / M
+    this.acceleration.add(force);
   }
 
   render(context: CanvasRenderingContext2D): void {

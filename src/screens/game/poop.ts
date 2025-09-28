@@ -76,21 +76,16 @@ export class Poop implements ITickable, IRenderable {
     }
   }
 
-  // Check if poop is visible on screen (to be called from GameField)
-  inBounds(cameraX: number, cameraY: number, screenWidth: number, screenHeight: number): boolean {
+  tick(dt: number): void {
+    // Check if poop is visible on screen (inline inBounds)
     const margin = 50; // Extra margin for flies
     const poopRadius = this.size * 0.6; // Approximate visual radius
 
-    return (
-      this.position.x + poopRadius >= cameraX - margin &&
-      this.position.x - poopRadius <= cameraX + screenWidth + margin &&
-      this.position.y + poopRadius >= cameraY - margin &&
-      this.position.y - poopRadius <= cameraY + screenHeight + margin
-    );
-  }
-
-  tick(dt: number): void {
-    this.isVisible = this.inBounds(this.cameraPos.x, this.cameraPos.y, c.width, c.height);
+    this.isVisible =
+      this.position.x + poopRadius >= this.cameraPos.x - margin &&
+      this.position.x - poopRadius <= this.cameraPos.x + c.width + margin &&
+      this.position.y + poopRadius >= this.cameraPos.y - margin &&
+      this.position.y - poopRadius <= this.cameraPos.y + c.height + margin;
 
     this.wobbleTime += dt;
 

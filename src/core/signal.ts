@@ -5,6 +5,7 @@ type Signal<T> = {
   set: (v: T) => void;
   subscribe: (fn: Subscriber<T>) => () => void;
   subscribeOnce: (fn: Subscriber<T>) => void;
+  clear: () => void;
 };
 
 export function signal<T>(value: T): Signal<T> {
@@ -26,5 +27,6 @@ export function signal<T>(value: T): Signal<T> {
       };
       subs.add(wrap);
     },
+    clear: () => subs.clear(),
   };
 }

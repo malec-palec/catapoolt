@@ -154,7 +154,14 @@ export class SoftBlob {
         }
       }
 
-      const currentArea = this.getArea();
+      // Calculate current area inline
+      let currentArea = 0;
+      for (let i = 0; i < points.length; i++) {
+        const current = points[i];
+        const next = points[(i + 1) % points.length];
+        currentArea += ((current.pos.x - next.pos.x) * (current.pos.y + next.pos.y)) / 2;
+      }
+      currentArea = abs(currentArea);
       const areaError = area - currentArea;
       const offset = areaError / circumference;
 
@@ -187,17 +194,6 @@ export class SoftBlob {
         point.collideWith(collider);
       }
     }
-  }
-
-  getArea(): number {
-    const { points } = this;
-    let area = 0;
-    for (let i = 0; i < points.length; i++) {
-      const current = points[i];
-      const next = points[(i + 1) % points.length];
-      area += ((current.pos.x - next.pos.x) * (current.pos.y + next.pos.y)) / 2;
-    }
-    return abs(area);
   }
 
   getCenterOfMass(): Vector2D {

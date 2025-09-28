@@ -34,7 +34,20 @@ export class Clover implements ITickable, IRenderable, ICollidable {
     if (!this.isActive) return;
     if (this.collectedThisWave) return;
 
-    this.isVisible = this.inBounds(this.cameraPos.x, this.cameraPos.y, c.width, c.height);
+    // Check if clover is visible in camera viewport (inline inBounds)
+    if (!this.isActive) {
+      this.isVisible = false;
+    } else {
+      const x = this.position.x;
+      const y = this.position.y;
+      const margin = this.size;
+
+      this.isVisible =
+        x >= this.cameraPos.x - margin &&
+        x <= this.cameraPos.x + c.width + margin &&
+        y >= this.cameraPos.y - margin &&
+        y <= this.cameraPos.y + c.height + margin;
+    }
 
     this.lifeTime += dt;
 
@@ -90,23 +103,6 @@ export class Clover implements ITickable, IRenderable, ICollidable {
   collect(): void {
     this.isActive = false;
     this.collectedThisWave = true;
-  }
-
-  // Check if clover is visible in camera viewport - optimized bounds checking
-  inBounds(cameraX: number, cameraY: number, viewWidth: number, viewHeight: number): boolean {
-    if (!this.isActive) return false;
-
-    // Early exit optimizations and single variable for margin
-    const x = this.position.x;
-    const y = this.position.y;
-    const margin = this.size;
-
-    return (
-      x >= cameraX - margin &&
-      x <= cameraX + viewWidth + margin &&
-      y >= cameraY - margin &&
-      y <= cameraY + viewHeight + margin
-    );
   }
 
   // Generate a random clover position
