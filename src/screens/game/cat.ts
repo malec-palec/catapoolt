@@ -28,25 +28,23 @@ export class Cat implements ITickable, IRenderable {
   readonly staminaChangeSignal = signal<number>(100);
 
   position: Vector2D;
-  speed: number = 3;
   debugDraw: boolean = false;
 
   // Shadow properties
-  public catHeight = 50; // Height of cat above ground for shadow calculation
-  public z = 0; // Height above ground (3D position)
+  catHeight = 50; // Height of cat above ground for shadow calculation
+  z = 0; // Height above ground (3D position)
 
   // Physics properties
-  public velocity: Vector2D;
-  public velocityZ = 0; // Vertical velocity
-  public bounceCount = 0; // Current bounce count
-  public isFlying = false; // Whether cat is in flight
-  public groundLevel = 0; // Ground level for physics
+  private velocity: Vector2D;
+  private velocityZ = 0; // Vertical velocity
+  private bounceCount = 0; // Current bounce count
+  private isFlying = false; // Whether cat is in flight
 
   // Slingshot properties
-  public isDragging = false;
-  public dragStartPos: Vector2D;
+  isDragging = false;
+  private dragStartPos: Vector2D;
 
-  public maxDragDistance = 200; // Maximum drag distance in pixels
+  maxDragDistance = 200; // Maximum drag distance in pixels
 
   // Double tap for purge
   private lastClickTime = 0;
@@ -61,20 +59,19 @@ export class Cat implements ITickable, IRenderable {
   private purgeProtectionTime = 0;
 
   // Head lowering during drag
-  public headOffsetY = 0; // Current head vertical offset during drag
-  public maxHeadOffset = 0; // Maximum head offset (calculated based on shadow position)
-  public headOscillationX = 0; // Horizontal oscillation offset when head is lowered
+  private headOffsetY = 0; // Current head vertical offset during drag
+  private maxHeadOffset = 0; // Maximum head offset (calculated based on shadow position)
+  private headOscillationX = 0; // Horizontal oscillation offset when head is lowered
   private oscillationTime = 0; // Time counter for oscillation
 
   // Stamina system
-  public currentStamina = 100;
+  currentStamina = 100;
 
   private shouldTriggerGameOverAfterLanding = false;
 
   // Inflation system
-  public inflationLevel = 0; // Current inflation level (0 = normal size)
-  public inflationPerMouse = 2; // How much inflation per mouse eaten
-  public baseBodyArea: number = 0; // Original body area for reference
+  inflationLevel = 0; // Current inflation level (0 = normal size)
+  private baseBodyArea: number = 0; // Original body area for reference
 
   readonly shadow: CatShadow;
   readonly body: SoftBlob;
@@ -95,12 +92,11 @@ export class Cat implements ITickable, IRenderable {
     this.position = new Vector2D(posX, posY);
     this.velocity = new Vector2D(0, 0);
     this.dragStartPos = new Vector2D(posX, posY);
-    this.groundLevel = posY;
 
     this.body = new SoftBlob(posX, posY, 20, 36, 1.5, 12);
-    this.baseBodyArea = this.body.getBaseArea();
+    this.baseBodyArea = this.body.baseArea;
 
-    const anchor = random() < 0.5 ? this.body.getRightmostPoint() : this.body.getLeftmostPoint();
+    const anchor = this.body.getExtremestPoint(random() < 0.5 ? 1 : -1);
     this.tail = new Tail(anchor.point, 8, 15, 12);
 
     this.shadow = new CatShadow(this);
@@ -337,7 +333,7 @@ export class Cat implements ITickable, IRenderable {
       // Calculate current inflation multiplier based on inflation level
       const inflationMultiplier = 1 + (this.inflationLevel / MAX_INFRACTION_LEVEL) * (1.5 - 1); // How much the body area increases per inflation level
       const targetArea = this.baseBodyArea * inflationMultiplier;
-      this.body.setTargetArea(targetArea);
+      this.body.area = targetArea;
     }
 
     this.body.tick(
@@ -474,7 +470,7 @@ export class Cat implements ITickable, IRenderable {
     this.staminaChangeSignal.set(newStamina);
 
     if (this.inflationLevel < MAX_INFRACTION_LEVEL) {
-      this.inflationLevel = min(MAX_INFRACTION_LEVEL, this.inflationLevel + this.inflationPerMouse);
+      this.inflationLevel = min(MAX_INFRACTION_LEVEL, this.inflationLevel + 2); // How much inflation per mouse eaten
     }
   }
 

@@ -1,25 +1,29 @@
+import { Point2D } from "../../core/geom";
 import { Color } from "../../registry";
 import { hypot } from "../../system";
-import { BlobPoint, SoftBlob, Vector2D } from "./soft-blob";
+import { BlobPoint, SoftBlob } from "./soft-blob";
 
 const DAMPING = 0.99;
-const GRAVITY = 0.3;
 
-class TailNode {
-  pos: Vector2D;
-  prevPos: Vector2D;
+type TailNode = {
+  pos: Point2D;
+  prevPos: Point2D;
+  isPinned: boolean;
+  integrate: () => void;
+  pinTo: (x: number, y: number) => void;
+};
 
-  constructor(
-    x: number,
-    y: number,
-    public isPinned: boolean = false,
-  ) {
-    this.pos = { x, y };
-    this.prevPos = { x, y };
-  }
-
-  verletIntegrate(): void {
-    const { pos, prevPos, isPinned } = this;
+const createTailNode = (
+  x: number,
+  y: number,
+  isPinned: boolean = false,
+  pos: Point2D = { x, y },
+  prevPos: Point2D = { x, y },
+): TailNode => ({
+  pos,
+  prevPos,
+  isPinned,
+  integrate() {
     if (isPinned) return;
 
     const tempX = pos.x;
@@ -33,23 +37,15 @@ class TailNode {
 
     prevPos.x = tempX;
     prevPos.y = tempY;
-  }
 
-  applyGravity(): void {
-    const { pos, isPinned } = this;
-    if (isPinned) return;
-    pos.y -= GRAVITY;
-  }
-
-  pinTo(x: number, y: number): void {
-    const { pos, prevPos } = this;
-    pos.x = x;
-    pos.y = y;
-    prevPos.x = x;
-    prevPos.y = y;
-    this.isPinned = true;
-  }
-}
+    pos.y -= 0.3; // GRAVITY
+  },
+  pinTo(x: number, y: number) {
+    pos.x = prevPos.x = x;
+    pos.y = prevPos.y = y;
+    isPinned = true;
+  },
+});
 
 export class Tail {
   private nodes: TailNode[] = [];
@@ -63,15 +59,14 @@ export class Tail {
     const sx = anchorPoint.pos.x;
     const sy = anchorPoint.pos.y;
     for (let i = 0; i < numNodes; i++) {
-      this.nodes.push(new TailNode(sx, sy - i * segmentLength, i === 0));
+      this.nodes.push(createTailNode(sx, sy - i * segmentLength, i === 0));
     }
   }
 
   tick(): void {
     const { nodes, segmentLength } = this;
     for (let i = 1; i < nodes.length; i++) {
-      nodes[i].verletIntegrate();
-      nodes[i].applyGravity();
+      nodes[i].integrate();
     }
 
     for (let iteration = 0; iteration < 3; iteration++) {
@@ -100,10 +95,6 @@ export class Tail {
         }
       }
     }
-  }
-
-  setAnchor(point: BlobPoint): void {
-    this.anchorPoint = point;
   }
 
   stickTo(softBody: SoftBlob): void {

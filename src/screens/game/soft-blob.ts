@@ -1,26 +1,21 @@
+import { Point2D } from "../../core/geom";
 import { Color } from "../../registry";
 import { abs, cos, hypot, max, min, PI, random, sin, TWO_PI } from "../../system";
 
 export interface ICircleCollider {
-  position: Vector2D;
+  position: Point2D;
   radius: number;
 }
 
-export interface Vector2D {
-  x: number;
-  y: number;
-}
-
 const DAMPING = 0.99;
-const GRAVITY = 0.15;
 
 export class BlobPoint {
-  pos: Vector2D;
-  prevPos: Vector2D;
-  displacement: Vector2D;
+  pos: Point2D;
+  prevPos: Point2D;
+  displacement: Point2D;
   displacementWeight: number;
 
-  constructor(position: Vector2D) {
+  constructor(position: Point2D) {
     this.pos = { x: position.x, y: position.y };
     this.prevPos = { x: position.x, y: position.y };
     this.displacement = { x: 0, y: 0 };
@@ -43,11 +38,7 @@ export class BlobPoint {
     prevPos.y = tempY;
   }
 
-  applyGravity(): void {
-    this.pos.y += GRAVITY;
-  }
-
-  accumulateDisplacement(offset: Vector2D): void {
+  accumulateDisplacement(offset: Point2D): void {
     this.displacement.x += offset.x;
     this.displacement.y += offset.y;
     this.displacementWeight += 1;
@@ -132,7 +123,8 @@ export class SoftBlob {
     const { points, chordLength, area, circumference } = this;
     for (const point of points) {
       point.verletIntegrate();
-      point.applyGravity();
+      // Apply gravity
+      point.pos.y += 0.15; // GRAVITY
     }
 
     for (let j = 0; j < 10; j++) {
@@ -196,7 +188,7 @@ export class SoftBlob {
     }
   }
 
-  getCenterOfMass(): Vector2D {
+  getCenterOfMass(): Point2D {
     const { points } = this;
     let totalX = 0;
     let totalY = 0;
@@ -218,7 +210,7 @@ export class SoftBlob {
 
     context.beginPath();
     if (points.length > 3) {
-      const smoothPoints: Array<{ pos: Vector2D; cp1: Vector2D; cp2: Vector2D }> = [];
+      const smoothPoints: Array<{ pos: Point2D; cp1: Point2D; cp2: Point2D }> = [];
       for (let i = 0; i < points.length; i++) {
         const prev = points[(i - 1 + points.length) % this.points.length];
         const current = points[i];
@@ -254,34 +246,24 @@ export class SoftBlob {
     // }
   }
 
-  getLeftmostPoint(): { point: BlobPoint; index: number } {
+  getExtremestPoint(dir: -1 | 1): { point: BlobPoint; index: number } {
     const { points } = this;
 
-    let leftmostPoint = points[0];
-    let leftmostIndex = 0;
+    let extremestPoint = points[0];
+    let extremestIndex = 0;
 
     for (let i = 1; i < points.length; i++) {
-      if (points[i].pos.x < leftmostPoint.pos.x) {
-        leftmostPoint = points[i];
-        leftmostIndex = i;
+      const isMoreExtreme =
+        dir === -1
+          ? points[i].pos.x < extremestPoint.pos.x // leftmost
+          : points[i].pos.x > extremestPoint.pos.x; // rightmost
+
+      if (isMoreExtreme) {
+        extremestPoint = points[i];
+        extremestIndex = i;
       }
     }
-    return { point: leftmostPoint, index: leftmostIndex };
-  }
-
-  getRightmostPoint(): { point: BlobPoint; index: number } {
-    const { points } = this;
-
-    let rightmostPoint = points[0];
-    let rightmostIndex = 0;
-
-    for (let i = 1; i < points.length; i++) {
-      if (points[i].pos.x > rightmostPoint.pos.x) {
-        rightmostPoint = points[i];
-        rightmostIndex = i;
-      }
-    }
-    return { point: rightmostPoint, index: rightmostIndex };
+    return { point: extremestPoint, index: extremestIndex };
   }
 
   // Check if a point is inside the soft body using ray casting algorithm
@@ -299,15 +281,5 @@ export class SoftBlob {
       }
     }
     return inside;
-  }
-
-  // Update the target area for inflation
-  setTargetArea(targetArea: number): void {
-    this.area = targetArea;
-  }
-
-  // Get the base (original) area
-  getBaseArea(): number {
-    return this.baseArea;
   }
 }

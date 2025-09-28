@@ -14,8 +14,8 @@ export class CatShadow implements IRenderable {
     let shadowX = cat.position.x;
 
     // Get the leftmost and rightmost points of the shadow provider (e.g., soft body)
-    const leftPoint = shadowProvider.getLeftmostPoint();
-    const rightPoint = shadowProvider.getRightmostPoint();
+    const leftPoint = shadowProvider.getExtremestPoint(-1);
+    const rightPoint = shadowProvider.getExtremestPoint(1);
 
     // Calculate shadow diameter (distance between edge points)
     const shadowDiameter = abs(rightPoint.point.pos.x - leftPoint.point.pos.x);

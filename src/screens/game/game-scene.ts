@@ -317,7 +317,7 @@ export function setupGUI(folder: dat.GUI, scene: GameScene): void {
   const inflationFolder = catFolder.addFolder("Inflation");
   inflationFolder.add(scene.cat, "inflationLevel", 0, 20, 0.1).name("Inflation Level").listen();
   // inflationFolder.add(scene.cat, "maxInflationLevel", 5, 20, 1).name("Max Inflation");
-  inflationFolder.add(scene.cat, "inflationPerMouse", 0.5, 3, 0.1).name("Inflation Per Mouse");
+  // inflationFolder.add(scene.cat, "inflationPerMouse", 0.5, 3, 0.1).name("Inflation Per Mouse");
   // inflationFolder.add(scene.cat, "inflationMultiplier", 1.1, 3.0, 0.1).name("Size Multiplier");
   // inflationFolder.add(scene.cat, "inflationStaminaPenalty", 0.0, 0.5, 0.01).name("Stamina Penalty");
   // inflationFolder.add(scene.cat, "inflationJumpPenalty", 0.0, 0.2, 0.01).name("Jump Penalty");
