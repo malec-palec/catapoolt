@@ -97,7 +97,7 @@ export class Cat implements ITickable, IRenderable {
     this.baseBodyArea = this.body.baseArea;
 
     const anchor = this.body.getExtremestPoint(random() < 0.5 ? 1 : -1);
-    this.tail = new Tail(anchor.point, 8, 15, 12);
+    this.tail = new Tail(anchor.point, this.body, 8, 15, 12);
 
     this.shadow = new CatShadow(this);
   }
@@ -366,7 +366,6 @@ export class Cat implements ITickable, IRenderable {
       }
     }
 
-    this.tail.stickTo(this.body);
     this.tail.tick();
   }
 

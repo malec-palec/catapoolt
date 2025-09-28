@@ -7,6 +7,10 @@ export interface ICircleCollider {
   radius: number;
 }
 
+export interface IContainsPoint {
+  isPointInside(x: number, y: number): boolean;
+}
+
 const DAMPING = 0.99;
 
 export class BlobPoint {
@@ -36,6 +40,9 @@ export class BlobPoint {
 
     prevPos.x = tempX;
     prevPos.y = tempY;
+
+    // Apply gravity
+    pos.y += 0.15; // GRAVITY
   }
 
   accumulateDisplacement(offset: Point2D): void {
@@ -86,7 +93,7 @@ export class BlobPoint {
   }
 }
 
-export class SoftBlob {
+export class SoftBlob implements IContainsPoint {
   points: BlobPoint[] = [];
   area: number;
   baseArea: number; // Original area for reference
@@ -123,8 +130,6 @@ export class SoftBlob {
     const { points, chordLength, area, circumference } = this;
     for (const point of points) {
       point.verletIntegrate();
-      // Apply gravity
-      point.pos.y += 0.15; // GRAVITY
     }
 
     for (let j = 0; j < 10; j++) {
@@ -179,9 +184,6 @@ export class SoftBlob {
 
       for (const point of points) {
         point.applyDisplacement();
-      }
-
-      for (const point of points) {
         point.keepInBounds(canvasWidth, canvasHeight);
         point.collideWith(collider);
       }
