@@ -242,6 +242,13 @@ export class GameScene extends DisplayObject implements IGameController {
       this.cat.updateDrag(worldPos.x, worldPos.y);
     }
   }
+
+  destroy(): void {
+    this.cat.destroy();
+
+    this.gameOverSignal.clear();
+    this.nextWaveSignal.clear();
+  }
 }
 
 export function setupGUI(folder: dat.GUI, scene: GameScene): void {

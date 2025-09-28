@@ -21,8 +21,6 @@ export class GameScreen extends BaseScreen {
   private gameScene: GameScene;
   private originalGameSceneTick: (dt: number) => void;
 
-  private signalSubscriptions: Array<() => void>;
-
   constructor(game: IGame) {
     super(game);
 
@@ -114,24 +112,22 @@ export class GameScreen extends BaseScreen {
 
     this.gameScene = new GameScene(c.width, c.height);
 
-    this.signalSubscriptions = [
-      this.gameScene.gameOverSignal.subscribe((miceEaten: number) => {
-        const currentHighScore = localStorage.getItem(HIGH_SCORE_KEY);
-        const currentHighScoreNum = currentHighScore ? parseInt(currentHighScore, 10) : 0;
+    this.gameScene.gameOverSignal.subscribe((miceEaten: number) => {
+      const currentHighScore = localStorage.getItem(HIGH_SCORE_KEY);
+      const currentHighScoreNum = currentHighScore ? parseInt(currentHighScore, 10) : 0;
 
-        if (miceEaten > currentHighScoreNum) {
-          localStorage.setItem(HIGH_SCORE_KEY, miceEaten.toString());
-        }
+      if (miceEaten > currentHighScoreNum) {
+        localStorage.setItem(HIGH_SCORE_KEY, miceEaten.toString());
+      }
 
-        this.gameOverPopup.updateTitle("Game Over");
-        this.gameOverPopup.setBodyText(`Your score: ${miceEaten} mice eaten`);
-        this.gameOverPopup.showPopup();
-      }),
-      this.gameScene.nextWaveSignal.subscribe((waveNumber: number) => {
-        this.nextWavePopup.updateTitle(`Next Wave ${waveNumber}`);
-        this.nextWavePopup.showPopup();
-      }),
-    ];
+      this.gameOverPopup.updateTitle("Game Over");
+      this.gameOverPopup.setBodyText(`Your score: ${miceEaten} mice eaten`);
+      this.gameOverPopup.showPopup();
+    });
+    this.gameScene.nextWaveSignal.subscribe((waveNumber: number) => {
+      this.nextWavePopup.updateTitle(`Next Wave ${waveNumber}`);
+      this.nextWavePopup.showPopup();
+    });
 
     // Store the original tick method and override it for pause functionality
     this.originalGameSceneTick = this.gameScene.tick.bind(this.gameScene);
@@ -197,8 +193,6 @@ export class GameScreen extends BaseScreen {
   }
 
   override destroy(): void {
-    for (const unsubscribe of this.signalSubscriptions) {
-      unsubscribe();
-    }
+    this.gameScene.destroy();
   }
 }

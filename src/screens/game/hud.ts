@@ -1,23 +1,57 @@
 import { IRenderable, ITickable } from "../../core/display";
 import { Point2D } from "../../core/geom";
+import { easeInOut } from "../../core/tween";
 import { vecDist } from "../../core/vector2d";
 import { Vehicle } from "../../core/vehicle";
 import { Color, rgba, wrapContext } from "../../registry";
-import { abs, atan2, PI, round, sin, tan } from "../../system";
+import { abs, atan2, min, PI, round, sin, tan } from "../../system";
 import { Cat, MAX_INFRACTION_LEVEL, MAX_STAMINA } from "./cat";
 import { IGameController } from "./game-scene";
 
 export class HUD implements ITickable, IRenderable {
+  // Stamina animation properties
+  private displayStamina = 100;
+  private staminaAnimationTime = 0;
+  private staminaStartValue = 100;
+  private staminaTargetValue = 100;
+  private isAnimatingStamina = false;
+
   constructor(
     private cat: Cat,
     private enemies: Vehicle[],
     private gameController: IGameController,
     private cameraPos: Point2D,
     private blinkTime: number = 0,
-  ) {}
+  ) {
+    // Initialize display stamina to match cat's current stamina
+    this.displayStamina = this.cat.currentStamina;
+
+    // TODO: unsubscribe from stamina changes from the cat on hud destruction
+    // Subscribe to stamina changes from the cat
+    this.cat.staminaChangeSignal.subscribe((targetValue) => {
+      this.staminaStartValue = this.displayStamina;
+      this.staminaTargetValue = targetValue;
+      this.staminaAnimationTime = 0;
+      this.isAnimatingStamina = true;
+    });
+  }
 
   tick(dt: number): void {
     this.blinkTime += dt;
+
+    // Update stamina animation
+    if (this.isAnimatingStamina) {
+      this.staminaAnimationTime += dt;
+      const progress = min(this.staminaAnimationTime / 800, 1); // Stamina animation duration in ms
+      const easedProgress = easeInOut(progress);
+
+      this.displayStamina = this.staminaStartValue + (this.staminaTargetValue - this.staminaStartValue) * easedProgress;
+
+      if (progress >= 1) {
+        this.isAnimatingStamina = false;
+        this.displayStamina = this.staminaTargetValue;
+      }
+    }
   }
 
   render(context: CanvasRenderingContext2D): void {
@@ -51,7 +85,7 @@ export class HUD implements ITickable, IRenderable {
     const barY = c.height - barHeight - 20; // 20px from bottom
 
     // Calculate stamina percentage using display stamina for smooth animation
-    const staminaPercentage = this.cat.displayStamina / MAX_STAMINA;
+    const staminaPercentage = this.displayStamina / MAX_STAMINA;
 
     // Draw background (empty bar)
     context.fillStyle = Color.DarkGray;

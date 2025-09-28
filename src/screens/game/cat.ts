@@ -25,6 +25,7 @@ export const MAX_INFRACTION_LEVEL = 10; // Maximum inflation level
 
 export class Cat implements ITickable, IRenderable {
   readonly staminaEmptySignal = signal<boolean>(false);
+  readonly staminaChangeSignal = signal<number>(100);
 
   position: Vector2D;
   speed: number = 3;
@@ -82,22 +83,13 @@ export class Cat implements ITickable, IRenderable {
 
   // Stamina system
   public currentStamina = 100;
-  public displayStamina = 100; // Visual stamina for smooth animation
 
   private shouldTriggerGameOverAfterLanding = false;
 
   // Inflation system
   public inflationLevel = 0; // Current inflation level (0 = normal size)
-
   public inflationPerMouse = 2; // How much inflation per mouse eaten
   public baseBodyArea: number = 0; // Original body area for reference
-
-  // Stamina animation
-  private staminaAnimationTime = 0;
-
-  private staminaStartValue = 100;
-  private staminaTargetValue = 100;
-  private isAnimatingStamina = false;
 
   readonly shadow: CatShadow;
   readonly body: SoftBlob;
@@ -228,13 +220,13 @@ export class Cat implements ITickable, IRenderable {
 
       // Calculate stamina cost based on jump distance and inflation penalty
       const baseStaminaCost = dragMagnitude * 0.025; // How much stamina is consumed per jump distance (max jump ~5%)
-      const inflationStaminaMultiplier = this.getInflationStaminaMultiplier();
+      const inflationStaminaMultiplier = 1 + this.inflationLevel * 0.1; // Additional stamina cost per inflation level (10% per level)
       const staminaCost = min(baseStaminaCost * inflationStaminaMultiplier, this.currentStamina);
       const newStamina = max(0, this.currentStamina - staminaCost);
 
-      // Start stamina animation
-      this.animateStaminaTo(newStamina);
+      // Update stamina and signal the change
       this.currentStamina = newStamina;
+      this.staminaChangeSignal.set(newStamina);
 
       // Check if game should end after landing
       if (this.currentStamina <= 0) {
@@ -259,20 +251,6 @@ export class Cat implements ITickable, IRenderable {
   }
 
   tick(dt: number): void {
-    // Update stamina animation
-    if (this.isAnimatingStamina) {
-      this.staminaAnimationTime += dt;
-      const progress = min(this.staminaAnimationTime / 800, 1); // Stamina animation duration in ms
-      const easedProgress = easeInOut(progress);
-
-      this.displayStamina = this.staminaStartValue + (this.staminaTargetValue - this.staminaStartValue) * easedProgress;
-
-      if (progress >= 1) {
-        this.isAnimatingStamina = false;
-        this.displayStamina = this.staminaTargetValue;
-      }
-    }
-
     // Update deflation animation
     if (this._isDeflating) {
       this.deflationStartTime += dt;
@@ -320,7 +298,29 @@ export class Cat implements ITickable, IRenderable {
       this.velocityZ -= GRAVITY;
 
       // Apply smooth boundary damping instead of hard bounces
-      this.applySmoothBoundaryDamping();
+      const dampingZone = 100;
+      const dampingStrength = 0.95;
+      const dampingRange = 0.05; // 1 - dampingStrength
+
+      // Apply horizontal and vertical damping
+      [this.position.x, this.velocity.x] = this.applyEdgeDamping(
+        this.position.x,
+        this.velocity.x,
+        this.radius,
+        this.screenWidth - this.radius,
+        dampingZone,
+        dampingStrength,
+        dampingRange,
+      );
+      [this.position.y, this.velocity.y] = this.applyEdgeDamping(
+        this.position.y,
+        this.velocity.y,
+        this.radius + this.z,
+        this.screenHeight - this.radius,
+        dampingZone,
+        dampingStrength,
+        dampingRange,
+      );
 
       // Check ground collision
       if (this.z <= 0) {
@@ -350,8 +350,10 @@ export class Cat implements ITickable, IRenderable {
     const groundLevel = min(this.position.y + this.catHeight, this.screenHeight);
 
     // Update soft body area based on cat's inflation level
-    const targetArea = this.getTargetBodyArea();
-    if (targetArea > 0) {
+    if (this.baseBodyArea > 0) {
+      // Calculate current inflation multiplier based on inflation level
+      const inflationMultiplier = 1 + (this.inflationLevel / MAX_INFRACTION_LEVEL) * (1.5 - 1); // How much the body area increases per inflation level
+      const targetArea = this.baseBodyArea * inflationMultiplier;
       this.body.setTargetArea(targetArea);
     }
 
@@ -389,32 +391,6 @@ export class Cat implements ITickable, IRenderable {
     this.tail.tick();
   }
 
-  private applySmoothBoundaryDamping(): void {
-    const dampingZone = 100;
-    const dampingStrength = 0.95;
-    const dampingRange = 0.05; // 1 - dampingStrength
-
-    // Apply horizontal and vertical damping
-    [this.position.x, this.velocity.x] = this.applyEdgeDamping(
-      this.position.x,
-      this.velocity.x,
-      this.radius,
-      this.screenWidth - this.radius,
-      dampingZone,
-      dampingStrength,
-      dampingRange,
-    );
-    [this.position.y, this.velocity.y] = this.applyEdgeDamping(
-      this.position.y,
-      this.velocity.y,
-      this.radius + this.z,
-      this.screenHeight - this.radius,
-      dampingZone,
-      dampingStrength,
-      dampingRange,
-    );
-  }
-
   private applyEdgeDamping(
     position: number,
     velocity: number,
@@ -443,7 +419,7 @@ export class Cat implements ITickable, IRenderable {
     return vecDist(this.position, v) <= this.radius * 2;
   }
 
-  calculatePredictiveTrajectory(
+  private calculatePredictiveTrajectory(
     launchPos: Point2D,
   ): Array<{ x: number; y: number; z: number; type: "normal" | "bounce" | "ground" }> {
     // Calculate initial velocity based on launch parameters
@@ -511,8 +487,8 @@ export class Cat implements ITickable, IRenderable {
 
   restoreStaminaAndInflateFromEatingMouse(): void {
     const newStamina = min(MAX_STAMINA, this.currentStamina + 10); // How much stamina is restored when eating a mouse
-    this.animateStaminaTo(newStamina);
     this.currentStamina = newStamina;
+    this.staminaChangeSignal.set(newStamina);
 
     if (this.inflationLevel < MAX_INFRACTION_LEVEL) {
       this.inflationLevel = min(MAX_INFRACTION_LEVEL, this.inflationLevel + this.inflationPerMouse);
@@ -521,14 +497,7 @@ export class Cat implements ITickable, IRenderable {
 
   restoreFullStamina(): void {
     this.currentStamina = MAX_STAMINA;
-    this.animateStaminaTo(MAX_STAMINA);
-  }
-
-  private animateStaminaTo(targetValue: number): void {
-    this.staminaStartValue = this.displayStamina;
-    this.staminaTargetValue = targetValue;
-    this.staminaAnimationTime = 0;
-    this.isAnimatingStamina = true;
+    this.staminaChangeSignal.set(MAX_STAMINA);
   }
 
   setInflationLevel(level: number): void {
@@ -574,11 +543,6 @@ export class Cat implements ITickable, IRenderable {
     this.bounceCount = 0;
   }
 
-  getCurrentInflationMultiplier(): number {
-    // Calculate current inflation multiplier based on inflation level
-    return 1 + (this.inflationLevel / MAX_INFRACTION_LEVEL) * (1.5 - 1); // How much the body area increases per inflation level
-  }
-
   get isDeflating(): boolean {
     return this._isDeflating;
   }
@@ -605,8 +569,8 @@ export class Cat implements ITickable, IRenderable {
 
   reduceStamina(): void {
     const newStamina = max(0, this.currentStamina - 15);
-    this.animateStaminaTo(newStamina);
     this.currentStamina = newStamina;
+    this.staminaChangeSignal.set(newStamina);
 
     // Check if game should end after stamina loss
     if (this.currentStamina <= 0) {
@@ -614,18 +578,13 @@ export class Cat implements ITickable, IRenderable {
     }
   }
 
-  getInflationStaminaMultiplier(): number {
-    // Calculate stamina cost multiplier based on inflation (1.0 = normal, higher = more expensive)
-    return 1 + this.inflationLevel * 0.1; // Additional stamina cost per inflation level (10% per level)
-  }
-
-  getInflationJumpMultiplier(): number {
+  private getInflationJumpMultiplier(): number {
     // Calculate jump distance multiplier based on inflation (1.0 = normal, lower = shorter jumps)
     return max(0.2, 1 - this.inflationLevel * 0.05); // Jump distance reduction per inflation level (5% per level)
   }
 
-  getTargetBodyArea(): number {
-    if (this.baseBodyArea === 0) return 0;
-    return this.baseBodyArea * this.getCurrentInflationMultiplier();
+  destroy(): void {
+    this.staminaEmptySignal.clear();
+    this.staminaChangeSignal.clear();
   }
 }
