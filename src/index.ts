@@ -1,7 +1,7 @@
 // import "./debug-console";
+import "../styles.css";
 import { setupRAF } from "./core/utils";
 import { Game } from "./game";
-import "./styles.css";
 
 const game = new Game();
 let then = performance.now();
