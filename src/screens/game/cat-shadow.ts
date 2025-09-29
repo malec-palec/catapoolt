@@ -46,6 +46,6 @@ export class CatShadow implements IRenderable {
       context.fill();
     });
 
-    if (cat.isDragging) drawSlingshotPreview(context, cat, cat.curMousePos);
+    if (cat.isDragging) drawSlingshotPreview(context, cat, cat.curPointerPos);
   }
 }

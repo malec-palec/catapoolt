@@ -77,7 +77,7 @@ export class Cat implements ITickable, IRenderable {
   readonly body: SoftBlob;
   private tail: Tail;
 
-  curMousePos: Point2D = {
+  curPointerPos: Point2D = {
     x: 0,
     y: 0,
   };
@@ -120,7 +120,7 @@ export class Cat implements ITickable, IRenderable {
     );
 
     if (this.isDragging) {
-      const predictedPoints = this.calculatePredictiveTrajectory(this.curMousePos);
+      const predictedPoints = this.calculatePredictiveTrajectory(this.curPointerPos);
       if (predictedPoints.length > 2) {
         // Draw predicted trajectory line
         context.strokeStyle = rgba(Color.SkyBlue, 0.6);

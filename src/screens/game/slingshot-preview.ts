@@ -3,13 +3,13 @@ import { ColorStop, createLinearGradientWithStops, rgbaValues } from "../../regi
 import { atan2, cos, hypot, min, PI, sin } from "../../system";
 import { Cat } from "./cat";
 
-export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat, curMousePos: Point2D): void => {
+export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat, curPointerPos: Point2D): void => {
   // Get cat collision center
   const centerX = cat.position.x;
   const centerY = cat.getFloorLevel();
 
-  const dragX = curMousePos.x;
-  const dragY = curMousePos.y;
+  const dragX = curPointerPos.x;
+  const dragY = curPointerPos.y;
 
   // Calculate drag vector and distance
   const dragVectorX = dragX - centerX;

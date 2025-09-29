@@ -1,7 +1,8 @@
 import * as dat from "dat.gui";
 import { playSound, Sound } from "../../core/audio/sound";
 import { DisplayObject, IRenderable, ITickable } from "../../core/display";
-import { Event, MouseEvent, MouseEventType } from "../../core/event";
+import { Event, GamePointerEvent, PointerEventType } from "../../core/event";
+import { Point2D } from "../../core/geom";
 import { signal } from "../../core/signal";
 import { Vehicle } from "../../core/vehicle";
 import { wrapContext } from "../../registry";
@@ -64,7 +65,7 @@ export class GameScene extends DisplayObject implements IGameController {
   private hud: HUD;
 
   private camera: Camera;
-  private isMouseDown = false;
+  private isPointerDown = false;
 
   constructor(width: number, height: number) {
     super(width, height);
@@ -188,26 +189,26 @@ export class GameScene extends DisplayObject implements IGameController {
   protected handleEvent(event: Event): void {
     if (this.isGameOver) return;
 
-    if (event instanceof MouseEvent) {
+    if (event instanceof GamePointerEvent) {
       switch (event.type) {
-        case MouseEventType.MouseMove:
-          this.onMouseMove(event.mouseX, event.mouseY);
+        case PointerEventType.PointerMove:
+          this.onPointerMove({ x: event.pointerX, y: event.pointerY });
           break;
 
-        case MouseEventType.MouseDown:
-          this.onMouseDown(event.mouseX, event.mouseY);
+        case PointerEventType.PointerDown:
+          this.onPointerDown({ x: event.pointerX, y: event.pointerY });
           break;
 
-        case MouseEventType.MouseUp:
-        case MouseEventType.MouseLeave:
-          this.onMouseUp(event.mouseX, event.mouseY);
+        case PointerEventType.PointerUp:
+        case PointerEventType.PointerLeave:
+          this.onPointerUp({ x: event.pointerX, y: event.pointerY });
           break;
       }
     }
   }
 
-  private onMouseDown(x: number, y: number): void {
-    const worldPos = this.camera.screenToWorld(x, y);
+  private onPointerDown(point: Point2D): void {
+    const worldPos = this.camera.screenToWorld(point.x, point.y);
     const { cat } = this;
     if (cat.isPressed(worldPos)) {
       if (cat.isFullyInflated && cat.captureDoubleClick()) {
@@ -215,30 +216,30 @@ export class GameScene extends DisplayObject implements IGameController {
         this.poops.push(new Poop(cat.position.x, cat.getFloorLevel(), 15 + random() * 10, this.camera.position));
       }
       if (!cat.isDeflating) {
-        this.isMouseDown = true;
+        this.isPointerDown = true;
         cat.startDrag(worldPos.x, worldPos.y);
       }
     }
   }
 
-  private onMouseUp(x: number, y: number): void {
-    if (this.isMouseDown) {
-      this.isMouseDown = false;
+  private onPointerUp(point: Point2D): void {
+    if (this.isPointerDown) {
+      this.isPointerDown = false;
       if (this.cat.isDragging) {
-        const worldPos = this.camera.screenToWorld(x, y);
+        const worldPos = this.camera.screenToWorld(point.x, point.y);
         this.cat.launch(worldPos.x, worldPos.y);
         playSound(Sound.ReleaseWobble);
       }
     }
   }
 
-  private onMouseMove(x: number, y: number): void {
-    const worldPos = this.camera.screenToWorld(x, y);
+  private onPointerMove(point: Point2D): void {
+    const worldPos = this.camera.screenToWorld(point.x, point.y);
 
-    this.cat.curMousePos = worldPos;
+    this.cat.curPointerPos = worldPos;
 
     // Update drag if dragging
-    if (this.isMouseDown && this.cat.isDragging) {
+    if (this.isPointerDown && this.cat.isDragging) {
       this.cat.updateDrag(worldPos.x, worldPos.y);
     }
   }

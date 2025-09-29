@@ -12,19 +12,18 @@ export class Event {
   }
 }
 
-export const enum MouseEventType {
-  Click,
-  MouseDown,
-  MouseUp,
-  MouseMove,
-  MouseLeave,
+export const enum PointerEventType {
+  PointerDown,
+  PointerUp,
+  PointerMove,
+  PointerLeave,
 }
 
-export class MouseEvent extends Event {
+export class GamePointerEvent extends Event {
   constructor(
-    public mouseX: number,
-    public mouseY: number,
-    public type: MouseEventType,
+    public pointerX: number,
+    public pointerY: number,
+    public type: PointerEventType,
   ) {
     super();
   }

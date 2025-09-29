@@ -33,13 +33,13 @@ export class GameScreen extends BaseScreen {
       buttons: [
         {
           text: "Continue",
-          onClick: () => {
+          onPointerUp: () => {
             this.pausePopup.hidePopup();
           },
         },
         {
           text: "Menu",
-          onClick: () => {
+          onPointerUp: () => {
             this.pausePopup.hidePopup();
             game.changeScreen(StartScreen);
           },
@@ -57,13 +57,13 @@ export class GameScreen extends BaseScreen {
       buttons: [
         {
           text: "Scores",
-          onClick: () => {
+          onPointerUp: () => {
             game.changeScreen(HighScoresScreen);
           },
         },
         {
           text: "Restart",
-          onClick: () => {
+          onPointerUp: () => {
             game.changeScreen(GameScreen);
           },
         },
@@ -85,7 +85,7 @@ export class GameScreen extends BaseScreen {
       buttons: [
         {
           text: "Continue",
-          onClick: () => {
+          onPointerUp: () => {
             this.nextWavePopup.hidePopup();
             currentWaveCallback();
           },

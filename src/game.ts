@@ -1,4 +1,5 @@
 import { IScreen, IScreenManager, ScreenConstructor } from "./base-screen";
+import { Point2D } from "./core/geom";
 import { device, getOptimalCanvasSettings } from "./device-detection";
 import { CreditsScreen } from "./screens/credits-screen";
 import { GameScreen } from "./screens/game-screen";
@@ -18,7 +19,7 @@ const SCREENS: Record<string, ScreenConstructor> = {
   CreditsScreen,
 };
 
-const getCanvasCoordinates = (clientX: number, clientY: number): { x: number; y: number } => {
+const getCanvasCoordinates = (clientX: number, clientY: number): Point2D => {
   const rect = c.getBoundingClientRect();
   // Calculate relative position within the displayed canvas
   const relativeX = clientX - rect.left;
@@ -33,27 +34,15 @@ const getCanvasCoordinates = (clientX: number, clientY: number): { x: number; y:
   };
 };
 
-const mouseHandler =
-  (callback: (x: number, y: number) => void) =>
-  (event: MouseEvent): void => {
-    const { x, y } = getCanvasCoordinates(event.clientX, event.clientY);
-    callback(x, y);
-  };
-
-const touchHandler =
-  (callback: (x: number, y: number) => void) =>
-  (event: TouchEvent): void => {
-    event.preventDefault();
-    const touch = event.touches[0] || event.changedTouches[0];
-    if (touch) {
-      const { x, y } = getCanvasCoordinates(touch.clientX, touch.clientY);
-      callback(x, y);
-    }
+const pointerHandler =
+  (callback: (point: Point2D) => void) =>
+  (event: PointerEvent): void => {
+    if (!event.isPrimary) return;
+    callback(getCanvasCoordinates(event.clientX, event.clientY));
   };
 export class Game implements IGame {
   private context: CanvasRenderingContext2D;
   private screen: IScreen;
-  private touchStartPosition: { x: number; y: number } | null = null;
 
   constructor() {
     // Use device-specific canvas settings to prevent flickering
@@ -70,60 +59,10 @@ export class Game implements IGame {
     const homeScreenCtor = SCREENS[screenName];
     this.screen = new homeScreenCtor(this);
 
-    // Mouse events
-    c.onclick = mouseHandler((x, y) => this.screen.onClick(x, y));
-    c.onmousedown = mouseHandler((x, y) => this.screen.onMouseDown(x, y));
-    c.onmouseup = mouseHandler((x, y) => this.screen.onMouseUp(x, y));
-    c.onmousemove = mouseHandler((x, y) => this.screen.onMouseMove(x, y));
-    c.onmouseleave = mouseHandler((x, y) => this.screen.onMouseLeave(x, y));
-
-    // Touch events with proper event options for iOS and Android
-    c.addEventListener(
-      "touchstart",
-      touchHandler((x, y) => {
-        this.touchStartPosition = { x, y };
-        this.screen.onMouseDown(x, y);
-      }),
-      { passive: false },
-    );
-
-    c.addEventListener(
-      "touchend",
-      touchHandler((x, y) => {
-        this.screen.onMouseUp(x, y);
-        // Simulate click if touch end is close to touch start
-        if (this.touchStartPosition) {
-          const dx = x - this.touchStartPosition.x;
-          const dy = y - this.touchStartPosition.y;
-          // If touch moved less than 10 pixels, treat it as a click
-          if (dx * dx + dy * dy < 100) {
-            this.screen.onClick(x, y);
-          }
-          this.touchStartPosition = null;
-        }
-      }),
-      { passive: false },
-    );
-
-    c.addEventListener(
-      "touchmove",
-      touchHandler((x, y) => this.screen.onMouseMove(x, y)),
-      { passive: false },
-    );
-
-    // Handle touch cancel (important for Android)
-    c.addEventListener(
-      "touchcancel",
-      (event) => {
-        event.preventDefault();
-        // Simulate mouse up at last known position if we had a touch start
-        if (this.touchStartPosition) {
-          this.screen.onMouseUp(this.touchStartPosition.x, this.touchStartPosition.y);
-          this.touchStartPosition = null;
-        }
-      },
-      { passive: false },
-    );
+    c.onpointerdown = pointerHandler((point) => this.screen.onPointerDown(point));
+    c.onpointermove = pointerHandler((point) => this.screen.onPointerMove(point));
+    c.onpointerup = pointerHandler((point) => this.screen.onPointerUp(point));
+    c.onpointerleave = pointerHandler((point) => this.screen.onPointerLeave(point));
 
     window.onresize = () => this.screen.onResize();
     this.screen.onResize();

@@ -2,7 +2,7 @@ import { Color, rgba, wrapContext } from "../registry";
 import { min } from "../system";
 import { Button } from "./button";
 import { DisplayObject } from "./display";
-import { Event, MouseEvent, MouseEventType } from "./event";
+import { Event, GamePointerEvent, PointerEventType } from "./event";
 import { isCoordsInRect, Rectangle } from "./geom";
 import { Text } from "./text";
 import { easeInOut, easeOutBack } from "./tween";
@@ -12,7 +12,7 @@ export interface PopupOptions {
   width: number;
   height: number;
   onClose?: () => void;
-  buttons?: { text: string; onClick: () => void }[];
+  buttons?: { text: string; onPointerUp: () => void }[];
 }
 
 class RoundCloseButton extends DisplayObject {
@@ -46,15 +46,15 @@ class RoundCloseButton extends DisplayObject {
   }
 
   protected handleEvent(e: Event): void {
-    if (!(e instanceof MouseEvent)) return;
+    if (!(e instanceof GamePointerEvent)) return;
 
-    const over = this.isOver(e.mouseX, e.mouseY);
+    const over = this.isOver(e.pointerX, e.pointerY);
 
-    if (e.type === MouseEventType.MouseMove) {
+    if (e.type === PointerEventType.PointerMove) {
       this.hovered = over;
       c.style.cursor = over ? "pointer" : "default";
     } else if (over) {
-      if (e.type === MouseEventType.Click) this.handler();
+      if (e.type === PointerEventType.PointerUp) this.handler();
       e.acknowledge();
     }
   }
@@ -91,13 +91,13 @@ export class Popup extends DisplayObject {
 
     if (buttons) {
       this.buttons = buttons.map(
-        ({ text, onClick }) =>
+        ({ text, onPointerUp }) =>
           new Button({
             width: 180,
             height: 45,
             text,
             fontSize: 16,
-            clickHandler: onClick,
+            clickHandler: onPointerUp,
           }),
       );
     }
@@ -134,7 +134,7 @@ export class Popup extends DisplayObject {
 
     // Only handle interactions if animation is complete or nearly complete
     if (this.animationState === 1 && this.currentAlpha < 0.8) {
-      if (event instanceof MouseEvent) event.acknowledge();
+      if (event instanceof GamePointerEvent) event.acknowledge();
       return;
     }
 
@@ -146,15 +146,15 @@ export class Popup extends DisplayObject {
       if (event.isAcknowledged) return;
     }
 
-    if (event instanceof MouseEvent && event.type === MouseEventType.Click) {
-      if (!isCoordsInRect(event.mouseX, event.mouseY, this.body)) {
+    if (event instanceof GamePointerEvent && event.type === PointerEventType.PointerUp) {
+      if (!isCoordsInRect(event.pointerX, event.pointerY, this.body)) {
         this.hidePopup();
         event.acknowledge();
         return;
       }
     }
 
-    if (event instanceof MouseEvent) event.acknowledge();
+    if (event instanceof GamePointerEvent) event.acknowledge();
   }
 
   onResize(): void {

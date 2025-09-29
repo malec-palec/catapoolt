@@ -1,5 +1,6 @@
 import { IDisplayObject } from "./core/display";
-import { Event, MouseEvent, MouseEventType } from "./core/event";
+import { Event, GamePointerEvent, PointerEventType } from "./core/event";
+import { Point2D } from "./core/geom";
 import { easeInOut } from "./core/tween";
 import { IGame } from "./game";
 import { Color, GAME_HEIGHT, GAME_WIDTH, wrapContext } from "./registry";
@@ -10,12 +11,10 @@ export interface ScreenConstructor {
 }
 
 export interface IScreen {
-  onClick(x: number, y: number): void;
-
-  onMouseDown(x: number, y: number): void;
-  onMouseUp(x: number, y: number): void;
-  onMouseMove(x: number, y: number): void;
-  onMouseLeave(x: number, y: number): void;
+  onPointerDown(point: Point2D): void;
+  onPointerUp(point: Point2D): void;
+  onPointerMove(point: Point2D): void;
+  onPointerLeave(point: Point2D): void;
 
   onResize(): void;
   tick(dt: number): void;
@@ -113,20 +112,17 @@ export class BaseScreen implements IScreen {
   }
   protected doResize(): void {}
 
-  onClick(mouseX: number, mouseY: number): void {
-    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.Click));
+  onPointerDown(point: Point2D): void {
+    this.emitEvent(new GamePointerEvent(point.x, point.y, PointerEventType.PointerDown));
   }
-  onMouseDown(mouseX: number, mouseY: number): void {
-    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MouseDown));
+  onPointerUp(point: Point2D): void {
+    this.emitEvent(new GamePointerEvent(point.x, point.y, PointerEventType.PointerUp));
   }
-  onMouseUp(mouseX: number, mouseY: number): void {
-    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MouseUp));
+  onPointerMove(point: Point2D): void {
+    this.emitEvent(new GamePointerEvent(point.x, point.y, PointerEventType.PointerMove));
   }
-  onMouseMove(mouseX: number, mouseY: number): void {
-    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MouseMove));
-  }
-  onMouseLeave(mouseX: number, mouseY: number): void {
-    this.emitEvent(new MouseEvent(mouseX, mouseY, MouseEventType.MouseLeave));
+  onPointerLeave(point: Point2D): void {
+    this.emitEvent(new GamePointerEvent(point.x, point.y, PointerEventType.PointerLeave));
   }
 
   emitEvent(event: Event): void {
