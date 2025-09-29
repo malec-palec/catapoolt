@@ -1,4 +1,4 @@
-import { getGlobalVolume, toggleMute } from "./audio/sound";
+import { globalVolume, toggleMute } from "./audio/sound";
 import { Button } from "./button";
 
 export class MuteButton extends Button {
@@ -30,7 +30,7 @@ export class MuteButton extends Button {
       fontSize,
     });
 
-    this.isMuted = getGlobalVolume() === 0;
+    this.isMuted = globalVolume === 0;
     this.updateButtonText();
   }
 

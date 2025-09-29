@@ -1,4 +1,3 @@
-import { max, min } from "../../system.js";
 import { music, sfx } from "../../tunes.js";
 import "./player.min.js";
 
@@ -12,10 +11,23 @@ export const enum Sound {
 }
 
 const pico8 = new Pico8(sfx, music);
+const { audioCtx } = pico8;
 
 let curTrack: Pico8AudioSource | null = null;
-let globalVolume: number = 1;
-let globalGainNode: GainNode | null = null;
+export let globalVolume: number = 1;
+
+// setup gain node
+// Create gain node and replace the audio context destination
+const globalGainNode = audioCtx.createGain();
+globalGainNode.connect(audioCtx.destination);
+globalGainNode.gain.value = globalVolume;
+
+// Override the destination property to route through our gain node
+const originalDestination = audioCtx.destination;
+Object.defineProperty(audioCtx, "destination", {
+  get: () => globalGainNode || originalDestination,
+  configurable: true,
+});
 
 export const playSound = (index: number): void => {
   pico8.sfx(index);
@@ -23,23 +35,6 @@ export const playSound = (index: number): void => {
 
 export const playMusic = (trackNo: number = 0): void => {
   stopMusic();
-
-  // setup gain node
-  const audioContext = pico8.audioCtx();
-  if (!globalGainNode) {
-    // Create gain node and replace the audio context destination
-    globalGainNode = audioContext.createGain();
-    globalGainNode.connect(audioContext.destination);
-    globalGainNode.gain.value = globalVolume;
-
-    // Override the destination property to route through our gain node
-    const originalDestination = audioContext.destination;
-    Object.defineProperty(audioContext, "destination", {
-      get: () => globalGainNode || originalDestination,
-      configurable: true,
-    });
-  }
-
   curTrack = pico8.music(trackNo);
 };
 
@@ -50,23 +45,10 @@ export const stopMusic = (): void => {
   }
 };
 
-export const setGlobalVolume = (volume: number): void => {
-  globalVolume = max(0, min(1, volume));
-  updateGainNodeVolume();
-};
-
-export const getGlobalVolume = (): number => {
-  return globalVolume;
-};
-
 export const toggleMute = (): boolean => {
   globalVolume = globalVolume === 0 ? 1 : 0;
-  updateGainNodeVolume();
+  globalGainNode.gain.value = globalVolume;
   return globalVolume === 0; // Return true if muted
 };
 
-const updateGainNodeVolume = (): void => {
-  if (globalGainNode) {
-    globalGainNode.gain.value = globalVolume;
-  }
-};
+export const unlockAudio = (): false | Promise<void> => audioCtx.state[0] === "s" && audioCtx.resume();

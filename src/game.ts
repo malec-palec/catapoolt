@@ -1,4 +1,5 @@
 import { IScreen, IScreenManager, ScreenConstructor } from "./base-screen";
+import { unlockAudio } from "./core/audio/sound";
 import { Point2D } from "./core/geom";
 import { device, getOptimalCanvasSettings } from "./device-detection";
 import { CreditsScreen } from "./screens/credits-screen";
@@ -37,6 +38,7 @@ const getCanvasCoordinates = (clientX: number, clientY: number): Point2D => {
 const pointerHandler =
   (callback: (point: Point2D) => void) =>
   (event: PointerEvent): void => {
+    unlockAudio();
     if (!event.isPrimary) return;
     callback(getCanvasCoordinates(event.clientX, event.clientY));
   };
