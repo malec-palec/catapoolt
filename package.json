@@ -20,7 +20,8 @@
   "author": "glebv",
   "license": "MIT",
   "dependencies": {
-    "dat.gui": "^0.7.9"
+    "dat.gui": "^0.7.9",
+    "pico8-music": "github:malec-palec/pico8-music#feat/expose-ctx"
   },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^5.2.3",

@@ -1,5 +1,6 @@
+import "pico8-music";
+import type { Pico8AudioSource } from "pico8-music";
 import { music, sfx } from "../../tunes.js";
-import "./player.min.js";
 
 export const enum Sound {
   Beep = 19,
@@ -11,7 +12,7 @@ export const enum Sound {
 }
 
 const pico8 = new Pico8(sfx, music);
-const { audioCtx } = pico8;
+const audioCtx = pico8.ctx;
 
 let curTrack: Pico8AudioSource | null = null;
 export let globalVolume: number = 1;
