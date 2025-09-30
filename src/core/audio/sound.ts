@@ -21,11 +21,11 @@ export let globalVolume: number = 1;
 const globalGainNode = audioCtx.createGain();
 globalGainNode.connect(audioCtx.destination);
 globalGainNode.gain.value = globalVolume;
+globalGainNode.connect(audioCtx.destination);
 
 // Override the destination property to route through our gain node
-const originalDestination = audioCtx.destination;
 Object.defineProperty(audioCtx, "destination", {
-  get: () => globalGainNode || originalDestination,
+  get: () => globalGainNode,
   configurable: true,
 });
 

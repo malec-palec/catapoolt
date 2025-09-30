@@ -68,9 +68,10 @@ export class StartScreen extends BaseScreen {
     const startY = c.height / 2 - buttonSpacing;
     const centerX = c.width / 2;
 
-    this.buttons.forEach((button, index) => {
+    for (let index = 0; index < this.buttons.length; index++) {
+      const button = this.buttons[index];
       button.setPos(centerX - button.width / 2, startY + buttonSpacing * index);
-    });
+    }
 
     this.versionText.setPos(c.width - 40, c.height - 20);
   }

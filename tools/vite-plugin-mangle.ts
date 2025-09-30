@@ -41,9 +41,6 @@ export const manglePlugin = (options: ManglePluginOptions = {}): Plugin => {
       // Replace strict equality with loose equality
       transformedCode = transformedCode.replaceAll("===", "==");
 
-      // Replace forEach with map (though this might change semantics)
-      transformedCode = transformedCode.replace(/\bforEach\b/g, "map");
-
       return {
         code: transformedCode,
         map: null,

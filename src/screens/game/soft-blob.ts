@@ -236,7 +236,6 @@ export class SoftBlob implements IContainsPoint {
         context.bezierCurveTo(current.cp2.x, current.cp2.y, next.cp1.x, next.cp1.y, next.pos.x, next.pos.y);
       }
     }
-    context.closePath();
     context.fill();
     context.stroke();
 

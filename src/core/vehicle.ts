@@ -386,7 +386,6 @@ export class Vehicle implements ITickable, IRenderable {
       // Draw line from rounded corner back to left base
       context.lineTo(leftBase, baseY);
 
-      context.closePath();
       context.fill();
       // context.stroke();
 

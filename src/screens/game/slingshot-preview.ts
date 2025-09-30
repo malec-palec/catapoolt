@@ -76,7 +76,6 @@ export const drawSlingshotPreview = (context: CanvasRenderingContext2D, cat: Cat
     context.moveTo(vertex1X, vertex1Y);
     context.lineTo(vertex2X, vertex2Y);
     context.lineTo(vertex3X, vertex3Y);
-    context.closePath();
     context.fill();
   }
 

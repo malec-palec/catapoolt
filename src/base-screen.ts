@@ -43,7 +43,9 @@ export class BaseScreen implements IScreen {
   }
 
   tick(dt: number): void {
-    this.children.forEach((child) => child.tick(dt));
+    for (const child of this.children) {
+      child.tick(dt);
+    }
     this.currentTime += dt;
     this.alpha = this.currentTime < this.FADE_IN_TIME_MS ? easeInOut(this.currentTime / this.FADE_IN_TIME_MS) : 1;
     this.doUpdate(dt);
@@ -54,7 +56,7 @@ export class BaseScreen implements IScreen {
     context.fillStyle = this.bgColor;
     context.fillRect(0, 0, c.width, c.height);
 
-    this.children.forEach((child) => {
+    for (const child of this.children) {
       wrapContext(context, () => {
         context.translate(child.pos.x, child.pos.y);
         // context.rotate(child.rotation);
@@ -62,7 +64,7 @@ export class BaseScreen implements IScreen {
         // context.scale(child.scale.x, child.scale.y);
         child.render(context);
       });
-    });
+    }
 
     if (this.alpha < 1) {
       context.globalAlpha = 1 - this.alpha;

@@ -175,9 +175,10 @@ export class Popup extends DisplayObject {
     const startY = y + this.body.height - totalH - 40;
     const btnX = x + (this.body.width - 180) * 0.5;
 
-    this.buttons.forEach((btn, i) => {
+    for (let i = 0; i < this.buttons.length; i++) {
+      const btn = this.buttons[i];
       btn.setPos(btnX, startY + i * 60);
-    });
+    }
   }
 
   tick(dt: number): void {
@@ -219,7 +220,9 @@ export class Popup extends DisplayObject {
         this.bodyText.tick(dt);
       }
       this.close.tick(dt);
-      this.buttons.forEach((btn) => btn.tick(dt));
+      for (const btn of this.buttons) {
+        btn.tick(dt);
+      }
     }
   }
 
@@ -258,7 +261,9 @@ export class Popup extends DisplayObject {
         this.renderTranslated(context, this.bodyText);
       }
       this.renderTranslated(context, this.close);
-      this.buttons.forEach((btn) => this.renderTranslated(context, btn));
+      for (const btn of this.buttons) {
+        this.renderTranslated(context, btn);
+      }
     });
   }
 
@@ -283,6 +288,5 @@ export class Popup extends DisplayObject {
     context.quadraticCurveTo(x, y + h, x, y + h - r);
     context.lineTo(x, y + r);
     context.quadraticCurveTo(x, y, x + r, y);
-    context.closePath();
   }
 }

@@ -14,7 +14,9 @@ export function signal<T>(value: T): Signal<T> {
     get: () => value,
     set: (v: T) => {
       value = v;
-      subs.forEach((fn) => fn(v));
+      for (const fn of subs) {
+        fn(v);
+      }
     },
     subscribe: (fn: Subscriber<T>) => {
       subs.add(fn);

@@ -150,7 +150,7 @@ export class HUD implements ITickable, IRenderable {
       .slice(0, 5); // Show only the 5 nearest off-screen mice
 
     // Draw indicators for nearest off-screen vehicles
-    offScreenVehicles.forEach(({ vehicle }) => {
+    for (const { vehicle } of offScreenVehicles) {
       const edgePos = this.getScreenEdgePosition(vehicle.position.x, vehicle.position.y);
 
       // Calculate direction angle for triangle orientation
@@ -172,10 +172,9 @@ export class HUD implements ITickable, IRenderable {
         context.moveTo(triangleSize, 0);
         context.lineTo(-triangleSize, -triangleSize);
         context.lineTo(-triangleSize, triangleSize);
-        context.closePath();
         context.fill();
       });
-    });
+    }
   }
 
   // Calculate screen edge position for off-screen indicator

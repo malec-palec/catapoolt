@@ -10,7 +10,7 @@ import { random } from "../../system";
 import { Camera } from "./camera";
 import { Cat, MAX_INFRACTION_LEVEL } from "./cat";
 import { Clover } from "./clover";
-import { GameField } from "./game-field";
+import { createGameField, GameField } from "./game-field";
 import { HUD } from "./hud";
 import { Poop } from "./poop";
 
@@ -60,17 +60,17 @@ export class GameScene extends DisplayObject implements IGameController {
   private gameField: GameField;
   cat: Cat;
   private clover: Clover | null = null;
-  private poops: Poop[] = [];
+  poops: Poop[] = [];
   enemies: Vehicle[] = [];
   private hud: HUD;
 
-  private camera: Camera;
+  camera: Camera;
   private isPointerDown = false;
 
   constructor(width: number, height: number) {
     super(width, height);
 
-    this.gameField = new GameField(1600, 1200, 160);
+    this.gameField = createGameField(1600, 1200, 160);
     this.cat = new Cat(30, this.gameField.width, this.gameField.height);
     this.cat.staminaEmptySignal.subscribeOnce(() => {
       this.isGameOver = true;
@@ -350,7 +350,18 @@ export function setupGUI(folder: dat.GUI, scene: GameScene): void {
   // catFolder.open();
   // physicsFolder.open();
   // gameFieldFolder.open();
-  debugFolder.open();
+  // debugFolder.open();
+
+  const test = {
+    createTestPoop(): void {
+      scene.cat.startDeflation();
+      scene.poops.push(
+        new Poop(scene.cat.position.x, scene.cat.getFloorLevel(), 15 + random() * 10, scene.camera.position),
+      );
+    },
+  };
+
+  folder.add(test, "createTestPoop").name("POOP");
 }
 
 function updateVehicleProperties(enemies: Vehicle[], enemyOptions: VehicleOptions): void {

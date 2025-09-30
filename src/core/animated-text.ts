@@ -59,7 +59,7 @@ export class AnimatedText extends DisplayObject {
   render(context: CanvasRenderingContext2D): void {
     context.fillStyle = Color.Black;
     context.font = `${this.fontWeight} ${this.fontSize}px ${this.fontFamily}`;
-    this.letters.forEach((letter) => {
+    for (const letter of this.letters) {
       if (letter.char !== " ") {
         context.fillText(
           letter.char,
@@ -67,6 +67,6 @@ export class AnimatedText extends DisplayObject {
           sin(this.time * this.frequency + letter.phase) * this.amplitude,
         );
       }
-    });
+    }
   }
 }
